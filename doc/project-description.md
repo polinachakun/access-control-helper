@@ -21,13 +21,13 @@ This tool automates that reasoning statically — without making any live AWS AP
 AWS evaluates policies in a strict sequential order. The first explicit `Deny` wins. An `Allow` must survive all layers.
 
 ```
-1. Explicit Deny (any policy)          → DENY immediately
-2. AWS Organizations SCP               → must have Allow, else DENY
-3. Resource-based policy (bucket policy) Allow → ALLOW (if no deny above)
-4. IAM Permission Boundary             → must have Allow, else DENY
-5. Session Policy                      → must have Allow, else DENY
-6. Identity-based policy (IAM role/user policy) Allow → ALLOW
-7. Default                             → IMPLICIT DENY
+1. Deny Evaluation (Explicit Deny Check)              → DENY immediately if any policy has explicit Deny
+2. AWS Organizations RCPs (Resource Control Policies) → must have Allow, else DENY
+3. AWS Organizations SCPs (Service Control Policies)  → must have Allow, else DENY
+4. Resource-Based Policies                            → ALLOW possible (principal-type dependent)
+5. Identity-Based Policies                            → must have Allow, else DENY
+6. IAM Permissions Boundaries                         → must have Allow, else DENY
+7. Session Policies                                   → must have Allow, else DENY → ALLOW
 ```
 
 The tool encodes each layer as an Alloy predicate, then asserts reachability through all layers for a given `(principal, resource, action)` triple.
@@ -136,12 +136,13 @@ Access Analysis Report
 
 Query: Can role "example-role" perform s3:GetObject on bucket "my-bucket"?
 
-Layer 1 - Explicit Deny:       PASS (no explicit deny found)
-Layer 2 - SCP:                 PASS (no SCP restrictions)
-Layer 3 - Bucket Policy:       PASS (bucket policy allows)
-Layer 4 - Permission Boundary: PASS (no boundary set)
-Layer 5 - Session Policy:      PASS (no session policy)
-Layer 6 - Identity Policy:     PASS (IAM policy allows s3:GetObject)
+Layer 1 - Deny Evaluation:     PASS (no explicit deny found)
+Layer 2 - RCP:                 PASS (no RCP restrictions)
+Layer 3 - SCP:                 PASS (no SCP restrictions)
+Layer 4 - Resource Policy:     PASS (bucket policy allows)
+Layer 5 - Identity Policy:     PASS (IAM policy allows s3:GetObject)
+Layer 6 - Permission Boundary: PASS (no boundary set)
+Layer 7 - Session Policy:      PASS (no session policy)
 
 Result: ALLOW
 ```
@@ -149,7 +150,7 @@ Result: ALLOW
 Or on denial:
 
 ```
-Layer 1 - Explicit Deny:  DENY
+Layer 1 - Deny Evaluation:  DENY
   → Found explicit Deny in bucket policy for principal "example-role"
   → Statement: sid="BlockExternalAccess", Effect=Deny, Action=s3:*
 
