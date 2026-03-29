@@ -2,7 +2,6 @@
 package generator
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -156,23 +155,4 @@ func FormatAlloySet(items []string) string {
 		return "none"
 	}
 	return strings.Join(items, " + ")
-}
-
-// DefaultScope returns the default check scope string.
-func DefaultScope(buckets, policies, roles, rcps, scps int) string {
-	if buckets == 0 {
-		buckets = 1
-	}
-	if policies == 0 {
-		policies = 1
-	}
-	if roles == 0 {
-		roles = 1
-	}
-
-	// Build scope with all signature types
-	return fmt.Sprintf(
-		"for %d S3Bucket, %d BucketPolicy, %d OrgRCP, %d OrgSCP,\n      %d IAMRole, 3 Request, 2 VpceId, 2 TagValue, 4 Action, 2 Bool",
-		buckets, policies, rcps, scps, roles,
-	)
 }

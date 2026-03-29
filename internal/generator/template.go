@@ -7,13 +7,15 @@ import (
 	"text/template"
 )
 
-// AlloyTemplate is the main template for generating Alloy specifications.
+// AlloyTemplate is the master template for generating 7-layer Alloy specifications.
+// It encodes the full AWS S3 policy evaluation order as Alloy predicates and
+// generates one assertion per (principal, bucket, action) triple.
 const AlloyTemplate = `// ============================================================
 //  AUTO-GENERATED from: {{.SourceFile}}
-//  AWS policy evaluation
+//  AWS S3 Access Control — 7-layer policy evaluation model
 // ============================================================
 
-// -- Type definitions -----------------------------------------
+// ── Scalar domains ─────────────────────────────────────────────────────────
 abstract sig TagValue {}
 one sig {{.TagValues}} extends TagValue {}
 
@@ -23,13 +25,19 @@ abstract sig VpceId {}
 abstract sig Action {}
 one sig {{.ActionValues}} extends Action {}
 
+abstract sig Bool {}
+one sig True, False extends Bool {}
+
+// ── Resource hierarchy ──────────────────────────────────────────────────────
 abstract sig Resource { dependsOn: set Resource }
 
+// S3 Bucket
 sig S3Bucket extends Resource {
   envTag:            one TagValue,
   blockPublicAccess: one Bool
 }
 
+// Bucket Policy — resource-based policy evaluated at Layer 4
 sig BucketPolicy extends Resource {
   bucket:         one S3Bucket,
   denyAllExcept:  lone VpceId,
@@ -40,34 +48,52 @@ sig BucketPolicy extends Resource {
   abacCondition:  one Bool
 }
 
-sig IAMRole extends Resource {
-  envTag:           one TagValue,
-  hasRolePolicy:    one Bool,
-  roleAllowActions: set Action
+// AWS Organizations Resource Control Policy (Layer 2)
+abstract sig OrgRCP extends Resource {
+  rcpAllowActions: set Action,
+  rcpDenyActions:  set Action
 }
 
-abstract sig Bool {}
-one sig True, False extends Bool {}
+// AWS Organizations Service Control Policy (Layer 3)
+abstract sig OrgSCP extends Resource {
+  scpAllowActions: set Action,
+  scpDenyActions:  set Action
+}
 
-// -- Concrete resources ---------------------------------------
+// IAM Role principal — identity policy (Layer 5), boundary (Layer 6), session (Layer 7)
+sig IAMRole extends Resource {
+  envTag:               one TagValue,
+  hasRolePolicy:        one Bool,
+  roleAllowActions:     set Action,
+  hasBoundary:          one Bool,
+  boundaryActions:      set Action,
+  hasSessionPolicy:     one Bool,
+  sessionPolicyActions: set Action
+}
+
+// ── Concrete resources ──────────────────────────────────────────────────────
 {{range .Buckets}}one sig bucket_{{.}} extends S3Bucket {}
 {{end}}{{range .BucketPolicies}}one sig policy_{{.}} extends BucketPolicy {}
+{{end}}{{range .RCPs}}one sig rcp_{{.}} extends OrgRCP {}
+{{end}}{{range .SCPs}}one sig scp_{{.}} extends OrgSCP {}
 {{end}}{{range .Roles}}one sig role_{{.}} extends IAMRole {}
 {{end}}
 fact ExactUniverse {
   S3Bucket     = {{.BucketUnion}}
   BucketPolicy = {{.BucketPolicyUnion}}
+  OrgRCP       = {{.RCPUnion}}
+  OrgSCP       = {{.SCPUnion}}
   IAMRole      = {{.RoleUnion}}
-  Resource     = S3Bucket + BucketPolicy + IAMRole
+  Resource     = S3Bucket + BucketPolicy + OrgRCP + OrgSCP + IAMRole
 }
 
-// -- Configuration facts --------------------------------------
+// ── Configuration facts ─────────────────────────────────────────────────────
 fact ConfigFacts {
 {{.ConfigFacts}}
 }
 
 // ============================================================
-//  PREDICATES
+//  REQUEST SIGNATURE
 // ============================================================
 
 sig Request {
@@ -77,22 +103,18 @@ sig Request {
   sourceVpce: lone VpceId
 }
 
+// ============================================================
+//  EVALUATION PREDICATES — AWS 7-layer policy evaluation order
+// ============================================================
+
 {{range .Predicates}}// {{.Comment}}
 pred {{.Name}}[{{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p}}{{end}}] {
   {{.Body}}
 }
 
 {{end}}
-// Step 1b: General Explicit Deny - any Deny statement in bucket policy
-pred generalExplicitDeny[req: Request] {
-  some bp: BucketPolicy |
-    bp.bucket = req.target and
-    req.action in bp.denyActions and
-    (bp.denyPrincipal = none or bp.denyPrincipal = req.principal)
-}
-
 // ============================================================
-//  ASSERTIONS - these fail when there's a misconfiguration
+//  SCENARIO ASSERTIONS
 // ============================================================
 {{range .Assertions}}
 // {{.Comment}}
@@ -100,8 +122,9 @@ assert {{.Name}} {
   {{.Body}}
 }
 {{end}}
-//
-//  ACCESS ASSERTIONS - for each (role, bucket, action) triple
+
+// ============================================================
+//  PER-TRIPLE ACCESS ASSERTIONS — (principal, bucket, action)
 // ============================================================
 {{range .AccessAssertions}}
 // {{.Comment}}
@@ -118,7 +141,7 @@ check {{.AssertionName}}
   {{.Scope}}
 {{end}}`
 
-// TemplateData holds data for the Alloy template.
+// TemplateData holds all values injected into the Alloy template.
 type TemplateData struct {
 	SourceFile        string
 	TagValues         string
@@ -137,43 +160,38 @@ type TemplateData struct {
 	ConfigFacts       string
 	Predicates        []Predicate
 	Assertions        []Assertion
-	Checks            []Check
 	AccessAssertions  []Assertion
+	Checks            []Check
 }
 
-// RenderTemplate renders the Alloy template to a writer.
+// RenderTemplate renders the Alloy template to w.
 func RenderTemplate(w io.Writer, data *TemplateData) error {
 	funcMap := template.FuncMap{
 		"join": strings.Join,
 	}
-
 	tmpl, err := template.New("alloy").Funcs(funcMap).Parse(AlloyTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
-
 	if err := tmpl.Execute(w, data); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
-
 	return nil
 }
 
-// GenerateConfigFacts generates the ConfigFacts section.
+// GenerateConfigFacts generates the ConfigFacts body from a slice of ConfigFact entries.
 func GenerateConfigFacts(facts []ConfigFact) string {
 	var sb strings.Builder
-
 	for i, f := range facts {
 		if i > 0 && f.Resource != facts[i-1].Resource {
 			sb.WriteString("\n")
 		}
 		sb.WriteString(fmt.Sprintf("  %s.%s = %s\n", f.Resource, f.Field, f.Value))
 	}
-
 	return sb.String()
 }
 
-// ConfigFact represents a single fact assignment.
+// ConfigFact represents a single field assignment inside a fact block.
 type ConfigFact struct {
 	Resource string
 	Field    string
@@ -194,14 +212,28 @@ type BucketPolicyFacts struct {
 	DenyAllExcept  string
 	AllowPrincipal string
 	AllowActions   string
+	DenyActions    string
+	DenyPrincipal  string
 	AbacCondition  string
 	DependsOn      string
 }
 
 // RoleFacts holds Alloy facts for an IAM role.
 type RoleFacts struct {
-	TFName           string
-	EnvTag           string
-	HasRolePolicy    string
-	RoleAllowActions string
+	TFName               string
+	EnvTag               string
+	HasRolePolicy        string
+	RoleAllowActions     string
+	HasBoundary          string
+	BoundaryActions      string
+	HasSessionPolicy     string
+	SessionPolicyActions string
+}
+
+// OrgPolicyFacts holds Alloy facts for an RCP or SCP.
+type OrgPolicyFacts struct {
+	TFName        string
+	SigPrefix     string // "rcp_" or "scp_"
+	AllowActionsF string
+	DenyActionsF  string
 }

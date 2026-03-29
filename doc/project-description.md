@@ -211,3 +211,31 @@ The tool must, for every (principal, bucket, action) triple:
 Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allows s3:GetObject for a principal:
 - The generated Alloy model must DENY DeleteObject at Layer 1 (explicit Deny) and ALLOW GetObject if it passes all layers.
 - The Alloy output must show which layer made the decision and why, matching the AWS evaluation logic.
+
+---
+
+## Suggested Implementation Order
+
+```
+Phase 1 — Foundation
+  [x] Data model (model.go)
+  [x] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket
+  [x] Basic Alloy template generation (no conditions)
+
+Phase 2 — Core Analysis
+  [ ] Full policy attachment resolution
+  [ ] Alloy spec with all 7 evaluation layers
+  [ ] Alloy CLI integration & output parsing
+  [ ] Per-Action Access Evaluation: generate Alloy assertions and checks for every (principal, bucket, action) triple, and report the decision and evaluation layer for each.
+
+Phase 3 — Coverage
+  [ ] IAM conditions support (StringEquals, ArnLike, etc.)
+  [ ] aws_organizations_policy (SCP) parsing
+  [ ] Permission boundary parsing
+  [ ] Cross-account analysis
+
+Phase 4 — UX
+  [ ] JSON and SARIF output
+  [ ] CI mode (exit code 1 on DENY findings)
+  [ ] Example fixtures and integration tests
+```

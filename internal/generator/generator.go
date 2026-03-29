@@ -11,7 +11,7 @@ import (
 	"access-control-helper/internal/ir"
 )
 
-// Generator produces Alloy specifications from IR Config.
+// Generator produces Alloy specifications from an IR Config.
 type Generator struct {
 	config     *ir.Config
 	sourceFile string
@@ -32,37 +32,34 @@ func NewGenerator(config *ir.Config, sourceFile string) *Generator {
 	}
 }
 
-// GenerateToFile writes the Alloy specification to a file.
+// GenerateToFile writes the Alloy specification to outputPath.
 func (g *Generator) GenerateToFile(outputPath string) error {
 	g.collectValues()
 	data := g.buildTemplateData()
-
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer f.Close()
-
 	if err := RenderTemplate(f, data); err != nil {
 		return fmt.Errorf("failed to render template: %w", err)
 	}
-
 	return nil
 }
 
-// GenerateToWriter writes the Alloy specification to any io.Writer (e.g. os.Stdout).
+// GenerateToWriter writes the Alloy specification to any io.Writer.
 func (g *Generator) GenerateToWriter(w io.Writer) error {
 	g.collectValues()
 	data := g.buildTemplateData()
 	return RenderTemplate(w, data)
 }
 
-// collectValues gathers all unique tags, VPCEs, and actions.
+// collectValues gathers every unique tag, VPCE ID, and action referenced in the config.
 func (g *Generator) collectValues() {
-	g.tags["PROD"] = true
+	// Always include baseline tag and action values so assertions have known atoms to reference.
 	g.tags["DEV"] = true
+	g.tags["PROD"] = true
 	g.vpces["VPCE_OTHER"] = true
-
 	g.actions["S3_GetObject"] = true
 	g.actions["S3_ListBucket"] = true
 	g.actions["S3_Other"] = true
@@ -72,7 +69,6 @@ func (g *Generator) collectValues() {
 			g.tags[strings.ToUpper(b.EnvTag)] = true
 		}
 	}
-
 	for _, r := range g.config.Roles {
 		if r.EnvTag != "" {
 			g.tags[strings.ToUpper(r.EnvTag)] = true
@@ -80,8 +76,10 @@ func (g *Generator) collectValues() {
 		for _, a := range r.RolePolicyActions {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range r.BoundaryActions {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 	}
-
 	for _, p := range g.config.BucketPolicies {
 		if p.DenyVpceID != "" {
 			g.vpces[VpceToAlloyID(p.DenyVpceID)] = true
@@ -89,17 +87,28 @@ func (g *Generator) collectValues() {
 		for _, a := range p.AllowActions {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range p.DenyActions {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+	}
+	for _, op := range g.config.OrgPolicies {
+		for _, a := range op.AllowActions {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+		for _, a := range op.DenyActions {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 	}
 }
 
-// buildTemplateData creates the template data structure.
+// buildTemplateData assembles all values needed to render the Alloy template.
 func (g *Generator) buildTemplateData() *TemplateData {
 	data := &TemplateData{
 		SourceFile: filepath.Base(g.sourceFile),
 		Predicates: GeneratePredicates(),
 	}
 
-	// Tag values
+	// ── Tag values ───────────────────────────────────────────────────────
 	tagList := g.sortedKeys(g.tags)
 	tagIDs := make([]string, len(tagList))
 	for i, t := range tagList {
@@ -107,66 +116,107 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	}
 	data.TagValues = strings.Join(tagIDs, ", ")
 
-	// VPCE IDs
+	// ── VPCE IDs ─────────────────────────────────────────────────────────
 	data.VpceIds = g.sortedKeys(g.vpces)
 
-	// Action values
+	// ── Action values ─────────────────────────────────────────────────────
 	data.ActionValues = strings.Join(g.sortedKeys(g.actions), ", ")
 
-	// Concrete resources
+	// ── S3 Buckets ────────────────────────────────────────────────────────
 	bucketNames := make([]string, len(g.config.Buckets))
 	for i, b := range g.config.Buckets {
 		bucketNames[i] = AlloyID(b.TFName)
 	}
 	data.Buckets = bucketNames
+	data.BucketUnion = g.buildUnion(bucketNames, "bucket_")
 
+	// ── Bucket Policies ───────────────────────────────────────────────────
 	policyNames := make([]string, len(g.config.BucketPolicies))
 	for i, p := range g.config.BucketPolicies {
 		policyNames[i] = AlloyID(p.TFName)
 	}
 	data.BucketPolicies = policyNames
+	data.BucketPolicyUnion = g.buildUnion(policyNames, "policy_")
 
+	// ── OrgRCPs ───────────────────────────────────────────────────────────
+	rcps := g.config.RCPs()
+	rcpNames := make([]string, len(rcps))
+	for i, r := range rcps {
+		rcpNames[i] = AlloyID(r.TFName)
+	}
+	data.RCPs = rcpNames
+	data.RCPUnion = g.buildUnion(rcpNames, "rcp_")
+
+	// ── OrgSCPs ───────────────────────────────────────────────────────────
+	scps := g.config.SCPs()
+	scpNames := make([]string, len(scps))
+	for i, s := range scps {
+		scpNames[i] = AlloyID(s.TFName)
+	}
+	data.SCPs = scpNames
+	data.SCPUnion = g.buildUnion(scpNames, "scp_")
+
+	// ── IAM Roles ─────────────────────────────────────────────────────────
 	roleNames := make([]string, len(g.config.Roles))
 	for i, r := range g.config.Roles {
 		roleNames[i] = AlloyID(r.TFName)
 	}
 	data.Roles = roleNames
-
-	// Build unions
-	data.BucketUnion = g.buildUnion(bucketNames, "bucket_")
-	data.BucketPolicyUnion = g.buildUnion(policyNames, "policy_")
 	data.RoleUnion = g.buildUnion(roleNames, "role_")
 
-	// Build config facts
+	// ── Config facts ──────────────────────────────────────────────────────
 	data.ConfigFacts = g.buildConfigFacts()
 
-	// Generate assertions for first bucket/policy/role pair
-	bucketName := ""
-	policyName := ""
-	roleName := ""
-	if len(bucketNames) > 0 {
-		bucketName = bucketNames[0]
+	// ── Scenario assertions (first bucket/policy/role pair) ───────────────
+	firstName := func(names []string) string {
+		if len(names) > 0 {
+			return names[0]
+		}
+		return ""
 	}
-	if len(policyNames) > 0 {
-		policyName = policyNames[0]
-	}
-	if len(roleNames) > 0 {
-		roleName = roleNames[0]
-	}
-	data.Assertions = GenerateAssertions(bucketName, policyName, roleName)
+	data.Assertions = GenerateScenarioAssertions(
+		firstName(bucketNames),
+		firstName(policyNames),
+		firstName(roleNames),
+	)
 
-	// Generate access assertions for all (role, bucket, action) triples
-	data.AccessAssertions = GenerateAccessAssertions(roleNames, bucketNames, g.sortedKeys(g.actions))
+	// ── Per-triple access assertions ──────────────────────────────────────
+	data.AccessAssertions = GenerateAccessAssertions(
+		roleNames, bucketNames, g.sortedKeys(g.actions),
+	)
 
-	// Build scope and checks
-	scope := fmt.Sprintf("for exactly %d S3Bucket, exactly %d BucketPolicy, exactly %d IAMRole,\n      exactly 2 Request, exactly 2 VpceId, exactly 2 TagValue, exactly 3 Action, exactly 2 Bool",
-		len(g.config.Buckets), len(g.config.BucketPolicies), len(g.config.Roles))
-	data.Checks = GenerateChecks(scope, data.Assertions)
+	// ── Scope & checks ────────────────────────────────────────────────────
+	actionCount := len(g.sortedKeys(g.actions))
+	tagCount := len(g.sortedKeys(g.tags))
+	vpceCount := len(g.sortedKeys(g.vpces))
+
+	// Request count: need at least one atom per (role, bucket, action) triple.
+	requestCount := len(g.config.Roles) * len(g.config.Buckets) * actionCount
+	if requestCount < 1 {
+		requestCount = 1
+	}
+
+	scope := fmt.Sprintf(
+		"for exactly %d S3Bucket, exactly %d BucketPolicy,\n"+
+			"      exactly %d OrgRCP, exactly %d OrgSCP,\n"+
+			"      exactly %d IAMRole, exactly %d Request,\n"+
+			"      exactly %d VpceId, exactly %d TagValue,\n"+
+			"      exactly %d Action, exactly 2 Bool",
+		len(g.config.Buckets), len(g.config.BucketPolicies),
+		len(rcps), len(scps),
+		len(g.config.Roles), requestCount,
+		vpceCount, tagCount,
+		actionCount,
+	)
+
+	// Combine scenario + access assertions for checks.
+	allAssertions := append(data.Assertions, data.AccessAssertions...)
+	data.Checks = GenerateChecks(scope, allAssertions)
 
 	return data
 }
 
-// buildUnion creates an Alloy union expression.
+// buildUnion creates an Alloy union expression: "prefix_a + prefix_b" or "none".
 func (g *Generator) buildUnion(names []string, prefix string) string {
 	if len(names) == 0 {
 		return "none"
@@ -178,27 +228,23 @@ func (g *Generator) buildUnion(names []string, prefix string) string {
 	return strings.Join(parts, " + ")
 }
 
-// buildConfigFacts generates the ConfigFacts section.
+// buildConfigFacts generates the body of the ConfigFacts fact block.
 func (g *Generator) buildConfigFacts() string {
 	var sb strings.Builder
 
-	// Bucket facts
+	// ── S3 Buckets ────────────────────────────────────────────────────────
 	for _, b := range g.config.Buckets {
 		sig := "bucket_" + AlloyID(b.TFName)
-		envTag := "TAG_DEV"
-		if b.EnvTag != "" {
-			envTag = TagToAlloyID(b.EnvTag)
-		}
-		bpa := BoolToAlloy(b.HasBPA)
-
+		envTag := tagOrDefault(b.EnvTag, "TAG_DEV")
 		sb.WriteString(fmt.Sprintf("  %s.envTag            = %s\n", sig, envTag))
-		sb.WriteString(fmt.Sprintf("  %s.blockPublicAccess = %s\n", sig, bpa))
+		sb.WriteString(fmt.Sprintf("  %s.blockPublicAccess = %s\n", sig, BoolToAlloy(b.HasBPA)))
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn         = none\n\n", sig))
 	}
 
-	// Bucket policy facts
+	// ── Bucket Policies ───────────────────────────────────────────────────
 	for _, p := range g.config.BucketPolicies {
 		sig := "policy_" + AlloyID(p.TFName)
+
 		bucketSig := "none"
 		if p.BucketRef != "" {
 			bucketName := strings.TrimPrefix(p.BucketRef, "aws_s3_bucket.")
@@ -211,94 +257,130 @@ func (g *Generator) buildConfigFacts() string {
 		}
 
 		allowPrincipal := "none"
-		if len(p.AllowPrincipals) > 0 {
-			for _, prin := range p.AllowPrincipals {
-				if roleRef := extractRoleFromPrincipal(prin, g.config); roleRef != "" {
-					allowPrincipal = "role_" + AlloyID(roleRef)
-					break
-				}
+		for _, prin := range p.AllowPrincipals {
+			if ref := extractRoleFromPrincipal(prin, g.config); ref != "" {
+				allowPrincipal = "role_" + AlloyID(ref)
+				break
 			}
 		}
 
-		allowActions := "none"
-		if len(p.AllowActions) > 0 {
-			actionIDs := make([]string, 0, len(p.AllowActions))
-			for _, a := range p.AllowActions {
-				actionIDs = append(actionIDs, ActionToAlloyID(a))
-			}
-			allowActions = actionsToAlloySet(actionIDs)
-		}
-
-		denyActions := "none"
-		if len(p.DenyActions) > 0 {
-			actionIDs := make([]string, 0, len(p.DenyActions))
-			for _, a := range p.DenyActions {
-				actionIDs = append(actionIDs, ActionToAlloyID(a))
-			}
-			denyActions = actionsToAlloySet(actionIDs)
-		}
+		allowActions := toAlloyActionSet(p.AllowActions)
+		denyActions := toAlloyActionSet(p.DenyActions)
 
 		denyPrincipal := "none"
-		if len(p.DenyPrincipals) > 0 {
-			for _, prin := range p.DenyPrincipals {
-				if roleRef := extractRoleFromPrincipal(prin, g.config); roleRef != "" {
-					denyPrincipal = "role_" + AlloyID(roleRef)
-					break
-				}
+		for _, prin := range p.DenyPrincipals {
+			if ref := extractRoleFromPrincipal(prin, g.config); ref != "" {
+				denyPrincipal = "role_" + AlloyID(ref)
+				break
 			}
 		}
-
-		abacCondition := BoolToAlloy(p.HasABAC)
 
 		sb.WriteString(fmt.Sprintf("  %s.bucket         = %s\n", sig, bucketSig))
 		sb.WriteString(fmt.Sprintf("  %s.denyAllExcept  = %s\n", sig, denyAllExcept))
 		sb.WriteString(fmt.Sprintf("  %s.allowPrincipal = %s\n", sig, allowPrincipal))
 		sb.WriteString(fmt.Sprintf("  %s.allowActions   = %s\n", sig, allowActions))
 		sb.WriteString(fmt.Sprintf("  %s.denyActions    = %s\n", sig, denyActions))
-		sb.WriteString(fmt.Sprintf("  %s.denyPrincipal = %s\n", sig, denyPrincipal))
-		sb.WriteString(fmt.Sprintf("  %s.abacCondition  = %s\n", sig, abacCondition))
+		sb.WriteString(fmt.Sprintf("  %s.denyPrincipal  = %s\n", sig, denyPrincipal))
+		sb.WriteString(fmt.Sprintf("  %s.abacCondition  = %s\n", sig, BoolToAlloy(p.HasABAC)))
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn      = %s\n\n", sig, bucketSig))
 	}
 
-	// Role facts
+	// ── OrgRCPs ───────────────────────────────────────────────────────────
+	for _, rcp := range g.config.RCPs() {
+		sig := "rcp_" + AlloyID(rcp.TFName)
+		allowA := toAlloyActionSet(rcp.AllowActions)
+		denyA := toAlloyActionSet(rcp.DenyActions)
+		sb.WriteString(fmt.Sprintf("  %s.rcpAllowActions = %s\n", sig, allowA))
+		sb.WriteString(fmt.Sprintf("  %s.rcpDenyActions  = %s\n", sig, denyA))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn       = none\n\n", sig))
+	}
+
+	// ── OrgSCPs ───────────────────────────────────────────────────────────
+	for _, scp := range g.config.SCPs() {
+		sig := "scp_" + AlloyID(scp.TFName)
+		allowA := toAlloyActionSet(scp.AllowActions)
+		denyA := toAlloyActionSet(scp.DenyActions)
+		sb.WriteString(fmt.Sprintf("  %s.scpAllowActions = %s\n", sig, allowA))
+		sb.WriteString(fmt.Sprintf("  %s.scpDenyActions  = %s\n", sig, denyA))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn       = none\n\n", sig))
+	}
+
+	// ── IAM Roles ─────────────────────────────────────────────────────────
 	for _, r := range g.config.Roles {
 		sig := "role_" + AlloyID(r.TFName)
-		envTag := "TAG_DEV"
-		if r.EnvTag != "" {
-			envTag = TagToAlloyID(r.EnvTag)
-		}
+		envTag := tagOrDefault(r.EnvTag, "TAG_DEV")
+		roleActions := toAlloyActionSet(r.RolePolicyActions)
+		boundaryActions := toAlloyActionSet(r.BoundaryActions)
+		sessionActions := toAlloyActionSet(nil) // session policy actions: Phase 3
 
-		hasRolePolicy := BoolToAlloy(r.HasRolePolicy)
-		roleAllowActions := "none"
-		if len(r.RolePolicyActions) > 0 {
-			actionIDs := make([]string, 0, len(r.RolePolicyActions))
-			for _, a := range r.RolePolicyActions {
-				actionIDs = append(actionIDs, ActionToAlloyID(a))
-			}
-			roleAllowActions = actionsToAlloySet(actionIDs)
-		}
-
-		sb.WriteString(fmt.Sprintf("  %s.envTag           = %s\n", sig, envTag))
-		sb.WriteString(fmt.Sprintf("  %s.hasRolePolicy    = %s\n", sig, hasRolePolicy))
-		sb.WriteString(fmt.Sprintf("  %s.roleAllowActions = %s\n", sig, roleAllowActions))
-		sb.WriteString(fmt.Sprintf("  %s.dependsOn        = none\n\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
+		sb.WriteString(fmt.Sprintf("  %s.hasRolePolicy        = %s\n", sig, BoolToAlloy(r.HasRolePolicy)))
+		sb.WriteString(fmt.Sprintf("  %s.roleAllowActions     = %s\n", sig, roleActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(r.HasBoundary)))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(r.HasSessionPolicy)))
+		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, sessionActions))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
 	}
 
 	return sb.String()
 }
 
-// actionsToAlloySet converts action IDs to an Alloy set expression.
-// If any action is a wildcard (ends in "_All"), returns "Action" — the full universe.
-func actionsToAlloySet(actionIDs []string) string {
-	for _, id := range actionIDs {
-		if strings.HasSuffix(id, "_All") {
-			return "Action"
-		}
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// toAlloyActionSet converts a slice of IAM action strings to an Alloy set expression.
+// If any action is a wildcard (s3:*), returns "Action" (the full universe).
+func toAlloyActionSet(actions []string) string {
+	if len(actions) == 0 {
+		return "none"
 	}
-	return FormatAlloySet(actionIDs)
+	ids := make([]string, 0, len(actions))
+	for _, a := range actions {
+		id := ActionToAlloyID(a)
+		if strings.HasSuffix(id, "_All") {
+			return "Action" // wildcard → full set
+		}
+		ids = append(ids, id)
+	}
+	return FormatAlloySet(ids)
 }
 
-// sortedKeys returns sorted keys from a map.
+// tagOrDefault converts an environment tag to its Alloy identifier,
+// or returns the default when the tag is empty.
+func tagOrDefault(tag, defaultTag string) string {
+	if tag == "" {
+		return defaultTag
+	}
+	return TagToAlloyID(tag)
+}
+
+// extractRoleFromPrincipal resolves a principal ARN/reference to an IAM role TFName.
+func extractRoleFromPrincipal(principal string, config *ir.Config) string {
+	// Direct Terraform reference: "aws_iam_role.name"
+	if strings.HasPrefix(principal, "aws_iam_role.") {
+		parts := strings.Split(principal, ".")
+		if len(parts) >= 2 {
+			return parts[1]
+		}
+	}
+	// Terraform interpolation: "${aws_iam_role.name.arn}"
+	if strings.Contains(principal, "${aws_iam_role.") {
+		start := strings.Index(principal, "${aws_iam_role.") + len("${aws_iam_role.")
+		end := strings.Index(principal[start:], ".")
+		if end > 0 {
+			return principal[start : start+end]
+		}
+	}
+	// Fuzzy match by role name or TF name
+	for _, r := range config.Roles {
+		if strings.Contains(principal, r.Name) || strings.Contains(principal, r.TFName) {
+			return r.TFName
+		}
+	}
+	return ""
+}
+
+// sortedKeys returns the keys of a map[string]bool in sorted order.
 func (g *Generator) sortedKeys(m map[string]bool) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -308,68 +390,12 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 	return keys
 }
 
-// extractRoleFromPrincipal tries to find a matching role for a principal ARN.
-func extractRoleFromPrincipal(principal string, config *ir.Config) string {
-	if strings.HasPrefix(principal, "aws_iam_role.") {
-		parts := strings.Split(principal, ".")
-		if len(parts) >= 2 {
-			return parts[1]
-		}
-	}
-
-	for _, r := range config.Roles {
-		if strings.Contains(principal, r.Name) || strings.Contains(principal, r.TFName) {
-			return r.TFName
-		}
-	}
-
-	if strings.Contains(principal, "${aws_iam_role.") {
-		start := strings.Index(principal, "${aws_iam_role.") + len("${aws_iam_role.")
-		end := strings.Index(principal[start:], ".")
-		if end > 0 {
-			return principal[start : start+end]
-		}
-	}
-
-	return ""
-}
-
-// Generate is a convenience function that creates a generator and generates output.
+// Generate is a convenience function: creates a Generator and writes to a file.
 func Generate(config *ir.Config, sourceFile, outputFile string) error {
-	gen := NewGenerator(config, sourceFile)
-	return gen.GenerateToFile(outputFile)
+	return NewGenerator(config, sourceFile).GenerateToFile(outputFile)
 }
 
-// GenerateToWriter is a convenience function that writes to any io.Writer.
+// GenerateToWriter is a convenience function: creates a Generator and writes to w.
 func GenerateToWriter(config *ir.Config, sourceFile string, w io.Writer) error {
-	gen := NewGenerator(config, sourceFile)
-	return gen.GenerateToWriter(w)
-}
-
-// GenerateAccessAssertions creates assertions for every (role, bucket, action) triple.
-func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []Assertion {
-	assertions := []Assertion{}
-	for _, role := range roleNames {
-		for _, bucket := range bucketNames {
-			for _, action := range actionNames {
-				assertionName := fmt.Sprintf("%sCan%sOn%s",
-					strings.Title(strings.ReplaceAll(role, "_", "")),
-					strings.Title(strings.ReplaceAll(strings.TrimPrefix(action, "S3_"), "_", "")),
-					strings.Title(strings.ReplaceAll(bucket, "_", "")),
-				)
-				comment := fmt.Sprintf("Checks if %s can %s on %s.", role, action, bucket)
-				body := fmt.Sprintf(`some req: Request |
-    req.principal = role_%s and
-    req.action = %s and
-    req.target = bucket_%s
-    implies accessAllowed[req]`, role, action, bucket)
-				assertions = append(assertions, Assertion{
-					Name:    assertionName,
-					Comment: comment,
-					Body:    body,
-				})
-			}
-		}
-	}
-	return assertions
+	return NewGenerator(config, sourceFile).GenerateToWriter(w)
 }

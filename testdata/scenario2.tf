@@ -9,7 +9,7 @@
 #   - ALLOW for s3:GetObject               (no explicit deny, identity policy allows)
 
 resource "aws_iam_role" "app_role" {
-  name = "app-role"
+  name = "user-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
