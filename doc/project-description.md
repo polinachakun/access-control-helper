@@ -195,3 +195,19 @@ access-control-helper/
 3. **Layer-by-layer reporting** — Rather than just ALLOW/DENY, the tool reports which layer made the decision and why, directly guiding remediation.
 
 4. **Terraform as source of truth** — Most AWS infrastructure is managed via Terraform. Parsing `.tf` directly means no intermediate state file dependency, though `terraform show -json` output is also a supported input.
+
+---
+
+## Requirements: Per-Action Access Evaluation
+
+The tool must, for every (principal, bucket, action) triple:
+- Evaluate access according to all AWS S3 policy evaluation steps (explicit Deny, RCP, SCP, resource-based, identity-based, permission boundaries, session policies).
+- Correctly model explicit Deny and Allow statements from Terraform policies, including Deny for specific actions (e.g., s3:DeleteObject) and Allow for others (e.g., s3:GetObject).
+- Output, for each query, the final access decision (ALLOW or DENY) and the evaluation layer responsible (e.g., DENY at Layer 1 due to explicit Deny in bucket policy).
+- Generate Alloy assertions for every (principal, bucket, action) triple, so that Alloy checks confirm the tool's reasoning for each action.
+
+### Example Requirement
+
+Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allows s3:GetObject for a principal:
+- The generated Alloy model must DENY DeleteObject at Layer 1 (explicit Deny) and ALLOW GetObject if it passes all layers.
+- The Alloy output must show which layer made the decision and why, matching the AWS evaluation logic.

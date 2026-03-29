@@ -1,336 +1,98 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
+
+	"access-control-helper/internal/generator"
+	"access-control-helper/internal/ir"
+	"access-control-helper/internal/parser"
+	"access-control-helper/internal/resolver"
 )
-
-// ============================================================
-// SECTION 1: Core Data Model
-// ============================================================
-
-// EffectType represents an IAM statement effect.
-type EffectType string
-
-const (
-	EffectAllow EffectType = "Allow"
-	EffectDeny  EffectType = "Deny"
-)
-
-// Decision is the final access control outcome.
-type Decision string
-
-const (
-	DecisionAllow        Decision = "Allow"
-	DecisionDeny         Decision = "Deny"
-	DecisionImplicitDeny Decision = "ImplicitDeny"
-)
-
-// PolicyType classifies an IAM or resource-based policy.
-type PolicyType string
-
-const (
-	PolicyTypeIdentity          PolicyType = "Identity"
-	PolicyTypeResource          PolicyType = "Resource"
-	PolicyTypeSCP               PolicyType = "SCP"
-	PolicyTypePermissionBoundary PolicyType = "PermissionBoundary"
-	PolicyTypeSession           PolicyType = "Session"
-)
-
-// PrincipalType classifies the IAM principal.
-type PrincipalType string
-
-const (
-	PrincipalTypeRole    PrincipalType = "Role"
-	PrincipalTypeUser    PrincipalType = "User"
-	PrincipalTypeGroup   PrincipalType = "Group"
-	PrincipalTypeService PrincipalType = "Service"
-)
-
-// Condition represents a single IAM condition key-value pair.
-type Condition struct {
-	Operator string
-	Key      string
-	Values   []string
-}
-
-// Statement is a single Allow/Deny rule inside a policy.
-type Statement struct {
-	SID        string
-	Effect     EffectType
-	Actions    []string   // e.g. ["s3:GetObject", "s3:*"]
-	Resources  []string   // ARNs or "*"
-	Principals []string   // ARNs or "*" (for resource-based policies)
-	Conditions []Condition
-}
-
-// Policy is a collection of statements with a classified type.
-type Policy struct {
-	ID         string // ARN or name
-	Name       string
-	Type       PolicyType
-	Statements []Statement
-}
-
-// Principal is an IAM entity (role, user, etc.).
-type Principal struct {
-	ARN                string
-	Name               string
-	Type               PrincipalType
-	Policies           []*Policy
-	PermissionBoundary *Policy // nil if not set
-}
-
-// S3Resource represents an S3 bucket parsed from Terraform.
-type S3Resource struct {
-	ARN          string
-	BucketName   string
-	BucketPolicy *Policy // nil if no bucket policy defined
-}
-
-// ParsedState is the full output of the Terraform parser.
-type ParsedState struct {
-	Principals []*Principal
-	Resources  []*S3Resource
-	SCPs       []*Policy // org-level SCPs
-}
-
-// AccessQuery is a single access check request.
-type AccessQuery struct {
-	PrincipalARN string
-	ResourceARN  string
-	Action       string
-}
-
-// LayerResult holds the outcome of a single policy evaluation layer.
-type LayerResult struct {
-	Layer     int
-	Name      string
-	Decision  Decision
-	MatchedStatement *Statement // nil if no match
-	Reason    string
-}
-
-// AccessResult is the full evaluation result for one query.
-type AccessResult struct {
-	Query          AccessQuery
-	FinalDecision  Decision
-	DeniedAtLayer  int // 0 if allowed
-	LayerResults   []LayerResult
-}
-
-// ============================================================
-// SECTION 2: Parser Interface
-// ============================================================
-
-// Parser reads Terraform files and returns a ParsedState.
-type Parser interface {
-	Parse(dir string) (*ParsedState, error)
-}
-
-// TerraformParser implements Parser for HCL Terraform files.
-// Real implementation uses github.com/hashicorp/hcl/v2.
-type TerraformParser struct{}
-
-func (p *TerraformParser) Parse(dir string) (*ParsedState, error) {
-	// TODO: walk dir for *.tf files, decode HCL blocks, resolve cross-references.
-	// Supported resource types:
-	//   aws_iam_role, aws_iam_user
-	//   aws_iam_policy, aws_iam_role_policy (inline)
-	//   aws_iam_role_policy_attachment, aws_iam_policy_attachment
-	//   aws_s3_bucket, aws_s3_bucket_policy
-	//   aws_organizations_policy, aws_organizations_policy_attachment
-	//
-	// Step 1: collect all resource blocks into a raw registry map[type][]block
-	// Step 2: build Principal and S3Resource objects
-	// Step 3: second pass — resolve attachments and link policies to principals
-	// Step 4: parse inline JSON policy documents
-	return nil, fmt.Errorf("TerraformParser.Parse: not yet implemented")
-}
-
-// ============================================================
-// SECTION 3: Transformer Interface
-// ============================================================
-
-// Transformer converts a ParsedState + query set into an Alloy specification.
-type Transformer interface {
-	Transform(state *ParsedState, queries []AccessQuery) (string, error)
-}
-
-// AlloyTransformer generates Alloy .als specifications.
-// See doc/architecture-and-tests.md for the full Alloy model design.
-type AlloyTransformer struct{}
-
-func (t *AlloyTransformer) Transform(state *ParsedState, queries []AccessQuery) (string, error) {
-	var sb strings.Builder
-
-	sb.WriteString("-- Generated by access-control-helper\n")
-	sb.WriteString("-- DO NOT EDIT MANUALLY\n\n")
-	sb.WriteString("module s3_access_control\n\n")
-
-	// Signatures for effects
-	sb.WriteString("abstract sig Effect {}\n")
-	sb.WriteString("one sig Allow, Deny extends Effect {}\n\n")
-
-	// TODO: emit one sig per unique action found in state
-	// TODO: emit one sig per Principal in state
-	// TODO: emit one sig per S3Resource in state
-	// TODO: emit facts for policy attachments
-	// TODO: emit predicates for each of the 7 evaluation layers
-	// TODO: emit assertions for each AccessQuery
-
-	sb.WriteString("-- TODO: full spec generation not yet implemented\n")
-	return sb.String(), nil
-}
-
-// ============================================================
-// SECTION 4: Analyzer Interface
-// ============================================================
-
-// Analyzer runs Alloy and maps results back to AccessResult objects.
-type Analyzer interface {
-	Analyze(alloySpec string, queries []AccessQuery) ([]AccessResult, error)
-}
-
-// AlloyAnalyzer invokes the Alloy CLI (or JAR) and parses its output.
-type AlloyAnalyzer struct {
-	// AlloyBin is the path to the alloy CLI binary or JAR.
-	// Default: look for "alloy" on $PATH, then fall back to ./alloy.jar
-	AlloyBin string
-}
-
-func (a *AlloyAnalyzer) Analyze(spec string, queries []AccessQuery) ([]AccessResult, error) {
-	// TODO:
-	// 1. Write spec to a temp file
-	// 2. exec: alloy execute --check <tempfile>
-	//    or:   java -jar alloy.jar <tempfile>
-	// 3. Parse stdout for "No counterexample found" vs "Counterexample found"
-	// 4. If counterexample, parse the Alloy instance XML and map back to statements
-	// 5. Build []AccessResult with layer-by-layer breakdown
-	return nil, fmt.Errorf("AlloyAnalyzer.Analyze: not yet implemented")
-}
-
-// ============================================================
-// SECTION 5: Reporter Interface
-// ============================================================
-
-// OutputFormat controls how results are rendered.
-type OutputFormat string
-
-const (
-	OutputFormatText  OutputFormat = "text"
-	OutputFormatJSON  OutputFormat = "json"
-	OutputFormatSARIF OutputFormat = "sarif"
-)
-
-// Reporter renders access results to the given writer.
-type Reporter interface {
-	Report(results []AccessResult, format OutputFormat) error
-}
-
-// ConsoleReporter writes results to stdout.
-type ConsoleReporter struct{}
-
-func (r *ConsoleReporter) Report(results []AccessResult, format OutputFormat) error {
-	switch format {
-	case OutputFormatJSON:
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(results)
-	case OutputFormatText, "":
-		for _, res := range results {
-			fmt.Printf("\nAccess Query\n")
-			fmt.Printf("  Principal : %s\n", res.Query.PrincipalARN)
-			fmt.Printf("  Resource  : %s\n", res.Query.ResourceARN)
-			fmt.Printf("  Action    : %s\n", res.Query.Action)
-			fmt.Printf("  Decision  : %s\n", res.FinalDecision)
-			if res.DeniedAtLayer > 0 {
-				fmt.Printf("  Denied at : Layer %d\n", res.DeniedAtLayer)
-			}
-			for _, lr := range res.LayerResults {
-				icon := "✓"
-				if lr.Decision == DecisionDeny {
-					icon = "✗"
-				}
-				fmt.Printf("  [%s] Layer %d %-22s %s\n", icon, lr.Layer, lr.Name+":", string(lr.Decision))
-				if lr.Reason != "" {
-					fmt.Printf("       → %s\n", lr.Reason)
-				}
-			}
-		}
-	default:
-		return fmt.Errorf("unsupported output format: %s", format)
-	}
-	return nil
-}
-
-// ============================================================
-// SECTION 6: Pipeline — wires all components together
-// ============================================================
-
-// Pipeline orchestrates: Parse → Transform → Analyze → Report
-type Pipeline struct {
-	Parser      Parser
-	Transformer Transformer
-	Analyzer    Analyzer
-	Reporter    Reporter
-}
-
-// Run executes the full analysis pipeline.
-func (p *Pipeline) Run(inputDir string, queries []AccessQuery, format OutputFormat) error {
-	// Step 1: Parse Terraform files
-	state, err := p.Parser.Parse(inputDir)
-	if err != nil {
-		return fmt.Errorf("parse: %w", err)
-	}
-
-	// Step 2: Generate Alloy specification
-	spec, err := p.Transformer.Transform(state, queries)
-	if err != nil {
-		return fmt.Errorf("transform: %w", err)
-	}
-
-	// Step 3: Run Alloy and collect results
-	results, err := p.Analyzer.Analyze(spec, queries)
-	if err != nil {
-		return fmt.Errorf("analyze: %w", err)
-	}
-
-	// Step 4: Render results
-	return p.Reporter.Report(results, format)
-}
-
-// ============================================================
-// SECTION 7: CLI Entry Point
-// ============================================================
 
 func main() {
-	// Minimal CLI: access-control-helper <terraform-dir> <principal-arn> <resource-arn> <action>
-	if len(os.Args) < 5 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <terraform-dir> <principal-arn> <resource-arn> <action>\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  %s ./infra arn:aws:iam::123456789012:role/app-role arn:aws:s3:::my-bucket s3:GetObject\n", os.Args[0])
+	if len(os.Args) < 2 {
+		printUsage()
 		os.Exit(1)
 	}
 
-	inputDir := os.Args[1]
-	query := AccessQuery{
-		PrincipalARN: os.Args[2],
-		ResourceARN:  os.Args[3],
-		Action:       os.Args[4],
+	inputPath := os.Args[1]
+	outputPath := ""
+	toStdout := len(os.Args) < 3 || os.Args[2] == "-"
+	if !toStdout {
+		outputPath = os.Args[2]
 	}
 
-	pipeline := &Pipeline{
-		Parser:      &TerraformParser{},
-		Transformer: &AlloyTransformer{},
-		Analyzer:    &AlloyAnalyzer{},
-		Reporter:    &ConsoleReporter{},
-	}
+	// Step 1: Parse — accept a single .tf file or a directory
+	p := parser.NewParser()
 
-	if err := pipeline.Run(inputDir, []AccessQuery{query}, OutputFormatText); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	fi, err := os.Stat(inputPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+
+	var parseResult *parser.ParseResult
+	if fi.IsDir() {
+		parseResult, err = p.ParseDirectory(inputPath)
+	} else {
+		parseResult, err = p.ParseFile(inputPath)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parse error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !toStdout {
+		fmt.Fprintf(os.Stderr, "Parsed %d resources from %s\n", len(parseResult.Resources), inputPath)
+	}
+
+	// Step 2: Resolve cross-references between resources
+	res := resolver.NewResolver()
+	resources, err := res.Resolve(parseResult)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "resolve error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Step 3: Build intermediate representation
+	config, err := ir.BuildFromResources(resources, res.GetGraph())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "IR build error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !toStdout {
+		fmt.Fprintf(os.Stderr, "IR: %d bucket(s), %d role(s), %d bucket policy(ies)\n",
+			len(config.Buckets), len(config.Roles), len(config.BucketPolicies))
+	}
+
+	// Step 4: Generate Alloy specification
+	sourceFile := filepath.Base(inputPath)
+
+	if toStdout {
+		if err := generator.GenerateToWriter(config, sourceFile, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "generate error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := generator.Generate(config, sourceFile, outputPath); err != nil {
+			fmt.Fprintf(os.Stderr, "generate error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Generated Alloy spec: %s\n", outputPath)
+	}
+}
+
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <terraform-file-or-dir> [output-als-file]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  <terraform-file-or-dir>  path to a .tf file or a directory of .tf files\n")
+	fmt.Fprintf(os.Stderr, "  [output-als-file]        write Alloy spec to this file (omit to print to stdout)\n")
+	fmt.Fprintf(os.Stderr, "                           use - to explicitly print to stdout\n")
+	fmt.Fprintf(os.Stderr, "\nExamples:\n")
+	fmt.Fprintf(os.Stderr, "  %s testdata/scenario1.tf              # print Alloy spec to stdout\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s testdata/scenario1.tf output.als   # write to file\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s testdata/                          # all .tf files in dir → stdout\n", os.Args[0])
 }

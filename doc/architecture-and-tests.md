@@ -332,6 +332,48 @@ check AppRoleCannotDelete
 
 ---
 
+## Requirements & Test Scenarios: Per-Action Access Evaluation
+
+The system must:
+- For every (principal, bucket, action) triple, evaluate access according to all AWS S3 policy evaluation steps (explicit Deny, RCP, SCP, resource-based, identity-based, permission boundaries, session policies).
+- Correctly model explicit Deny and Allow statements from Terraform policies, including Deny for specific actions (e.g., s3:DeleteObject) and Allow for others (e.g., s3:GetObject).
+- Output, for each query, the final access decision (ALLOW or DENY) and the evaluation layer responsible (e.g., DENY at Layer 1 due to explicit Deny in bucket policy).
+- Generate Alloy assertions for every (principal, bucket, action) triple, so that Alloy checks confirm the tool's reasoning for each action.
+
+### Example Test Scenario
+
+Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allows s3:GetObject for a principal:
+- The generated Alloy model must DENY DeleteObject at Layer 1 (explicit Deny) and ALLOW GetObject if it passes all layers.
+- The Alloy output must show which layer made the decision and why, matching the AWS evaluation logic.
+
+---
+
+## Table: AWS S3 Access Control Scenarios (Terraform → Alloy)
+
+| AWS Evaluation Step | Terraform Resource(s) | Scenario Description | Expected Alloy Model/Predicate | Example Outcome |
+|---------------------|----------------------|---------------------|-------------------------------|-----------------|
+| 1. Explicit Deny    | aws_s3_bucket_policy, aws_iam_policy, aws_organizations_policy | Policy with `Effect = "Deny"` for principal/action/resource | `explicitDenyExists[p, r, a]` | DENY at Layer 1 |
+| 1. Explicit Deny    | aws_s3_bucket_policy | No explicit Deny for action/principal | `not explicitDenyExists[p, r, a]` | Continue to next layer |
+| 2. RCP              | aws_organizations_policy (RCP) | RCP does not allow action | `not rcpAllows[p, a]` | DENY at Layer 2 |
+| 2. RCP              | aws_organizations_policy (RCP) | RCP allows action | `rcpAllows[p, a]` | Continue to next layer |
+| 3. SCP              | aws_organizations_policy (SCP) | SCP does not allow action | `not scpAllows[p, a]` | DENY at Layer 3 |
+| 3. SCP              | aws_organizations_policy (SCP) | SCP allows action | `scpAllows[p, a]` | Continue to next layer |
+| 4. Resource-Based   | aws_s3_bucket_policy | Bucket policy allows action for principal | `bucketPolicyAllows[p, r, a]` | ALLOW at Layer 4 (if principal is cross-account) |
+| 4. Resource-Based   | aws_s3_bucket_policy | No bucket policy allows action | `not bucketPolicyAllows[p, r, a]` | Continue to next layer |
+| 5. Identity-Based   | aws_iam_policy, aws_iam_role_policy, aws_iam_user_policy | Identity policy allows action | `identityPolicyAllows[p, r, a]` | Continue to next layer |
+| 5. Identity-Based   | aws_iam_policy, aws_iam_role_policy, aws_iam_user_policy | No identity policy allows action | `not identityPolicyAllows[p, r, a]` | DENY at Layer 5 |
+| 6. Permission Boundary | aws_iam_role (permissions_boundary), aws_iam_policy | Permission boundary allows action | `permBoundaryAllows[p, a]` | Continue to next layer |
+| 6. Permission Boundary | aws_iam_role (permissions_boundary), aws_iam_policy | Permission boundary does not allow action | `not permBoundaryAllows[p, a]` | DENY at Layer 6 |
+| 7. Session Policy   | aws_iam_policy (session), sts:AssumeRoleWithPolicy | Session policy allows action | `sessionPolicyAllows[p, a]` | ALLOW at Layer 7 |
+| 7. Session Policy   | aws_iam_policy (session), sts:AssumeRoleWithPolicy | Session policy does not allow action | `not sessionPolicyAllows[p, a]` | DENY at Layer 7 |
+| Implicit Deny       | (any, when no Allow found) | No policy allows action at any layer | (no predicate matches) | IMPLICIT DENY |
+| Wildcard Action     | any policy | `Action = ["*"]` or `Action = ["s3:*"]` | Alloy expands to all known actions | All actions covered |
+| Wildcard Resource   | any policy | `Resource = ["*"]` or `Resource = ["arn:aws:s3:::bucket/*"]` | Alloy expands to all known resources | All resources covered |
+| Cross-Account Allow | aws_s3_bucket_policy | Bucket policy allows principal from another account | `bucketPolicyAllows[p, r, a]` | ALLOW at Layer 4 |
+| No Policy           | (none) | No relevant policy attached | (no predicate matches) | IMPLICIT DENY |
+
+---
+
 ## Suggested Implementation Order
 
 ```
@@ -367,5 +409,3 @@ github.com/zclconf/go-cty            v1.14.1   # HCL value types
 github.com/hashicorp/go-multierror   v1.1.1    # error aggregation
 github.com/stretchr/testify          v1.9.0    # test assertions
 ```
-
-Alloy itself is invoked as an external process (CLI or JAR). The Alloy JAR (`org.alloytools.alloy.dist.jar`) should be placed at a configurable path or detected from `$PATH`.
