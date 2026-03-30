@@ -97,7 +97,7 @@ func main() {
 			logf("Alloy completed %d check(s).\n", len(checkResults))
 		}
 	} else {
-		logf("Alloy not found (set ALLOY_JAR env var); skipping formal verification.\n")
+		logf("Alloy jar not found at tools/org.alloytools.alloy.dist.jar; skipping formal verification.\n")
 	}
 
 	// ── Step 7: Report ────────────────────────────────────────────────────
@@ -126,11 +126,9 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  %s <tf-file-or-dir> <output.als>     Write spec + run full analysis\n", prog)
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Environment variables:")
-	fmt.Fprintln(os.Stderr, "  ALLOY_JAR   Path to alloy.jar (enables formal verification)")
 	fmt.Fprintln(os.Stderr, "  JAVA_HOME   Java installation root")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Examples:")
-	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf                     # Alloy spec to stdout\n", prog)
-	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf output.als          # write spec + report\n", prog)
-	fmt.Fprintf(os.Stderr, "  ALLOY_JAR=~/alloy.jar %s testdata/ out.als   # with formal verification\n", prog)
+	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf                # Alloy spec to stdout\n", prog)
+	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf output.als     # write spec + run full analysis\n", prog)
 }

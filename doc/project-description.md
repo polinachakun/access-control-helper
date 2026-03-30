@@ -59,6 +59,27 @@ The tool encodes each layer as an Alloy predicate, then asserts reachability thr
 
 ---
 
+## About Alloy
+
+**Alloy** is a declarative, constraint-based modeling language and model checker developed at MIT. A model is built from three primitives:
+
+- **Signatures (`sig`)** — define types and their fields, similar to structs but with relational semantics. `one sig` declares a singleton (a concrete resource instance).
+- **Facts** — constraints that must always hold in every instance of the model. Used here to assign concrete Terraform configuration values to each resource.
+- **Predicates (`pred`) and Assertions (`assert`)** — predicates are named, reusable conditions; assertions state that a predicate must hold for all possible inputs within the scope.
+
+The **Alloy Analyzer** converts the model to a SAT formula and exhaustively searches for a *counterexample* — an input that violates an assertion — within a user-specified scope (e.g. `for exactly 1 S3Bucket, exactly 1 IAMRole`). If no counterexample is found, the assertion is proven correct within that scope.
+
+**Why Alloy in this tool:**
+
+The Go evaluator implements the 7-layer AWS access evaluation imperatively for speed and human-readable output. The Alloy spec encodes the *same* logic declaratively. Running `check` assertions in Alloy gives a bounded exhaustive proof that the evaluation cannot produce a wrong decision — catching edge cases (e.g. wildcard action overlap with an explicit deny) that hand-written unit tests might miss.
+
+The generated `.als` file is derived directly from the parsed Terraform config:
+- Every Terraform resource → `one sig` (a concrete Alloy instance)
+- Every field value → an entry in `fact ConfigFacts`
+- Every `(role, bucket, action)` triple → one `assert` + `check` pair
+
+---
+
 ## High-Level Architecture
 
 ```
@@ -163,22 +184,31 @@ Result: DENY at Layer 1
 
 ```
 access-control-helper/
-├── main.go                        # CLI entry point & pipeline wiring
+├── main.go                        # CLI entry point & 7-step pipeline wiring
 ├── go.mod
 ├── internal/
-│   ├── model/
-│   │   └── model.go               # Core data types (Principal, Policy, Resource)
 │   ├── parser/
-│   │   └── terraform.go           # HCL Terraform parser
-│   ├── transformer/
-│   │   └── alloy.go               # Internal model → Alloy spec generator
+│   │   ├── parser.go              # HCL Terraform parser (9 resource types)
+│   │   └── schema.go              # HCL body schemas per resource type
+│   ├── resolver/
+│   │   ├── resolver.go            # Cross-reference resolution (ARN interpolations)
+│   │   └── graph.go               # Dependency DAG + topological sort
+│   ├── ir/
+│   │   ├── types.go               # Domain model: Config, S3Bucket, IAMRole, etc.
+│   │   ├── policy.go              # IAM policy document parsing (JSON)
+│   │   └── builder.go             # Builds Config IR from resolved resources
+│   ├── evaluator/
+│   │   └── evaluator.go           # 7-layer Go access evaluator (per-triple)
+│   ├── generator/
+│   │   ├── generator.go           # Alloy spec generation orchestrator
+│   │   ├── template.go            # Alloy template strings and boilerplate
+│   │   ├── predicates.go          # Alloy predicate generation (all 7 layers)
+│   │   └── model.go               # Alloy signature and fact generation
 │   ├── analyzer/
 │   │   └── analyzer.go            # Alloy CLI runner & output parser
 │   └── reporter/
 │       └── reporter.go            # Human-readable output formatter
-├── examples/
-│   └── simple/
-│       └── main.tf                # Example Terraform fixtures
+├── testdata/                      # Terraform fixtures and generated .als files
 └── doc/
     ├── project-description.md     # This file
     └── architecture-and-tests.md  # Architecture decisions & test scenarios
@@ -214,19 +244,22 @@ Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allo
 
 ---
 
-## Suggested Implementation Order
+## Implementation Status
 
 ```
 Phase 1 — Foundation
-  [x] Data model (model.go)
-  [x] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket
-  [x] Basic Alloy template generation (no conditions)
+  [x] Data model (ir/types.go)
+  [x] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket and 6 more resource types
+  [x] Basic Alloy template generation (generator/template.go)
 
 Phase 2 — Core Analysis
-  [ ] Full policy attachment resolution
-  [ ] Alloy spec with all 7 evaluation layers
-  [ ] Alloy CLI integration & output parsing
-  [ ] Per-Action Access Evaluation: generate Alloy assertions and checks for every (principal, bucket, action) triple, and report the decision and evaluation layer for each.
+  [x] Binding managed and inline policies to IAM roles by traversing aws_iam_role_policy_attachment,
+      aws_iam_policy_attachment, and aws_iam_role_policy resources; resolved in topological order
+      via a dependency graph (resolver/graph.go + ir/builder.go)
+  [x] Alloy spec with all 7 evaluation layers (generator/predicates.go)
+  [x] Alloy CLI integration & output parsing (analyzer/analyzer.go)
+  [x] Per-Action Access Evaluation: Alloy assertions and checks for every (principal, bucket, action)
+      triple with layer-by-layer decision reporting
 
 Phase 3 — Coverage
   [ ] IAM conditions support (StringEquals, ArnLike, etc.)

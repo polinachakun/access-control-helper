@@ -363,7 +363,7 @@ func extractRoleFromPrincipal(principal string, config *ir.Config) string {
 			return parts[1]
 		}
 	}
-	// Terraform interpolation: "${aws_iam_role.name.arn}"
+
 	if strings.Contains(principal, "${aws_iam_role.") {
 		start := strings.Index(principal, "${aws_iam_role.") + len("${aws_iam_role.")
 		end := strings.Index(principal[start:], ".")
@@ -371,7 +371,6 @@ func extractRoleFromPrincipal(principal string, config *ir.Config) string {
 			return principal[start : start+end]
 		}
 	}
-	// Fuzzy match by role name or TF name
 	for _, r := range config.Roles {
 		if strings.Contains(principal, r.Name) || strings.Contains(principal, r.TFName) {
 			return r.TFName
@@ -380,7 +379,6 @@ func extractRoleFromPrincipal(principal string, config *ir.Config) string {
 	return ""
 }
 
-// sortedKeys returns the keys of a map[string]bool in sorted order.
 func (g *Generator) sortedKeys(m map[string]bool) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -390,12 +388,10 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 	return keys
 }
 
-// Generate is a convenience function: creates a Generator and writes to a file.
 func Generate(config *ir.Config, sourceFile, outputFile string) error {
 	return NewGenerator(config, sourceFile).GenerateToFile(outputFile)
 }
 
-// GenerateToWriter is a convenience function: creates a Generator and writes to w.
 func GenerateToWriter(config *ir.Config, sourceFile string, w io.Writer) error {
 	return NewGenerator(config, sourceFile).GenerateToWriter(w)
 }

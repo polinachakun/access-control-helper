@@ -44,8 +44,6 @@ func (r *Reporter) Report(results []*evaluator.EvaluationResult, checkResults []
 	}
 }
 
-// ── Per-triple report ─────────────────────────────────────────────────────────
-
 var layerNames = [7]string{
 	"Layer 1 — Deny Evaluation",
 	"Layer 2 — RCP",
@@ -65,7 +63,6 @@ func (r *Reporter) reportTriple(res *evaluator.EvaluationResult) {
 		label := layerNames[i] + ":"
 		status := layer.Status.String()
 
-		// Pad label to colHeader width.
 		fmt.Fprintf(r.w, "  %-*s %s\n", colHeader, label, status)
 		if layer.Status == evaluator.LayerDeny && layer.Reason != "" {
 			fmt.Fprintf(r.w, "    → %s\n", layer.Reason)
@@ -83,8 +80,6 @@ func (r *Reporter) reportTriple(res *evaluator.EvaluationResult) {
 	}
 	fmt.Fprintln(r.w)
 }
-
-// ── Alloy verification section ────────────────────────────────────────────────
 
 func (r *Reporter) reportAlloyResults(results []analyzer.CheckResult) {
 	fmt.Fprintln(r.w)
@@ -104,10 +99,6 @@ func (r *Reporter) reportAlloyResults(results []analyzer.CheckResult) {
 	fmt.Fprintln(r.w)
 }
 
-// ── Summary table ─────────────────────────────────────────────────────────────
-
-// Summary writes a compact table: one row per (principal, bucket, action) triple
-// showing ALLOW / DENY at layer N.
 func (r *Reporter) Summary(results []*evaluator.EvaluationResult) {
 	if len(results) == 0 {
 		return
@@ -133,8 +124,6 @@ func (r *Reporter) Summary(results []*evaluator.EvaluationResult) {
 	}
 	fmt.Fprintln(r.w)
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 func (r *Reporter) header(title string) {
 	fmt.Fprintln(r.w)

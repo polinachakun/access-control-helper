@@ -69,9 +69,9 @@ Reads HCL Terraform files using `github.com/hashicorp/hcl/v2` and `github.com/zc
 3. Second pass: resolve references (e.g., `aws_iam_role_policy_attachment` links role ARN to policy ARN)
 4. Inline JSON policy documents are parsed with `encoding/json`
 
-### 3. Transformer (`internal/transformer/`)
+### 3. Generator (`internal/generator/`)
 
-Converts `ParsedState` → an Alloy specification string (`.als` file content).
+Converts the `Config` IR → an Alloy specification string (`.als` file content).
 
 **Alloy Specification Structure:**
 
@@ -138,11 +138,26 @@ assert ExampleRoleCanGetObject {
 check ExampleRoleCanGetObject
 ```
 
-**Transformer design notes:**
+**Generator design notes:**
 - Each unique action, principal, and resource from Terraform becomes an Alloy `one sig`
 - ARNs are sanitized to valid Alloy identifiers (alphanumeric, no colons/slashes)
 - Wildcard actions (`s3:*`) expand to all known S3 actions
 - Resource wildcards (`arn:aws:s3:::bucket/*`) are resolved against known resources
+
+#### Alloy Primer
+
+Alloy is a declarative constraint language. Understanding the generated `.als` file requires knowing four constructs:
+
+| Construct | What it does | Example |
+|---|---|---|
+| `sig` | Declares a type (set of atoms) with named fields | `sig IAMRole { envTag: one TagValue }` |
+| `one sig` | A singleton — exactly one atom of this type exists | `one sig role_app_role extends IAMRole {}` |
+| `fact` | A constraint always true in every model instance | `fact ConfigFacts { role_app_role.envTag = TAG_PROD }` |
+| `pred` | A named boolean condition over parameters | `pred accessAllowed[req: Request] { not explicitDeny[req] and ... }` |
+| `assert` | A claim that a predicate must hold for all inputs | `assert AppRoleCanGetObject { all req: Request \| ... }` |
+| `check` | Instructs the Analyzer to search for a counterexample | `check AppRoleCanGetObject for exactly 1 S3Bucket, ...` |
+
+**How the Analyzer works:** `check` converts the negation of the assertion into a SAT formula and searches for a satisfying assignment within the given scope. "No counterexample found" means no assignment exists — the access rule holds for every possible request in the model.
 
 ### 4. Analyzer (`internal/analyzer/`)
 
@@ -374,18 +389,22 @@ Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allo
 
 ---
 
-## Suggested Implementation Order
+## Implementation Status
 
 ```
 Phase 1 — Foundation
-  [x] Data model (model.go)
-  [ ] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket
-  [ ] Basic Alloy template generation (no conditions)
+  [x] Data model (ir/types.go)
+  [x] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket and 6 more resource types
+  [x] Basic Alloy template generation (generator/template.go)
 
 Phase 2 — Core Analysis
-  [ ] Full policy attachment resolution
-  [ ] Alloy spec with all 7 evaluation layers
-  [ ] Alloy CLI integration & output parsing
+  [x] Binding managed and inline policies to IAM roles by traversing aws_iam_role_policy_attachment,
+      aws_iam_policy_attachment, and aws_iam_role_policy resources; resolved in topological order
+      via a dependency graph (resolver/graph.go + ir/builder.go)
+  [x] Alloy spec with all 7 evaluation layers (generator/predicates.go)
+  [x] Alloy CLI integration & output parsing (analyzer/analyzer.go)
+  [x] Per-Action Access Evaluation: Alloy assertions and checks for every (principal, bucket, action)
+      triple with layer-by-layer decision reporting
 
 Phase 3 — Coverage
   [ ] IAM conditions support (StringEquals, ArnLike, etc.)

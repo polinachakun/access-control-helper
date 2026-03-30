@@ -1,11 +1,9 @@
 // Package analyzer integrates with the Alloy model checker to formally verify
-// the generated .als specification. It discovers the Alloy jar, invokes it via
-// the Java CLI, and parses the check-result output.
+// the generated .als specification. It invokes the Alloy jar via the Java CLI
+// and parses the check-result output.
 //
-// The Alloy jar path is resolved in this order:
-//  1. ALLOY_JAR environment variable
-//  2. Common file-system locations (./alloy.jar, ~/alloy.jar, /usr/local/lib/alloy.jar)
-//  3. "alloy.jar" on PATH
+// The Alloy jar is expected at tools/org.alloytools.alloy.dist.jar relative to
+// the running binary.
 package analyzer
 
 import (
@@ -36,12 +34,35 @@ type Analyzer struct {
 	jarPath  string
 }
 
-// New creates an Analyzer, resolving the Alloy jar and java executable.
+// New creates an Analyzer using the bundled Alloy jar and the system java executable.
 func New() *Analyzer {
 	return &Analyzer{
 		javaPath: findJava(),
-		jarPath:  findAlloyJar(),
+		jarPath:  bundledJarPath(),
 	}
+}
+
+// bundledJarPath returns the path to the Alloy jar bundled in tools/.
+// It checks next to the binary first, then relative to the working directory
+// (the latter covers `go run` and development workflows).
+func bundledJarPath() string {
+	const rel = "tools/org.alloytools.alloy.dist.jar"
+
+	if exe, err := os.Executable(); err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), rel)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	if cwd, err := os.Getwd(); err == nil {
+		candidate := filepath.Join(cwd, rel)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	return ""
 }
 
 // NewWithPaths creates an Analyzer with explicit paths.
@@ -61,7 +82,7 @@ func (a *Analyzer) JarPath() string { return a.jarPath }
 // Returns an error only when the Alloy process cannot be started.
 func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	if !a.Available() {
-		return nil, fmt.Errorf("Alloy not available (set ALLOY_JAR env var to the path of alloy.jar)")
+		return nil, fmt.Errorf("Alloy not available)")
 	}
 
 	// Alloy 4.x: java -cp alloy.jar edu.mit.csail.sdg.alloy4whole.ExampleUsingTheAPI <file>
@@ -77,68 +98,44 @@ func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 
 // ── Output parsing ────────────────────────────────────────────────────────────
 
-var (
-	// "   Executing "Check <Name> for ..."
-	executingRe = regexp.MustCompile(`Executing\s+"Check\s+(\w+)`)
-	// "   No counterexample found."
-	noCounterRe = regexp.MustCompile(`No counterexample found`)
-	// "   Counterexample found."
-	counterRe = regexp.MustCompile(`Counterexample found`)
-)
+// checkLineRe matches lines produced by `alloy exec`, e.g.:
+//
+//  00. check RoleHasAccess            0       UNSAT
+//  01. check NoVpceBypass             0    1/1     SAT
+var checkLineRe = regexp.MustCompile(`^\d+\.\s+check\s+(\w+)\s+.*\b(SAT|UNSAT)\s*$`)
 
 func parseOutput(raw string) []CheckResult {
 	var results []CheckResult
-	var cur *CheckResult
 
 	sc := bufio.NewScanner(strings.NewReader(raw))
 	for sc.Scan() {
 		line := sc.Text()
-
-		if m := executingRe.FindStringSubmatch(line); len(m) > 1 {
-			if cur != nil {
-				results = append(results, *cur)
-			}
-			cur = &CheckResult{Name: m[1]}
+		m := checkLineRe.FindStringSubmatch(line)
+		if len(m) < 3 {
+			continue
 		}
-
-		if cur != nil {
-			cur.RawOutput += line + "\n"
-			if noCounterRe.MatchString(line) {
-				cur.Valid = true
-			}
-			if counterRe.MatchString(line) {
-				cur.HasCounterExample = true
-			}
+		r := CheckResult{Name: m[1], RawOutput: line + "\n"}
+		if m[2] == "UNSAT" {
+			r.Valid = true
+		} else {
+			r.HasCounterExample = true
 		}
+		results = append(results, r)
 	}
 
-	if cur != nil {
-		results = append(results, *cur)
-	}
 	return results
 }
 
 // ── Alloy invocation ──────────────────────────────────────────────────────────
 
 func runAlloy(javaPath, jarPath, specFile string) (string, error) {
-	// Try simple -jar invocation first (works with alloy-run and Alloy 6).
-	cmd := exec.Command(javaPath, "-jar", jarPath, specFile)
+	// -f overwrites the output directory if it already exists from a prior run.
+	cmd := exec.Command(javaPath, "-jar", jarPath, "exec", "-f", specFile)
 	out, err := cmd.CombinedOutput()
-	if err == nil || len(out) > 0 {
-		return string(out), err
-	}
-
-	// Fallback: Alloy 4 API class.
-	cmd = exec.Command(javaPath,
-		"-cp", jarPath,
-		"edu.mit.csail.sdg.alloy4whole.ExampleUsingTheAPI",
-		specFile,
-	)
-	out, err = cmd.CombinedOutput()
 	return string(out), err
 }
 
-// ── Discovery helpers ─────────────────────────────────────────────────────────
+// ── Java discovery ────────────────────────────────────────────────────────────
 
 func findJava() string {
 	if home := os.Getenv("JAVA_HOME"); home != "" {
@@ -148,37 +145,6 @@ func findJava() string {
 		}
 	}
 	if path, err := exec.LookPath("java"); err == nil {
-		return path
-	}
-	return ""
-}
-
-func findAlloyJar() string {
-	// 1. Explicit env var
-	if j := os.Getenv("ALLOY_JAR"); j != "" {
-		return j
-	}
-
-	// 2. Common locations
-	home, _ := os.UserHomeDir()
-	candidates := []string{
-		"alloy.jar",
-		"alloy4.2.jar",
-		filepath.Join(".", "alloy.jar"),
-		filepath.Join(home, "alloy.jar"),
-		filepath.Join(home, "bin", "alloy.jar"),
-		"/usr/local/lib/alloy.jar",
-		"/usr/local/bin/alloy.jar",
-		"/opt/alloy/alloy.jar",
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	// 3. On PATH
-	if path, err := exec.LookPath("alloy.jar"); err == nil {
 		return path
 	}
 	return ""
