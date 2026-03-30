@@ -61,13 +61,11 @@ func (g *Generator) GenerateToWriter(w io.Writer) error {
 
 // collectValues gathers every unique tag, VPCE ID, and action referenced in the config.
 func (g *Generator) collectValues() {
-	// Always include baseline tag and action values so assertions have known atoms to reference.
+	// Always include baseline values so the Alloy model has at least one atom
+	// of each required type, even for minimal configs.
 	g.tags["DEV"] = true
 	g.tags["PROD"] = true
 	g.vpces["VPCE_OTHER"] = true
-	g.actions["S3_GetObject"] = true
-	g.actions["S3_ListBucket"] = true
-	g.actions["S3_Other"] = true
 
 	for _, b := range g.config.Buckets {
 		if b.EnvTag != "" {
@@ -125,6 +123,11 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	data.VpceIds = g.sortedKeys(g.vpces)
 
 	// ── Action values ─────────────────────────────────────────────────────
+	// If the config only has wildcard policies (s3:*), no concrete actions are
+	// collected. The Alloy model requires at least one Action atom.
+	if len(g.actions) == 0 {
+		g.actions["S3_GetObject"] = true
+	}
 	data.ActionValues = strings.Join(g.sortedKeys(g.actions), ", ")
 
 	// ── S3 Buckets ────────────────────────────────────────────────────────

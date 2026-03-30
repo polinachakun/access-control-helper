@@ -280,33 +280,4 @@ Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allo
 
 ---
 
-## Implementation Status
 
-```
-Phase 1 — Foundation
-  [x] Data model (ir/types.go)
-  [x] Terraform parser for aws_iam_role, aws_iam_policy, aws_s3_bucket and 6 more resource types
-  [x] Basic Alloy template generation (generator/template.go)
-
-Phase 2 — Core Analysis
-  [x] Binding managed and inline policies to IAM roles by traversing aws_iam_role_policy_attachment,
-      aws_iam_policy_attachment, and aws_iam_role_policy resources; resolved in topological order
-      via a dependency graph (resolver/graph.go + ir/builder.go)
-  [x] Alloy spec with all 7 evaluation layers (generator/predicates.go)
-  [x] Alloy CLI integration & output parsing (analyzer/analyzer.go)
-  [x] Per-Action Access Evaluation: Alloy assertions and checks for every (principal, bucket, action)
-      triple with layer-by-layer decision reporting
-  [x] Alloy as sole evaluation engine — per-layer assertions (L1–L7) per triple,
-      reporter reconstructs layer breakdown from Alloy SAT/UNSAT results
-
-Phase 3 — Coverage
-  [ ] IAM conditions support (StringEquals, ArnLike, etc.)
-  [ ] aws_organizations_policy (SCP) parsing
-  [ ] Permission boundary parsing
-  [ ] Cross-account analysis
-
-Phase 4 — UX
-  [ ] JSON and SARIF output
-  [ ] CI mode (exit code 1 on DENY findings)
-  [ ] Example fixtures and integration tests
-```
