@@ -242,6 +242,15 @@ func GenerateChecks(scope string, assertions []Assertion) []Check {
 	return checks
 }
 
+// toPascalCase converts a snake_case or camelCase string to PascalCase.
+func toPascalCase(s string) string {
+	parts := strings.Split(s, "_")
+	for i, p := range parts {
+		parts[i] = capitalizeFirst(p)
+	}
+	return strings.Join(parts, "")
+}
+
 // capitalizeFirst uppercases the first character of s.
 func capitalizeFirst(s string) string {
 	if s == "" {
