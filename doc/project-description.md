@@ -4,7 +4,9 @@
 
 `access-control-helper` is a static analysis tool for AWS S3 access control validation. It parses Terraform infrastructure-as-code files, transforms the resource definitions into a formal Alloy specification, and uses the Alloy model checker to verify whether specific principals (roles, users) can or cannot reach S3 buckets — and at which policy evaluation step access is granted or denied.
 
-The tool answers: **"Can principal X access S3 bucket Y with action Z, and why?"**
+The tool answers: **"Can principal X access S3 bucket Y with action Z, and why?"** and **"If not, at which AWS policy evaluation layer is access denied?"**
+
+The tool models the combined effect of interacting AWS resources and policy layers and checks access properties directly on a formal representation of the target infrastructure.
 
 ---
 
@@ -12,9 +14,25 @@ The tool answers: **"Can principal X access S3 bucket Y with action Z, and why?"
 
 AWS access control is layered. A single `s3:GetObject` call passes through up to seven policy evaluation layers before AWS grants or denies the request. When access is misconfigured, debugging the exact denial reason across IAM roles, bucket policies, SCPs, and permission boundaries is time-consuming and error-prone.
 
-This tool automates that reasoning statically — without making any live AWS API calls — by encoding the AWS policy evaluation logic as an Alloy formal model and feeding it the parsed Terraform state.
+This tool automates that reasoning  without making any live AWS API calls by:
+- operating directly on Terraform source code,
+- building a local model of the target AWS access-control state,
+- translating that model into Alloy,
+checking concrete access properties using formal model checking.
 
 ---
+## Research Goal
+
+The goal of the project is to bridge the gap between:
+
+- static IaC analyzers, which operate pre-deployment but rely on hardcoded rules and cannot reason semantically across multiple resources, and
+- semantic policy analyzers, which can reason about authorization but typically require deployed infrastructure or isolated policy documents rather than Terraform source as input.
+
+The tool combines:
+- pre-deployment operation,
+- IaC source code as input,
+- local model construction from interacting Terraform resources, 
+- semantic access evaluation through formal reasoning.
 
 ## AWS S3 Policy Evaluation Order
 
@@ -30,6 +48,12 @@ AWS evaluates policies in a strict sequential order. The first explicit `Deny` w
 7. Session Policies                                   → must have Allow, else DENY → ALLOW
 ```
 
+The overall decision follows AWS semantics:
+
+- an explicit Deny takes precedence,
+- access must survive each applicable layer,
+- and a request is allowed only if the required permissions are available and not blocked by later constraints.
+
 The tool encodes each layer as an Alloy predicate, then asserts reachability through all layers for a given `(principal, resource, action)` triple.
 
 ---
@@ -44,7 +68,8 @@ The tool encodes each layer as an Alloy predicate, then asserts reachability thr
 | **Policy** | A collection of `Statement`s attached to a principal or resource |
 | **Statement** | A single Allow/Deny rule with Actions, Resources, Conditions |
 | **Permission Boundary** | A policy that caps the maximum permissions of an IAM entity |
-| **SCP** | AWS Organizations Service Control Policy |
+| **SCP / RCP** | AWS Organizations policies that further constrain access |
+| **Evaluation Layer** | One of the 7 AWS policy evaluation steps |
 
 ---
 
@@ -71,12 +96,17 @@ The **Alloy Analyzer** converts the model to a SAT formula and exhaustively sear
 
 **Why Alloy in this tool:**
 
-The Go evaluator implements the 7-layer AWS access evaluation imperatively for speed and human-readable output. The Alloy spec encodes the *same* logic declaratively. Running `check` assertions in Alloy gives a bounded exhaustive proof that the evaluation cannot produce a wrong decision — catching edge cases (e.g. wildcard action overlap with an explicit deny) that hand-written unit tests might miss.
+The central challenge in this project is not parsing Terraform, but correctly reasoning about the interaction of multiple policies, resources, and evaluation layers. This reasoning is naturally relational:
 
-The generated `.als` file is derived directly from the parsed Terraform config:
-- Every Terraform resource → `one sig` (a concrete Alloy instance)
-- Every field value → an entry in `fact ConfigFacts`
-- Every `(role, bucket, action)` triple → one `assert` + `check` pair
+- principals are linked to policies,
+- policies contain statements,
+- statements refer to actions and resources,
+- conditions may depend on attributes stored in other resources,
+- the final decision depends on an ordered combination of all these relationships.
+
+Alloy is well suited to this kind of problem because it allows the authorization logic to be expressed declaratively rather than procedurally. Instead of implementing access decisions as step-by-step control flow, the tool defines the structural relationships and constraints that characterize when access must be allowed or denied.
+
+This makes the project primarily a formal model extraction and checking approach for Terraform-based AWS S3 access control.
 
 ---
 
@@ -87,8 +117,14 @@ The generated `.als` file is derived directly from the parsed Terraform config:
          │
          ▼
  ┌───────────────┐
- │  HCL Parser   │  Reads aws_iam_role, aws_iam_policy, aws_s3_bucket,
- │               │  aws_s3_bucket_policy, aws_iam_role_policy_attachment
+ │  HCL Parser   │  Reads Terraform resource blocks
+ │               │  
+ └───────┬───────┘
+          │
+         ▼
+ ┌───────────────┐
+ │  Resolver     │  Resolves links, interpolations, and dependencies 
+ │               │  
  └───────┬───────┘
          │  Internal Model (Go structs)
          ▼
@@ -103,7 +139,7 @@ The generated `.als` file is derived directly from the parsed Terraform config:
          │  Raw Alloy output
          ▼
  ┌───────────────┐
- │   Reporter    │  Formats findings: which step caused the deny/allow
+ │   Reporter    │  Interprets results as access verdicts  and layer-specific  explanations    
  └───────────────┘
          │
          ▼
