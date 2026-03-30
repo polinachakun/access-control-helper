@@ -1,6 +1,9 @@
 package generator
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // GeneratePredicates returns all AWS policy evaluation predicates for all 7 layers.
 // The predicates mirror the exact AWS S3 evaluation order:
@@ -117,116 +120,87 @@ func GeneratePredicates() []Predicate {
 	}
 }
 
-// GenerateScenarioAssertions returns assertions that verify all 7 evaluation layers
-// for the primary (role, bucket) pair in the scenario. An assertion FAILS (counterexample
-// found) when the corresponding layer denies access for that triple.
-func GenerateScenarioAssertions(bucketName, policyName, roleName string) []Assertion {
-	if bucketName == "" || roleName == "" {
-		return nil
-	}
+// layerPredicate maps a layer suffix to the Alloy predicate that checks it.
+var layerPredicates = []struct {
+	Suffix    string
+	Predicate string
+	Comment   string
+}{
+	{"_L1", "not explicitDeny[req]", "Layer 1: No explicit deny"},
+	{"_L2", "rcpAllows[req]", "Layer 2: RCP allows"},
+	{"_L3", "scpAllows[req]", "Layer 3: SCP allows"},
+	{"_L4", "resourcePolicyAllows[req]", "Layer 4: Resource policy allows"},
+	{"_L5", "identityPolicyAllows[req]", "Layer 5: Identity policy allows"},
+	{"_L6", "permBoundaryAllows[req]", "Layer 6: Permission boundary allows"},
+	{"_L7", "sessionPolicyAllows[req]", "Layer 7: Session policy allows"},
+}
 
-	triple := func(extra string) string {
-		base := `req.principal = role_` + roleName + ` and
-     req.action = S3_GetObject and
-     req.target = bucket_` + bucketName
-		if extra != "" {
-			return base + ` and
-     ` + extra
+// TripleKey maps a base assertion name back to its human-readable components.
+type TripleKey struct {
+	Role              string
+	Bucket            string
+	Action            string
+	AssertionBaseName string
+}
+
+// BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.
+func BuildTripleKeys(roleNames, bucketNames, actionNames []string) []TripleKey {
+	var keys []TripleKey
+	for _, role := range roleNames {
+		for _, bucket := range bucketNames {
+			for _, action := range actionNames {
+				name := tripleBaseName(role, bucket, action)
+				keys = append(keys, TripleKey{
+					Role:              role,
+					Bucket:            bucket,
+					Action:            action,
+					AssertionBaseName: name,
+				})
+			}
 		}
-		return base
 	}
-
-	var assertions []Assertion
-
-	// ── Main overall access check ────────────────────────────────────────
-	if policyName != "" {
-		assertions = append(assertions, Assertion{
-			Name:    "RoleHasAccess",
-			Comment: "Main: role must reach the bucket with the correct VPCE (all 7 layers pass).",
-			Body: `all req: Request |
-    (` + triple(`req.sourceVpce = policy_`+policyName+`.denyAllExcept`) + `)
-    implies accessAllowed[req]`,
-		})
-		assertions = append(assertions, Assertion{
-			Name:    "NoVpceBypass",
-			Comment: "Layer 1: Requests with the wrong VPCE must be denied — verifies the VPCE guard is active.",
-			Body: `all req: Request |
-    (req.principal = role_` + roleName + ` and
-     req.target = bucket_` + bucketName + ` and
-     req.sourceVpce = VPCE_OTHER)
-    implies explicitDeny[req]`,
-		})
-		assertions = append(assertions, Assertion{
-			Name:    "NoLayer4Deny",
-			Comment: "Layer 4: Bucket policy must allow the principal + S3:GetObject.",
-			Body:    `all req: Request | (` + triple("") + `) implies resourcePolicyAllows[req]`,
-		})
-	} else {
-		assertions = append(assertions, Assertion{
-			Name:    "RoleHasAccess",
-			Comment: "Main: role must have access via identity policy (no bucket policy present).",
-			Body:    `all req: Request | (` + triple("") + `) implies accessAllowed[req]`,
-		})
-	}
-
-	// ── Per-layer assertions (trivially true when layer is not applicable) ──
-	assertions = append(assertions,
-		Assertion{
-			Name:    "NoLayer2Deny",
-			Comment: "Layer 2: RCP must allow S3:GetObject (passes trivially when no RCPs are configured).",
-			Body:    `all req: Request | (` + triple("") + `) implies rcpAllows[req]`,
-		},
-		Assertion{
-			Name:    "NoLayer3Deny",
-			Comment: "Layer 3: SCP must allow S3:GetObject (passes trivially when no SCPs are configured).",
-			Body:    `all req: Request | (` + triple("") + `) implies scpAllows[req]`,
-		},
-		Assertion{
-			Name:    "NoLayer5Deny",
-			Comment: "Layer 5: Identity policy must allow S3:GetObject.",
-			Body:    `all req: Request | (` + triple("") + `) implies identityPolicyAllows[req]`,
-		},
-		Assertion{
-			Name:    "NoLayer6Deny",
-			Comment: "Layer 6: Permission boundary must allow S3:GetObject (passes trivially when no boundary is set).",
-			Body:    `all req: Request | (` + triple("") + `) implies permBoundaryAllows[req]`,
-		},
-		Assertion{
-			Name:    "NoLayer7Deny",
-			Comment: "Layer 7: Session policy must allow S3:GetObject (passes trivially when no session policy is set).",
-			Body:    `all req: Request | (` + triple("") + `) implies sessionPolicyAllows[req]`,
-		},
-	)
-
-	return assertions
+	return keys
 }
 
-// GenerateAssertions is the legacy wrapper kept for backwards compatibility.
-// Prefer GenerateScenarioAssertions for new call sites.
-func GenerateAssertions(bucketName, policyName, roleName string) []Assertion {
-	return GenerateScenarioAssertions(bucketName, policyName, roleName)
+// tripleBaseName returns the PascalCase assertion base name for a triple.
+func tripleBaseName(role, bucket, action string) string {
+	return toPascalCase(role) +
+		"Can" + toPascalCase(trimPrefix(action, "S3_")) +
+		"On" + toPascalCase(bucket)
 }
 
-// GenerateAccessAssertions creates one assertion per (role, bucket, action) triple.
-// Each assertion checks that accessAllowed holds for every request matching the triple.
-// A check FAILS (counterexample found by Alloy) when access is DENIED for that triple.
+// GenerateAccessAssertions creates 8 assertions per (role, bucket, action) triple:
+// one combined assertion (accessAllowed) plus one per evaluation layer (L1–L7).
 func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []Assertion {
 	var assertions []Assertion
 	for _, role := range roleNames {
 		for _, bucket := range bucketNames {
 			for _, action := range actionNames {
-				name := toPascalCase(role) +
-					"Can" + toPascalCase(trimPrefix(action, "S3_")) +
-					"On" + toPascalCase(bucket)
+				baseName := tripleBaseName(role, bucket, action)
+				reqMatch := fmt.Sprintf(
+					`req.principal = role_%s and
+     req.action = %s and
+     req.target = bucket_%s`, role, action, bucket)
+
+				// Combined assertion: accessAllowed
 				assertions = append(assertions, Assertion{
-					Name:    name,
-					Comment: "Checks if " + role + " can perform " + action + " on " + bucket + ".",
-					Body: `all req: Request |
-    (req.principal = role_` + role + ` and
-     req.action = ` + action + ` and
-     req.target = bucket_` + bucket + `)
-    implies accessAllowed[req]`,
+					Name:    baseName,
+					Comment: fmt.Sprintf("Checks if %s can perform %s on %s.", role, action, bucket),
+					Body: fmt.Sprintf(`all req: Request |
+    (%s)
+    implies accessAllowed[req]`, reqMatch),
 				})
+
+				// Per-layer assertions
+				for _, lp := range layerPredicates {
+					assertions = append(assertions, Assertion{
+						Name:    baseName + lp.Suffix,
+						Comment: fmt.Sprintf("%s for %s performing %s on %s.", lp.Comment, role, action, bucket),
+						Body: fmt.Sprintf(`all req: Request |
+    (%s)
+    implies %s`, reqMatch, lp.Predicate),
+					})
+				}
 			}
 		}
 	}

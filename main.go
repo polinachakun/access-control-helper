@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"access-control-helper/internal/analyzer"
-	"access-control-helper/internal/evaluator"
 	"access-control-helper/internal/generator"
 	"access-control-helper/internal/ir"
 	"access-control-helper/internal/parser"
@@ -64,46 +63,43 @@ func main() {
 
 	// ── Step 4: Generate Alloy specification ─────────────────────────────
 	sourceFile := filepath.Base(inputPath)
+	gen := generator.NewGenerator(config, sourceFile)
 
 	if toStdout {
 		// Stdout mode: only emit the Alloy spec so it can be piped or redirected.
-		if err := generator.GenerateToWriter(config, sourceFile, os.Stdout); err != nil {
+		if err := gen.GenerateToWriter(os.Stdout); err != nil {
 			fatalf("generate error: %v\n", err)
 		}
 		return
 	}
 
-	if err := generator.Generate(config, sourceFile, outputPath); err != nil {
+	if err := gen.GenerateToFile(outputPath); err != nil {
 		fatalf("generate error: %v\n", err)
 	}
 	logf("Generated Alloy spec: %s\n", outputPath)
 
-	// ── Step 5: Go-based 7-layer evaluation ──────────────────────────────
-	eval := evaluator.New(config)
-	evalResults := eval.EvaluateAll()
+	tripleKeys := gen.TripleMetadata()
 
-	logf("Evaluated %d (principal, bucket, action) triple(s).\n", len(evalResults))
-
-	// ── Step 6: Optional Alloy formal verification ────────────────────────
+	// ── Step 5: Alloy formal verification ────────────────────────────────
 	alloyAnalyzer := analyzer.New()
-	var checkResults []analyzer.CheckResult
-
-	if alloyAnalyzer.Available() {
-		logf("Alloy found at %s — running formal verification…\n", alloyAnalyzer.JarPath())
-		checkResults, err = alloyAnalyzer.Check(outputPath)
-		if err != nil {
-			logf("Alloy analysis warning: %v\n", err)
-		} else {
-			logf("Alloy completed %d check(s).\n", len(checkResults))
-		}
-	} else {
-		logf("Alloy jar not found at tools/org.alloytools.alloy.dist.jar; skipping formal verification.\n")
+	if !alloyAnalyzer.Available() {
+		fatalf("error: Alloy jar not found.\n" +
+			"Expected at: tools/org.alloytools.alloy.dist.jar\n" +
+			"Alloy is required for access evaluation.\n")
 	}
 
-	// ── Step 7: Report ────────────────────────────────────────────────────
+	logf("Running Alloy formal verification…\n")
+	checkResults, err := alloyAnalyzer.Check(outputPath)
+	if err != nil {
+		fatalf("Alloy failed: %v\n", err)
+	}
+	logf("Alloy completed %d check(s).\n", len(checkResults))
+
+	// ── Step 6: Report ────────────────────────────────────────────────────
+	tripleResults := reporter.BuildTripleResults(checkResults, tripleKeys)
 	rep := reporter.New(os.Stdout)
-	rep.Summary(evalResults)
-	rep.Report(evalResults, checkResults)
+	rep.Summary(tripleResults)
+	rep.Report(tripleResults)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -119,16 +115,16 @@ func fatalf(format string, args ...interface{}) {
 
 func printUsage() {
 	prog := os.Args[0]
-	fmt.Fprintln(os.Stderr, "AWS S3 Access Control Helper — static 7-layer policy analysis")
+	fmt.Fprintln(os.Stderr, "AWS S3 Access Control Helper — Alloy-based formal policy analysis")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintf(os.Stderr, "Usage:\n")
 	fmt.Fprintf(os.Stderr, "  %s <tf-file-or-dir>                  Print Alloy spec to stdout\n", prog)
-	fmt.Fprintf(os.Stderr, "  %s <tf-file-or-dir> <output.als>     Write spec + run full analysis\n", prog)
+	fmt.Fprintf(os.Stderr, "  %s <tf-file-or-dir> <output.als>     Write spec + run Alloy analysis\n", prog)
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Environment variables:")
 	fmt.Fprintln(os.Stderr, "  JAVA_HOME   Java installation root")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Examples:")
 	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf                # Alloy spec to stdout\n", prog)
-	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf output.als     # write spec + run full analysis\n", prog)
+	fmt.Fprintf(os.Stderr, "  %s testdata/scenario2.tf output.als     # write spec + run Alloy analysis\n", prog)
 }

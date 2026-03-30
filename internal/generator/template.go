@@ -114,16 +114,6 @@ pred {{.Name}}[{{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p}}{{end}}] {
 
 {{end}}
 // ============================================================
-//  SCENARIO ASSERTIONS
-// ============================================================
-{{range .Assertions}}
-// {{.Comment}}
-assert {{.Name}} {
-  {{.Body}}
-}
-{{end}}
-
-// ============================================================
 //  PER-TRIPLE ACCESS ASSERTIONS — (principal, bucket, action)
 // ============================================================
 {{range .AccessAssertions}}
@@ -159,7 +149,6 @@ type TemplateData struct {
 	RoleUnion         string
 	ConfigFacts       string
 	Predicates        []Predicate
-	Assertions        []Assertion
 	AccessAssertions  []Assertion
 	Checks            []Check
 }

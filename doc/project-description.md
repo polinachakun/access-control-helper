@@ -220,7 +220,7 @@ Result: DENY at Layer 1
 
 ```
 access-control-helper/
-├── main.go                        # CLI entry point & 7-step pipeline wiring
+├── main.go                        # CLI entry point & pipeline wiring
 ├── go.mod
 ├── internal/
 │   ├── parser/
@@ -233,17 +233,15 @@ access-control-helper/
 │   │   ├── types.go               # Domain model: Config, S3Bucket, IAMRole, etc.
 │   │   ├── policy.go              # IAM policy document parsing (JSON)
 │   │   └── builder.go             # Builds Config IR from resolved resources
-│   ├── evaluator/
-│   │   └── evaluator.go           # 7-layer Go access evaluator (per-triple)
 │   ├── generator/
 │   │   ├── generator.go           # Alloy spec generation orchestrator
 │   │   ├── template.go            # Alloy template strings and boilerplate
-│   │   ├── predicates.go          # Alloy predicate generation (all 7 layers)
+│   │   ├── predicates.go          # Alloy predicate & per-layer assertion generation
 │   │   └── model.go               # Alloy signature and fact generation
 │   ├── analyzer/
 │   │   └── analyzer.go            # Alloy CLI runner & output parser
 │   └── reporter/
-│       └── reporter.go            # Human-readable output formatter
+│       └── reporter.go            # Human-readable output formatter (from Alloy results)
 ├── testdata/                      # Terraform fixtures and generated .als files
 └── doc/
     ├── project-description.md     # This file
@@ -254,13 +252,15 @@ access-control-helper/
 
 ## Key Design Decisions
 
-1. **Alloy over custom graph traversal** — Alloy's relational model naturally maps to the multi-layered evaluation graph. Writing custom traversal logic would be harder to reason about and validate.
+1. **Alloy as the sole evaluation engine** — Alloy's relational model naturally maps to the multi-layered evaluation graph. All access decisions are produced by the Alloy model checker through formal verification, eliminating the need for a parallel Go-based evaluator.
 
-2. **Static analysis only** — No AWS API calls. The tool works entirely from Terraform source, making it safe to run in CI without credentials.
+2. **Per-layer Alloy assertions** — For each (principal, bucket, action) triple, the tool generates 8 Alloy assertions: one combined (`accessAllowed`) and one per evaluation layer (L1–L7). This allows the reporter to reconstruct which layer denied access purely from Alloy SAT/UNSAT results.
 
-3. **Layer-by-layer reporting** — Rather than just ALLOW/DENY, the tool reports which layer made the decision and why, directly guiding remediation.
+3. **Static analysis only** — No AWS API calls. The tool works entirely from Terraform source, making it safe to run in CI without credentials.
 
-4. **Terraform as source of truth** — Most AWS infrastructure is managed via Terraform. Parsing `.tf` directly means no intermediate state file dependency, though `terraform show -json` output is also a supported input.
+4. **Layer-by-layer reporting** — Rather than just ALLOW/DENY, the tool reports which layer made the decision, directly guiding remediation.
+
+5. **Terraform as source of truth** — Most AWS infrastructure is managed via Terraform. Parsing `.tf` directly means no intermediate state file dependency, though `terraform show -json` output is also a supported input.
 
 ---
 
@@ -296,6 +296,8 @@ Phase 2 — Core Analysis
   [x] Alloy CLI integration & output parsing (analyzer/analyzer.go)
   [x] Per-Action Access Evaluation: Alloy assertions and checks for every (principal, bucket, action)
       triple with layer-by-layer decision reporting
+  [x] Alloy as sole evaluation engine — per-layer assertions (L1–L7) per triple,
+      reporter reconstructs layer breakdown from Alloy SAT/UNSAT results
 
 Phase 3 — Coverage
   [ ] IAM conditions support (StringEquals, ArnLike, etc.)

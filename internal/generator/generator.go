@@ -19,6 +19,11 @@ type Generator struct {
 	tags    map[string]bool
 	vpces   map[string]bool
 	actions map[string]bool
+
+	// Populated during buildTemplateData for TripleMetadata().
+	roleNames   []string
+	bucketNames []string
+	actionNames []string
 }
 
 // NewGenerator creates a new Generator.
@@ -167,26 +172,19 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	// ── Config facts ──────────────────────────────────────────────────────
 	data.ConfigFacts = g.buildConfigFacts()
 
-	// ── Scenario assertions (first bucket/policy/role pair) ───────────────
-	firstName := func(names []string) string {
-		if len(names) > 0 {
-			return names[0]
-		}
-		return ""
-	}
-	data.Assertions = GenerateScenarioAssertions(
-		firstName(bucketNames),
-		firstName(policyNames),
-		firstName(roleNames),
-	)
+	// ── Store names for TripleMetadata() ─────────────────────────────────
+	sortedActions := g.sortedKeys(g.actions)
+	g.roleNames = roleNames
+	g.bucketNames = bucketNames
+	g.actionNames = sortedActions
 
-	// ── Per-triple access assertions ──────────────────────────────────────
+	// ── Per-triple access assertions (combined + per-layer) ──────────────
 	data.AccessAssertions = GenerateAccessAssertions(
-		roleNames, bucketNames, g.sortedKeys(g.actions),
+		roleNames, bucketNames, sortedActions,
 	)
 
 	// ── Scope & checks ────────────────────────────────────────────────────
-	actionCount := len(g.sortedKeys(g.actions))
+	actionCount := len(sortedActions)
 	tagCount := len(g.sortedKeys(g.tags))
 	vpceCount := len(g.sortedKeys(g.vpces))
 
@@ -209,9 +207,7 @@ func (g *Generator) buildTemplateData() *TemplateData {
 		actionCount,
 	)
 
-	// Combine scenario + access assertions for checks.
-	allAssertions := append(data.Assertions, data.AccessAssertions...)
-	data.Checks = GenerateChecks(scope, allAssertions)
+	data.Checks = GenerateChecks(scope, data.AccessAssertions)
 
 	return data
 }
@@ -386,6 +382,12 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// TripleMetadata returns a TripleKey for every (role, bucket, action) triple.
+// Must be called after GenerateToFile or GenerateToWriter.
+func (g *Generator) TripleMetadata() []TripleKey {
+	return BuildTripleKeys(g.roleNames, g.bucketNames, g.actionNames)
 }
 
 func Generate(config *ir.Config, sourceFile, outputFile string) error {
