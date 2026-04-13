@@ -11,7 +11,7 @@ abstract sig VpceId {}
 one sig VPCE_OTHER extends VpceId {}
 
 abstract sig Action {}
-one sig S3_All, S3_GetObject, S3_ListBucket, S3_Other extends Action {}
+one sig S3_DeleteObject, S3_GetObject, S3_ListBucket, S3_PutObject extends Action {}
 
 abstract sig Bool {}
 one sig True, False extends Bool {}
@@ -80,9 +80,9 @@ fact ConfigFacts {
 
   role_restricted_role.envTag               = TAG_PROD
   role_restricted_role.hasRolePolicy        = True
-  role_restricted_role.roleAllowActions     = Action
+  role_restricted_role.roleAllowActions     = S3_GetObject + S3_PutObject + S3_ListBucket + S3_DeleteObject
   role_restricted_role.hasBoundary          = True
-  role_restricted_role.boundaryActions      = S3_GetObject + S3_ListBucket
+  role_restricted_role.boundaryActions      = S3_GetObject
   role_restricted_role.hasSessionPolicy     = False
   role_restricted_role.sessionPolicyActions = none
   role_restricted_role.dependsOn            = none
@@ -152,6 +152,11 @@ pred resourcePolicyAllows[req: Request] {
        req.principal.envTag = req.target.envTag)
 }
 
+// Layer 4: No resource-based policy applies to this request's target bucket.
+pred resourcePolicyNotApplicable[req: Request] {
+  no bp: BucketPolicy | bp.bucket = req.target
+}
+
 // Layer 5: Identity-based policy — the IAM role has a policy that explicitly allows the action.
 pred identityPolicyAllows[req: Request] {
   req.principal.hasRolePolicy = True and
@@ -182,63 +187,79 @@ pred accessAllowed[req: Request] {
 
 
 // ============================================================
-//  SCENARIO ASSERTIONS
-// ============================================================
-
-// Main: role must have access via identity policy (no bucket policy present).
-assert RoleHasAccess {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies accessAllowed[req]
-}
-
-// Layer 2: RCP must allow S3:GetObject (passes trivially when no RCPs are configured).
-assert NoLayer2Deny {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies rcpAllows[req]
-}
-
-// Layer 3: SCP must allow S3:GetObject (passes trivially when no SCPs are configured).
-assert NoLayer3Deny {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies scpAllows[req]
-}
-
-// Layer 5: Identity policy must allow S3:GetObject.
-assert NoLayer5Deny {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies identityPolicyAllows[req]
-}
-
-// Layer 6: Permission boundary must allow S3:GetObject (passes trivially when no boundary is set).
-assert NoLayer6Deny {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies permBoundaryAllows[req]
-}
-
-// Layer 7: Session policy must allow S3:GetObject (passes trivially when no session policy is set).
-assert NoLayer7Deny {
-  all req: Request | (req.principal = role_restricted_role and
-     req.action = S3_GetObject and
-     req.target = bucket_secure_bucket) implies sessionPolicyAllows[req]
-}
-
-
-// ============================================================
 //  PER-TRIPLE ACCESS ASSERTIONS — (principal, bucket, action)
 // ============================================================
 
-// Checks if restricted_role can perform S3_All on secure_bucket.
-assert RestrictedRoleCanAllOnSecureBucket {
+// Checks if restricted_role can perform S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket {
   all req: Request |
     (req.principal = role_restricted_role and
-     req.action = S3_All and
+     req.action = S3_DeleteObject and
      req.target = bucket_secure_bucket)
     implies accessAllowed[req]
+}
+
+// Layer 1: No explicit deny for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L1 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L2 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L3 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L4 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L5 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L6 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for restricted_role performing S3_DeleteObject on secure_bucket.
+assert RestrictedRoleCanDeleteObjectOnSecureBucket_L7 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_secure_bucket)
+    implies sessionPolicyAllows[req]
 }
 
 // Checks if restricted_role can perform S3_GetObject on secure_bucket.
@@ -250,6 +271,69 @@ assert RestrictedRoleCanGetObjectOnSecureBucket {
     implies accessAllowed[req]
 }
 
+// Layer 1: No explicit deny for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L1 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L2 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L3 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L4 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L5 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L6 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for restricted_role performing S3_GetObject on secure_bucket.
+assert RestrictedRoleCanGetObjectOnSecureBucket_L7 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_GetObject and
+     req.target = bucket_secure_bucket)
+    implies sessionPolicyAllows[req]
+}
+
 // Checks if restricted_role can perform S3_ListBucket on secure_bucket.
 assert RestrictedRoleCanListBucketOnSecureBucket {
   all req: Request |
@@ -259,13 +343,139 @@ assert RestrictedRoleCanListBucketOnSecureBucket {
     implies accessAllowed[req]
 }
 
-// Checks if restricted_role can perform S3_Other on secure_bucket.
-assert RestrictedRoleCanOtherOnSecureBucket {
+// Layer 1: No explicit deny for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L1 {
   all req: Request |
     (req.principal = role_restricted_role and
-     req.action = S3_Other and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L2 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L3 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L4 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L5 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L6 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for restricted_role performing S3_ListBucket on secure_bucket.
+assert RestrictedRoleCanListBucketOnSecureBucket_L7 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_secure_bucket)
+    implies sessionPolicyAllows[req]
+}
+
+// Checks if restricted_role can perform S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
      req.target = bucket_secure_bucket)
     implies accessAllowed[req]
+}
+
+// Layer 1: No explicit deny for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L1 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L2 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L3 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L4 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L5 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L6 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for restricted_role performing S3_PutObject on secure_bucket.
+assert RestrictedRoleCanPutObjectOnSecureBucket_L7 {
+  all req: Request |
+    (req.principal = role_restricted_role and
+     req.action = S3_PutObject and
+     req.target = bucket_secure_bucket)
+    implies sessionPolicyAllows[req]
 }
 
 
@@ -273,49 +483,56 @@ assert RestrictedRoleCanOtherOnSecureBucket {
 //  CHECKS
 // ============================================================
 
-check RoleHasAccess
+check RestrictedRoleCanDeleteObjectOnSecureBucket
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check NoLayer2Deny
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L1
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check NoLayer3Deny
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L2
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check NoLayer5Deny
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L3
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check NoLayer6Deny
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L4
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check NoLayer7Deny
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L5
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check RestrictedRoleCanAllOnSecureBucket
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L6
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanDeleteObjectOnSecureBucket_L7
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,
@@ -329,6 +546,55 @@ check RestrictedRoleCanGetObjectOnSecureBucket
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
+check RestrictedRoleCanGetObjectOnSecureBucket_L1
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L2
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L3
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L4
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L5
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L6
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanGetObjectOnSecureBucket_L7
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
 check RestrictedRoleCanListBucketOnSecureBucket
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
@@ -336,7 +602,105 @@ check RestrictedRoleCanListBucketOnSecureBucket
       exactly 1 VpceId, exactly 2 TagValue,
       exactly 4 Action, exactly 2 Bool
 
-check RestrictedRoleCanOtherOnSecureBucket
+check RestrictedRoleCanListBucketOnSecureBucket_L1
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L2
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L3
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L4
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L5
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L6
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanListBucketOnSecureBucket_L7
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L1
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L2
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L3
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L4
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L5
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L6
+  for exactly 1 S3Bucket, exactly 0 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check RestrictedRoleCanPutObjectOnSecureBucket_L7
   for exactly 1 S3Bucket, exactly 0 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 4 Request,

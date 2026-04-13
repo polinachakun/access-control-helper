@@ -1,5 +1,5 @@
 // Package reporter formats the Alloy model checker results into a
-// human-readable access analysis report with per-layer breakdown.
+// readable access analysis report.
 package reporter
 
 import (
@@ -70,22 +70,20 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		}
 
 		// Per-layer status.
-		// Layers 4 and 5 are OR-ed grant layers: a failing assertion means
-		// "this path didn't grant access", not an explicit denial. All other
-		// layers are blocking layers where failure means an actual deny.
+		// "granting" layers (4, 5) show "NOT GRANTED" on failure (they don't
+		// block, they just didn't grant). "blocking" layers show "DENY".
 		for i, suffix := range layerSuffixes {
 			tr.Layers[i] = LayerInfo{Name: layerNames[i]}
 			cr, ok := byName[key.AssertionBaseName+suffix]
 			if ok && cr.Valid {
 				tr.Layers[i].Status = "PASS"
-			} else if i == 3 || i == 4 { // L4 (index 3) and L5 (index 4)
+			} else if generator.LayerPredicates[i].Kind == "granting" {
 				tr.Layers[i].Status = "NOT GRANTED"
 			} else {
 				tr.Layers[i].Status = "DENY"
 			}
 		}
 
-		// Determine which layer denied (first DENY scanning L1→L7).
 		if tr.Decision == "DENY" {
 			tr.DeniedAtDesc = deniedAtDescription(tr.Layers)
 		}
@@ -95,36 +93,36 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 	return results
 }
 
-// deniedAtDescription returns a human-readable description of where access was denied.
 func deniedAtDescription(layers [7]LayerInfo) string {
-	// Layers 1-3: blocking layers — first DENY wins.
-	for i := 0; i < 3; i++ {
+	// Check blocking layers first.
+	for i := 0; i < 7; i++ {
 		if layers[i].Status == "DENY" {
 			return fmt.Sprintf("Layer %d", i+1)
 		}
 	}
-	// Layers 4+5: OR-ed grant layers — both must fail to deny.
-	if layers[3].Status == "NOT GRANTED" && layers[4].Status == "NOT GRANTED" {
+
+	// Grant layers: need at least one of L4/L5 to grant.
+	l4ng := layers[3].Status == "NOT GRANTED"
+	l5ng := layers[4].Status == "NOT GRANTED"
+	if l4ng && l5ng {
 		return "Layer 4/5"
 	}
-	// Layers 6-7: blocking layers.
-	for i := 5; i < 7; i++ {
-		if layers[i].Status == "DENY" {
-			return fmt.Sprintf("Layer %d", i+1)
-		}
+	if l5ng {
+		return "Layer 5"
 	}
+	if l4ng {
+		return "Layer 4"
+	}
+
 	return "unknown"
 }
 
-// Reporter writes analysis results to an io.Writer.
 type Reporter struct {
 	w io.Writer
 }
 
-// New creates a Reporter that writes to w.
 func New(w io.Writer) *Reporter { return &Reporter{w: w} }
 
-// Report writes the full analysis: per-triple layer breakdown.
 func (r *Reporter) Report(results []*TripleResult) {
 	r.header("Access Analysis Report")
 
@@ -150,7 +148,7 @@ var layerLabels = [7]string{
 
 func (r *Reporter) reportTriple(res *TripleResult) {
 	fmt.Fprintf(r.w, "\nQuery: can %q perform %s on %q?\n",
-		res.Principal, res.Action, res.Bucket)
+		res.Principal, generator.HumanAction(res.Action), res.Bucket)
 	fmt.Fprintln(r.w, strings.Repeat("─", sectionWidth))
 
 	for i, layer := range res.Layers {
@@ -167,7 +165,6 @@ func (r *Reporter) reportTriple(res *TripleResult) {
 	fmt.Fprintln(r.w)
 }
 
-// Summary prints a compact summary table.
 func (r *Reporter) Summary(results []*TripleResult) {
 	if len(results) == 0 {
 		return
@@ -186,7 +183,7 @@ func (r *Reporter) Summary(results []*TripleResult) {
 		}
 		fmt.Fprintf(r.w, "  %-25s %-20s %-22s %s\n",
 			truncate(res.Principal, 24),
-			truncate(res.Action, 19),
+			truncate(generator.HumanAction(res.Action), 19),
 			truncate(res.Bucket, 21),
 			decision,
 		)

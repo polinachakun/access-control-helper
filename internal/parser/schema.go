@@ -3,7 +3,7 @@ package parser
 import "github.com/hashicorp/hcl/v2"
 
 // HCL schemas for AWS Terraform resource types.
-// These define which attributes and blocks we expect to find in each resource type.
+// These define which attributes and blocks are expected to find in each resource type.
 
 // ResourceSchema returns the HCL schema for a given resource type.
 func ResourceSchema(resourceType string) *hcl.BodySchema {

@@ -78,6 +78,14 @@ func GeneratePredicates() []Predicate {
        req.principal.envTag = req.target.envTag)`,
 		},
 
+		// ── Layer 4 helper: no resource-based policy applies ────────────────
+		{
+			Name:    "resourcePolicyNotApplicable",
+			Params:  []string{"req: Request"},
+			Comment: "Layer 4: No resource-based policy applies to this request's target bucket.",
+			Body:    `no bp: BucketPolicy | bp.bucket = req.target`,
+		},
+
 		// ── Layer 5: Identity-Based Policy ──────────────────────────────────
 		{
 			Name:    "identityPolicyAllows",
@@ -120,19 +128,23 @@ func GeneratePredicates() []Predicate {
 	}
 }
 
-// layerPredicate maps a layer suffix to the Alloy predicate that checks it.
-var layerPredicates = []struct {
+// LayerPredicateInfo describes a per-layer Alloy assertion predicate.
+type LayerPredicateInfo struct {
 	Suffix    string
 	Predicate string
 	Comment   string
-}{
-	{"_L1", "not explicitDeny[req]", "Layer 1: No explicit deny"},
-	{"_L2", "rcpAllows[req]", "Layer 2: RCP allows"},
-	{"_L3", "scpAllows[req]", "Layer 3: SCP allows"},
-	{"_L4", "resourcePolicyAllows[req]", "Layer 4: Resource policy allows"},
-	{"_L5", "identityPolicyAllows[req]", "Layer 5: Identity policy allows"},
-	{"_L6", "permBoundaryAllows[req]", "Layer 6: Permission boundary allows"},
-	{"_L7", "sessionPolicyAllows[req]", "Layer 7: Session policy allows"},
+	Kind      string // "blocking" or "granting"
+}
+
+// LayerPredicates maps a layer suffix to the Alloy predicate that checks it.
+var LayerPredicates = []LayerPredicateInfo{
+	{"_L1", "not explicitDeny[req]", "Layer 1: No explicit deny", "blocking"},
+	{"_L2", "rcpAllows[req]", "Layer 2: RCP allows", "blocking"},
+	{"_L3", "scpAllows[req]", "Layer 3: SCP allows", "blocking"},
+	{"_L4", "resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]", "Layer 4: Resource policy allows or not applicable", "granting"},
+	{"_L5", "identityPolicyAllows[req]", "Layer 5: Identity policy allows", "granting"},
+	{"_L6", "permBoundaryAllows[req]", "Layer 6: Permission boundary allows", "blocking"},
+	{"_L7", "sessionPolicyAllows[req]", "Layer 7: Session policy allows", "blocking"},
 }
 
 // TripleKey maps a base assertion name back to its human-readable components.
@@ -192,7 +204,7 @@ func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []As
 				})
 
 				// Per-layer assertions
-				for _, lp := range layerPredicates {
+				for _, lp := range LayerPredicates {
 					assertions = append(assertions, Assertion{
 						Name:    baseName + lp.Suffix,
 						Comment: fmt.Sprintf("%s for %s performing %s on %s.", lp.Comment, role, action, bucket),

@@ -11,7 +11,7 @@ abstract sig VpceId {}
 one sig VPCE_OTHER extends VpceId {}
 
 abstract sig Action {}
-one sig S3_All, S3_DeleteObject, S3_GetObject, S3_ListBucket, S3_Other extends Action {}
+one sig S3_All, S3_DeleteObject, S3_GetObject, S3_ListBucket extends Action {}
 
 abstract sig Bool {}
 one sig True, False extends Bool {}
@@ -162,6 +162,11 @@ pred resourcePolicyAllows[req: Request] {
        req.principal.envTag = req.target.envTag)
 }
 
+// Layer 4: No resource-based policy applies to this request's target bucket.
+pred resourcePolicyNotApplicable[req: Request] {
+  no bp: BucketPolicy | bp.bucket = req.target
+}
+
 // Layer 5: Identity-based policy — the IAM role has a policy that explicitly allows the action.
 pred identityPolicyAllows[req: Request] {
   req.principal.hasRolePolicy = True and
@@ -192,72 +197,6 @@ pred accessAllowed[req: Request] {
 
 
 // ============================================================
-//  SCENARIO ASSERTIONS
-// ============================================================
-
-// Main: role must reach the bucket with the correct VPCE (all 7 layers pass).
-assert RoleHasAccess {
-  all req: Request |
-    (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket and
-     req.sourceVpce = policy_deny_delete.denyAllExcept)
-    implies accessAllowed[req]
-}
-
-// Layer 1: Requests with the wrong VPCE must be denied — verifies the VPCE guard is active.
-assert NoVpceBypass {
-  all req: Request |
-    (req.principal = role_app_role and
-     req.target = bucket_my_bucket and
-     req.sourceVpce = VPCE_OTHER)
-    implies explicitDeny[req]
-}
-
-// Layer 4: Bucket policy must allow the principal + S3:GetObject.
-assert NoLayer4Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies resourcePolicyAllows[req]
-}
-
-// Layer 2: RCP must allow S3:GetObject (passes trivially when no RCPs are configured).
-assert NoLayer2Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies rcpAllows[req]
-}
-
-// Layer 3: SCP must allow S3:GetObject (passes trivially when no SCPs are configured).
-assert NoLayer3Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies scpAllows[req]
-}
-
-// Layer 5: Identity policy must allow S3:GetObject.
-assert NoLayer5Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies identityPolicyAllows[req]
-}
-
-// Layer 6: Permission boundary must allow S3:GetObject (passes trivially when no boundary is set).
-assert NoLayer6Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies permBoundaryAllows[req]
-}
-
-// Layer 7: Session policy must allow S3:GetObject (passes trivially when no session policy is set).
-assert NoLayer7Deny {
-  all req: Request | (req.principal = role_app_role and
-     req.action = S3_GetObject and
-     req.target = bucket_my_bucket) implies sessionPolicyAllows[req]
-}
-
-
-// ============================================================
 //  PER-TRIPLE ACCESS ASSERTIONS — (principal, bucket, action)
 // ============================================================
 
@@ -270,6 +209,69 @@ assert AppRoleCanAllOnMyBucket {
     implies accessAllowed[req]
 }
 
+// Layer 1: No explicit deny for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L1 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L2 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L3 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L4 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L5 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L6 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for app_role performing S3_All on my_bucket.
+assert AppRoleCanAllOnMyBucket_L7 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_All and
+     req.target = bucket_my_bucket)
+    implies sessionPolicyAllows[req]
+}
+
 // Checks if app_role can perform S3_DeleteObject on my_bucket.
 assert AppRoleCanDeleteObjectOnMyBucket {
   all req: Request |
@@ -277,6 +279,69 @@ assert AppRoleCanDeleteObjectOnMyBucket {
      req.action = S3_DeleteObject and
      req.target = bucket_my_bucket)
     implies accessAllowed[req]
+}
+
+// Layer 1: No explicit deny for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L1 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L2 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L3 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L4 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L5 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L6 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for app_role performing S3_DeleteObject on my_bucket.
+assert AppRoleCanDeleteObjectOnMyBucket_L7 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_DeleteObject and
+     req.target = bucket_my_bucket)
+    implies sessionPolicyAllows[req]
 }
 
 // Checks if app_role can perform S3_GetObject on my_bucket.
@@ -288,6 +353,69 @@ assert AppRoleCanGetObjectOnMyBucket {
     implies accessAllowed[req]
 }
 
+// Layer 1: No explicit deny for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L1 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L2 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L3 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L4 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L5 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L6 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for app_role performing S3_GetObject on my_bucket.
+assert AppRoleCanGetObjectOnMyBucket_L7 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_GetObject and
+     req.target = bucket_my_bucket)
+    implies sessionPolicyAllows[req]
+}
+
 // Checks if app_role can perform S3_ListBucket on my_bucket.
 assert AppRoleCanListBucketOnMyBucket {
   all req: Request |
@@ -297,13 +425,67 @@ assert AppRoleCanListBucketOnMyBucket {
     implies accessAllowed[req]
 }
 
-// Checks if app_role can perform S3_Other on my_bucket.
-assert AppRoleCanOtherOnMyBucket {
+// Layer 1: No explicit deny for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L1 {
   all req: Request |
     (req.principal = role_app_role and
-     req.action = S3_Other and
+     req.action = S3_ListBucket and
      req.target = bucket_my_bucket)
-    implies accessAllowed[req]
+    implies not explicitDeny[req]
+}
+
+// Layer 2: RCP allows for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L2 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies rcpAllows[req]
+}
+
+// Layer 3: SCP allows for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L3 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies scpAllows[req]
+}
+
+// Layer 4: Resource policy allows or not applicable for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L4 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies resourcePolicyAllows[req] or resourcePolicyNotApplicable[req]
+}
+
+// Layer 5: Identity policy allows for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L5 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies identityPolicyAllows[req]
+}
+
+// Layer 6: Permission boundary allows for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L6 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies permBoundaryAllows[req]
+}
+
+// Layer 7: Session policy allows for app_role performing S3_ListBucket on my_bucket.
+assert AppRoleCanListBucketOnMyBucket_L7 {
+  all req: Request |
+    (req.principal = role_app_role and
+     req.action = S3_ListBucket and
+     req.target = bucket_my_bucket)
+    implies sessionPolicyAllows[req]
 }
 
 
@@ -311,93 +493,226 @@ assert AppRoleCanOtherOnMyBucket {
 //  CHECKS
 // ============================================================
 
-check RoleHasAccess
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoVpceBypass
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer4Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer2Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer3Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer5Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer6Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
-check NoLayer7Deny
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
-      exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
-      exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
-
 check AppRoleCanAllOnMyBucket
   for exactly 1 S3Bucket, exactly 1 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
+      exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L1
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L2
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L3
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L4
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L5
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L6
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanAllOnMyBucket_L7
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
 
 check AppRoleCanDeleteObjectOnMyBucket
   for exactly 1 S3Bucket, exactly 1 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
+      exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L1
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L2
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L3
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L4
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L5
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L6
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanDeleteObjectOnMyBucket_L7
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
 
 check AppRoleCanGetObjectOnMyBucket
   for exactly 1 S3Bucket, exactly 1 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
+      exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L1
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L2
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L3
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L4
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L5
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L6
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanGetObjectOnMyBucket_L7
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
 
 check AppRoleCanListBucketOnMyBucket
   for exactly 1 S3Bucket, exactly 1 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
+      exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
+      exactly 4 Action, exactly 2 Bool
 
-check AppRoleCanOtherOnMyBucket
+check AppRoleCanListBucketOnMyBucket_L1
   for exactly 1 S3Bucket, exactly 1 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
-      exactly 1 IAMRole, exactly 5 Request,
+      exactly 1 IAMRole, exactly 4 Request,
       exactly 1 VpceId, exactly 2 TagValue,
-      exactly 5 Action, exactly 2 Bool
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L2
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L3
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L4
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L5
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L6
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool
+
+check AppRoleCanListBucketOnMyBucket_L7
+  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+      exactly 0 OrgRCP, exactly 0 OrgSCP,
+      exactly 1 IAMRole, exactly 4 Request,
+      exactly 1 VpceId, exactly 2 TagValue,
+      exactly 4 Action, exactly 2 Bool

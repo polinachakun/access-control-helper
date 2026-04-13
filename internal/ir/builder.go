@@ -136,8 +136,8 @@ func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocume
 			}
 		}
 
-		// Check for general Deny
-		if stmt.IsDeny() {
+		// Check for general Deny (skip VPCE-conditional, already handled by DenyVpceID)
+		if stmt.IsDeny() && !stmt.HasVPCECondition() {
 			policy.DenyActions = append(policy.DenyActions, stmt.Actions...)
 			for _, p := range stmt.GetPrincipalARNs() {
 				policy.DenyPrincipals = append(policy.DenyPrincipals, p)

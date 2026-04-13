@@ -16,7 +16,6 @@ import (
 	"strings"
 )
 
-// CheckResult holds the outcome of a single Alloy `check` command.
 type CheckResult struct {
 	// Name is the assertion name passed to the check command.
 	Name string
@@ -85,23 +84,28 @@ func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 		return nil, fmt.Errorf("Alloy not available)")
 	}
 
-	// Alloy 4.x: java -cp alloy.jar edu.mit.csail.sdg.alloy4whole.ExampleUsingTheAPI <file>
-	// Alloy 6.x / alloy-run: java -jar alloy.jar <file>
-	// We try both invocations; the second (simpler) is tried first.
 	output, err := runAlloy(a.javaPath, a.jarPath, specFile)
 	if err != nil && len(output) == 0 {
 		return nil, fmt.Errorf("alloy execution failed: %w", err)
 	}
 
-	return parseOutput(output), nil
+	results := parseOutput(output)
+
+	// Clean up the output directory Alloy creates (e.g. "output4.als" → "output4/").
+	cleanupAlloyOutput(specFile)
+
+	return results, nil
+}
+
+// cleanupAlloyOutput removes the directory Alloy creates next to the spec file.
+func cleanupAlloyOutput(specFile string) {
+	base := strings.TrimSuffix(filepath.Base(specFile), filepath.Ext(specFile))
+	dir := filepath.Join(filepath.Dir(specFile), base)
+	os.RemoveAll(dir)
 }
 
 // ── Output parsing ────────────────────────────────────────────────────────────
 
-// checkLineRe matches lines produced by `alloy exec`, e.g.:
-//
-//  00. check RoleHasAccess            0       UNSAT
-//  01. check NoVpceBypass             0    1/1     SAT
 var checkLineRe = regexp.MustCompile(`^\d+\.\s+check\s+(\w+)\s+.*\b(SAT|UNSAT)\s*$`)
 
 func parseOutput(raw string) []CheckResult {

@@ -22,11 +22,11 @@ type ParseResult struct {
 
 // RawResource represents a parsed but unresolved Terraform resource.
 type RawResource struct {
-	Type       string                    // e.g., "aws_s3_bucket"
-	Name       string                    // e.g., "my_bucket"
-	Attributes map[string]hcl.Expression // Attribute expressions
-	Blocks     map[string][]RawBlock     // Nested blocks
-	Range      hcl.Range                 // Source location
+	Type       string
+	Name       string
+	Attributes map[string]hcl.Expression
+	Blocks     map[string][]RawBlock
+	Range      hcl.Range
 }
 
 // RawBlock represents a nested block within a resource.
@@ -191,8 +191,7 @@ func (p *Parser) extractBlock(block *hcl.Block) RawBlock {
 		rawBlock.Attributes[attrName] = attr.Expr
 	}
 
-	// Note: For deeply nested blocks, we would need recursive handling
-	// but for most AWS resources, one level is sufficient
+	// TODO: For deeply nested blocks, it needed recursive handling
 
 	return rawBlock
 }
@@ -213,7 +212,7 @@ func (p *Parser) extractVariable(name string, body hcl.Body, result *ParseResult
 	}
 }
 
-// GetResourceRef returns the full Terraform resource reference (e.g., "aws_s3_bucket.my_bucket").
+// GetResourceRef returns the full Terraform resource reference.
 func (r *RawResource) GetResourceRef() string {
 	return fmt.Sprintf("%s.%s", r.Type, r.Name)
 }
@@ -225,9 +224,7 @@ func (p *Parser) EvalContext(result *ParseResult) *hcl.EvalContext {
 		Variables: make(map[string]cty.Value),
 	}
 
-	// Add locals as variables
 	for _, expr := range result.Locals {
-		// Just validate that expressions can be evaluated
 		_, _ = expr.Value(nil)
 	}
 
@@ -280,13 +277,11 @@ func ExpressionToStringMap(expr hcl.Expression, ctx *hcl.EvalContext) map[string
 }
 
 // GetExpressionAsLiteral extracts a literal string from an expression.
-// This handles simple string literals and template expressions.
 func GetExpressionAsLiteral(expr hcl.Expression) (string, bool) {
 	if expr == nil {
 		return "", false
 	}
 
-	// Try to evaluate with nil context for literals
 	val, diags := expr.Value(nil)
 	if !diags.HasErrors() && val.Type() == cty.String {
 		return val.AsString(), true
@@ -296,7 +291,6 @@ func GetExpressionAsLiteral(expr hcl.Expression) (string, bool) {
 }
 
 // GetResourceReferences extracts resource references from an expression.
-// For example, "aws_s3_bucket.my_bucket.id" returns ["aws_s3_bucket.my_bucket"].
 func GetResourceReferences(expr hcl.Expression) []string {
 	if expr == nil {
 		return nil
@@ -345,13 +339,11 @@ func traversalToResourceRef(traversal hcl.Traversal) string {
 
 // isResourceTypePrefix checks if a name could be a resource type.
 func isResourceTypePrefix(name string) bool {
-	// Common AWS resource prefixes
 	prefixes := []string{"aws_", "data", "local", "var", "module"}
 	for _, prefix := range prefixes {
 		if name == prefix || (len(name) > len(prefix) && name[:len(prefix)] == prefix[:len(prefix)]) {
 			return true
 		}
 	}
-	// Check against known resource types
 	return IsSupportedResourceType(name)
 }
