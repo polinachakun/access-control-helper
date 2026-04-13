@@ -71,6 +71,59 @@ type Check struct {
 	Scope         string
 }
 
+// SupportedActionsByService defines which concrete actions are analyzable.
+// Wildcards like s3:* are expanded only to this catalog.
+var SupportedActionsByService = map[string][]string{
+	"s3": {
+		"s3:GetObject",
+		"s3:PutObject",
+		"s3:ListBucket",
+		"s3:DeleteObject",
+	},
+}
+
+// ExpandAnalyzableActions expands wildcard actions (e.g. s3:*) into
+// concrete actions that should appear in the model/report.
+func ExpandAnalyzableActions(actions []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, a := range actions {
+		a = strings.TrimSpace(a)
+		if a == "" || a == "*" {
+			continue
+		}
+
+		parts := strings.SplitN(a, ":", 2)
+		if len(parts) == 2 && parts[1] == "*" {
+			service := strings.ToLower(parts[0])
+			for _, concrete := range SupportedActionsByService[service] {
+				if !seen[concrete] {
+					seen[concrete] = true
+					result = append(result, concrete)
+				}
+			}
+			continue
+		}
+
+		if !seen[a] {
+			seen[a] = true
+			result = append(result, a)
+		}
+	}
+
+	return result
+}
+
+// HumanAction converts Alloy action IDs back to IAM-like syntax for reporting.
+func HumanAction(action string) string {
+	parts := strings.SplitN(action, "_", 2)
+	if len(parts) != 2 {
+		return action
+	}
+	return strings.ToLower(parts[0]) + ":" + parts[1]
+}
+
 // AlloyID converts a Terraform name to a valid Alloy identifier.
 func AlloyID(name string) string {
 	// Replace hyphens with underscores

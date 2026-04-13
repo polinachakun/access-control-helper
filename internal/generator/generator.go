@@ -59,7 +59,9 @@ func (g *Generator) GenerateToWriter(w io.Writer) error {
 	return RenderTemplate(w, data)
 }
 
-// collectValues gathers every unique tag, VPCE ID, and action referenced in the config.
+// Important: wildcard policy actions like "s3:*" are expanded into
+// analyzable concrete actions via ExpandAnalyzableActions(...),
+// so they do not appear in reports as synthetic actions like "S3_All".
 func (g *Generator) collectValues() {
 	// Always include baseline values so the Alloy model has at least one atom
 	// of each required type, even for minimal configs.
@@ -72,33 +74,38 @@ func (g *Generator) collectValues() {
 			g.tags[strings.ToUpper(b.EnvTag)] = true
 		}
 	}
+
 	for _, r := range g.config.Roles {
 		if r.EnvTag != "" {
 			g.tags[strings.ToUpper(r.EnvTag)] = true
 		}
-		for _, a := range r.RolePolicyActions {
+
+		for _, a := range ExpandAnalyzableActions(r.RolePolicyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
-		for _, a := range r.BoundaryActions {
+		for _, a := range ExpandAnalyzableActions(r.BoundaryActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 	}
+
 	for _, p := range g.config.BucketPolicies {
 		if p.DenyVpceID != "" {
 			g.vpces[VpceToAlloyID(p.DenyVpceID)] = true
 		}
-		for _, a := range p.AllowActions {
+
+		for _, a := range ExpandAnalyzableActions(p.AllowActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
-		for _, a := range p.DenyActions {
+		for _, a := range ExpandAnalyzableActions(p.DenyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 	}
+
 	for _, op := range g.config.OrgPolicies {
-		for _, a := range op.AllowActions {
+		for _, a := range ExpandAnalyzableActions(op.AllowActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
-		for _, a := range op.DenyActions {
+		for _, a := range ExpandAnalyzableActions(op.DenyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 	}
@@ -330,16 +337,14 @@ func (g *Generator) buildConfigFacts() string {
 // toAlloyActionSet converts a slice of IAM action strings to an Alloy set expression.
 // If any action is a wildcard (s3:*), returns "Action" (the full universe).
 func toAlloyActionSet(actions []string) string {
-	if len(actions) == 0 {
+	expanded := ExpandAnalyzableActions(actions)
+	if len(expanded) == 0 {
 		return "none"
 	}
-	ids := make([]string, 0, len(actions))
-	for _, a := range actions {
-		id := ActionToAlloyID(a)
-		if strings.HasSuffix(id, "_All") {
-			return "Action" // wildcard → full set
-		}
-		ids = append(ids, id)
+
+	ids := make([]string, 0, len(expanded))
+	for _, a := range expanded {
+		ids = append(ids, ActionToAlloyID(a))
 	}
 	return FormatAlloySet(ids)
 }
