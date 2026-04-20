@@ -28,13 +28,22 @@ sig S3Bucket extends Resource {
 
 // Bucket Policy — resource-based policy evaluated at Layer 4
 sig BucketPolicy extends Resource {
-  bucket:         one S3Bucket,
-  denyAllExcept:  lone VpceId,
-  allowPrincipal: lone IAMRole,
-  allowActions:   set Action,
-  denyActions:    set Action,
-  denyPrincipal:  lone IAMRole,
-  abacCondition:  one Bool
+  bucket:              one S3Bucket,
+  denyAllExcept:       lone VpceId,
+
+  allowPrincipal:      lone IAMRole,
+  allowAnyPrincipal:   one Bool,
+  allowActions:        set Action,
+  allowBucketResource: one Bool,
+  allowObjectResource: one Bool,
+
+  denyActions:         set Action,
+  denyPrincipal:       lone IAMRole,
+  denyAnyPrincipal:    one Bool,
+  denyBucketResource:  one Bool,
+  denyObjectResource:  one Bool,
+
+  abacCondition:       one Bool
 }
 
 // AWS Organizations Resource Control Policy (Layer 2)
@@ -62,12 +71,13 @@ sig IAMRole extends Resource {
 
 // ── Concrete resources ──────────────────────────────────────────────────────
 one sig bucket_data extends S3Bucket {}
-one sig policy_data extends BucketPolicy {}
+one sig policy_data_stmt_1_pr_1 extends BucketPolicy {}
+one sig policy_data_stmt_2_pr_1 extends BucketPolicy {}
 one sig role_developer extends IAMRole {}
 
 fact ExactUniverse {
   S3Bucket     = bucket_data
-  BucketPolicy = policy_data
+  BucketPolicy = policy_data_stmt_1_pr_1 + policy_data_stmt_2_pr_1
   OrgRCP       = none
   OrgSCP       = none
   IAMRole      = role_developer
@@ -80,18 +90,39 @@ fact ConfigFacts {
   bucket_data.blockPublicAccess = False
   bucket_data.dependsOn         = none
 
-  policy_data.bucket         = bucket_data
-  policy_data.denyAllExcept  = VPCE_0A1B2C3D
-  policy_data.allowPrincipal = role_developer
-  policy_data.allowActions   = S3_GetObject + S3_ListBucket
-  policy_data.denyActions    = none
-  policy_data.denyPrincipal  = none
-  policy_data.abacCondition  = True
-  policy_data.dependsOn      = bucket_data
+  policy_data_stmt_1_pr_1.bucket              = bucket_data
+  policy_data_stmt_1_pr_1.denyAllExcept       = VPCE_0A1B2C3D
+  policy_data_stmt_1_pr_1.allowPrincipal      = none
+  policy_data_stmt_1_pr_1.allowAnyPrincipal   = False
+  policy_data_stmt_1_pr_1.allowActions        = none
+  policy_data_stmt_1_pr_1.allowBucketResource = False
+  policy_data_stmt_1_pr_1.allowObjectResource = True
+  policy_data_stmt_1_pr_1.denyActions         = none
+  policy_data_stmt_1_pr_1.denyPrincipal       = none
+  policy_data_stmt_1_pr_1.denyAnyPrincipal    = False
+  policy_data_stmt_1_pr_1.denyBucketResource  = False
+  policy_data_stmt_1_pr_1.denyObjectResource  = True
+  policy_data_stmt_1_pr_1.abacCondition       = False
+  policy_data_stmt_1_pr_1.dependsOn           = bucket_data
+
+  policy_data_stmt_2_pr_1.bucket              = bucket_data
+  policy_data_stmt_2_pr_1.denyAllExcept       = none
+  policy_data_stmt_2_pr_1.allowPrincipal      = role_developer
+  policy_data_stmt_2_pr_1.allowAnyPrincipal   = False
+  policy_data_stmt_2_pr_1.allowActions        = S3_GetObject + S3_ListBucket
+  policy_data_stmt_2_pr_1.allowBucketResource = True
+  policy_data_stmt_2_pr_1.allowObjectResource = True
+  policy_data_stmt_2_pr_1.denyActions         = none
+  policy_data_stmt_2_pr_1.denyPrincipal       = none
+  policy_data_stmt_2_pr_1.denyAnyPrincipal    = False
+  policy_data_stmt_2_pr_1.denyBucketResource  = True
+  policy_data_stmt_2_pr_1.denyObjectResource  = True
+  policy_data_stmt_2_pr_1.abacCondition       = True
+  policy_data_stmt_2_pr_1.dependsOn           = bucket_data
 
   role_developer.envTag               = TAG_DEV
-  role_developer.hasRolePolicy        = False
-  role_developer.roleAllowActions     = none
+  role_developer.hasRolePolicy        = True
+  role_developer.roleAllowActions     = S3_GetObject + S3_ListBucket
   role_developer.hasBoundary          = False
   role_developer.boundaryActions      = none
   role_developer.hasSessionPolicy     = False
@@ -116,20 +147,22 @@ sig Request {
 //  EVALUATION PREDICATES — AWS 7-layer policy evaluation order
 // ============================================================
 
-// Layer 1a: VPCE guard — bucket policy denies requests without the required VPCE.
+// Layer 1a: VPCE guard — deny applies only if statement resource scope matches the action.
 pred explicitDenyVpce[req: Request] {
   some bp: BucketPolicy |
-    bp.bucket        = req.target and
-    bp.denyAllExcept != none      and
-    req.sourceVpce  != bp.denyAllExcept
+    bp.bucket = req.target and
+    bp.denyAllExcept != none and
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
+    req.sourceVpce != bp.denyAllExcept
 }
 
-// Layer 1b: Explicit Deny statement in bucket policy matching action and (optionally) principal.
+// Layer 1b: Explicit Deny statement in bucket policy matching action, principal, and resource scope.
 pred explicitDenyAction[req: Request] {
   some bp: BucketPolicy |
     bp.bucket = req.target and
     req.action in bp.denyActions and
-    (bp.denyPrincipal = none or bp.denyPrincipal = req.principal)
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
+    (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal)
 }
 
 // Layer 1: Any explicit deny fires — VPCE guard OR explicit Deny statement wins immediately.
@@ -153,12 +186,13 @@ pred scpAllows[req: Request] {
     req.action not in scp.scpDenyActions)
 }
 
-// Layer 4: Resource-based policy — bucket policy allows principal + action (+ ABAC tag match when required).
+// Layer 4: Resource-based policy — statement must match principal, action, resource scope, and ABAC condition.
 pred resourcePolicyAllows[req: Request] {
   some bp: BucketPolicy |
-    bp.bucket         = req.target    and
-    bp.allowPrincipal = req.principal and
-    req.action in bp.allowActions     and
+    bp.bucket = req.target and
+    req.action in bp.allowActions and
+    statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
+    (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)
 }
@@ -186,14 +220,35 @@ pred sessionPolicyAllows[req: Request] {
   req.action in req.principal.sessionPolicyActions
 }
 
-// Final: all 7 layers must pass — no explicit deny and at least one grant path (resource OR identity policy).
+// Final: no explicit deny, limiting layers pass, and at least one grant path allows.
 pred accessAllowed[req: Request] {
   not explicitDeny[req] and
   rcpAllows[req] and
   scpAllows[req] and
-  (resourcePolicyAllows[req] or identityPolicyAllows[req]) and
+  grantPathAllows[req] and
   permBoundaryAllows[req] and
   sessionPolicyAllows[req]
+}
+
+// At least one same-account grant path allows the request.
+pred grantPathAllows[req: Request] {
+  resourcePolicyAllows[req] or identityPolicyAllows[req]
+}
+
+// True for bucket-level S3 actions.
+pred actionTargetsBucket[a: Action] {
+  a = S3_ListBucket
+}
+
+// True for object-level S3 actions.
+pred actionTargetsObject[a: Action] {
+  a = S3_GetObject
+}
+
+// A policy statement applies only when its resource scope matches the action's required S3 resource type.
+pred statementMatchesResource[req: Request, bucketRes: Bool, objectRes: Bool] {
+  (actionTargetsBucket[req.action] and bucketRes = True) or
+  (actionTargetsObject[req.action] and objectRes = True)
 }
 
 
@@ -351,112 +406,112 @@ assert DeveloperCanListBucketOnData_L7 {
 // ============================================================
 
 check DeveloperCanGetObjectOnData
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L1
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L2
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L3
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L4
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L5
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L6
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanGetObjectOnData_L7
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L1
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L2
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L3
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L4
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L5
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L6
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,
       exactly 2 Action, exactly 2 Bool
 
 check DeveloperCanListBucketOnData_L7
-  for exactly 1 S3Bucket, exactly 1 BucketPolicy,
+  for exactly 1 S3Bucket, exactly 2 BucketPolicy,
       exactly 0 OrgRCP, exactly 0 OrgSCP,
       exactly 1 IAMRole, exactly 2 Request,
       exactly 2 VpceId, exactly 2 TagValue,

@@ -27,13 +27,15 @@ sig S3Bucket extends Resource {
 
 // Bucket Policy — resource-based policy evaluated at Layer 4
 sig BucketPolicy extends Resource {
-  bucket:         one S3Bucket,
-  denyAllExcept:  lone VpceId,
-  allowPrincipal: lone IAMRole,
-  allowActions:   set Action,
-  denyActions:    set Action,
-  denyPrincipal:  lone IAMRole,
-  abacCondition:  one Bool
+  bucket:            one S3Bucket,
+  denyAllExcept:     lone VpceId,
+  allowPrincipal:    lone IAMRole,
+  allowAnyPrincipal: one Bool,
+  allowActions:      set Action,
+  denyActions:       set Action,
+  denyPrincipal:     lone IAMRole,
+  denyAnyPrincipal:  one Bool,
+  abacCondition:     one Bool
 }
 
 // AWS Organizations Resource Control Policy (Layer 2)
@@ -113,12 +115,12 @@ pred explicitDenyVpce[req: Request] {
     req.sourceVpce  != bp.denyAllExcept
 }
 
-// Layer 1b: Explicit Deny statement in bucket policy matching action and (optionally) principal.
+// Layer 1b: Explicit Deny statement in bucket policy matching action and principal.
 pred explicitDenyAction[req: Request] {
   some bp: BucketPolicy |
     bp.bucket = req.target and
     req.action in bp.denyActions and
-    (bp.denyPrincipal = none or bp.denyPrincipal = req.principal)
+    (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal)
 }
 
 // Layer 1: Any explicit deny fires — VPCE guard OR explicit Deny statement wins immediately.
@@ -145,9 +147,9 @@ pred scpAllows[req: Request] {
 // Layer 4: Resource-based policy — bucket policy allows principal + action (+ ABAC tag match when required).
 pred resourcePolicyAllows[req: Request] {
   some bp: BucketPolicy |
-    bp.bucket         = req.target    and
-    bp.allowPrincipal = req.principal and
-    req.action in bp.allowActions     and
+    bp.bucket = req.target and
+    req.action in bp.allowActions and
+    (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)
 }
@@ -175,14 +177,19 @@ pred sessionPolicyAllows[req: Request] {
   req.action in req.principal.sessionPolicyActions
 }
 
-// Final: all 7 layers must pass — no explicit deny and at least one grant path (resource OR identity policy).
+// Final: no explicit deny, all limiting layers pass, and at least one grant path allows.
 pred accessAllowed[req: Request] {
   not explicitDeny[req] and
   rcpAllows[req] and
   scpAllows[req] and
-  (resourcePolicyAllows[req] or identityPolicyAllows[req]) and
+  grantPathAllows[req] and
   permBoundaryAllows[req] and
   sessionPolicyAllows[req]
+}
+
+// Grant path: at least one of resource policy or identity policy allows the request.
+pred grantPathAllows[req: Request] {
+  resourcePolicyAllows[req] or identityPolicyAllows[req]
 }
 
 

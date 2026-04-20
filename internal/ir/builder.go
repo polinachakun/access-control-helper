@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -85,34 +86,98 @@ func (b *Builder) buildS3Bucket(ref string, res *resolver.ResolvedResource) {
 
 // buildBucketPolicy builds a BucketPolicy from a resolved resource.
 func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) {
-	policy := &BucketPolicy{
-		TFName: res.Name,
-	}
+	bucketRef := ""
 
-	// Extract bucket reference
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
-		policy.BucketRef = extractResourceRef(bucket)
-		if policy.BucketRef == "" {
-			// It might be a direct reference in the resolved form
+		bucketRef = extractResourceRef(bucket)
+		if bucketRef == "" {
 			for _, r := range res.References {
 				if strings.HasPrefix(r, "aws_s3_bucket.") {
-					policy.BucketRef = r
+					bucketRef = r
 					break
 				}
 			}
 		}
 	}
 
-	// Parse policy document
-	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
-		doc, err := ParsePolicyDocument(policyDoc)
-		if err == nil && doc != nil {
-			policy.Policy = doc
-			b.analyzeBucketPolicy(policy, doc)
-		}
+	policyDoc := b.getAttrAsString(res, "policy")
+	if policyDoc == "" {
+		return
 	}
 
-	b.config.BucketPolicies = append(b.config.BucketPolicies, policy)
+	doc, err := ParsePolicyDocument(policyDoc)
+	if err != nil || doc == nil {
+		return
+	}
+
+	stmtIdx := 0
+	for _, stmt := range doc.Statements {
+		stmtIdx++
+		entries := b.expandBucketPolicyStatement(res.Name, bucketRef, stmtIdx, stmt)
+		b.config.BucketPolicies = append(b.config.BucketPolicies, entries...)
+	}
+}
+
+func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtIdx int, stmt *Statement) []*BucketPolicy {
+	if stmt == nil {
+		return nil
+	}
+
+	principals := stmt.GetPrincipalARNs()
+	anyPrincipal := stmt.HasWildcardPrincipal()
+
+	if anyPrincipal {
+		principals = append([]string{"*"}, principals...)
+	}
+	if len(principals) == 0 {
+		principals = []string{""}
+	}
+
+	var out []*BucketPolicy
+	for i, principal := range principals {
+		p := &BucketPolicy{
+			TFName:              fmt.Sprintf("%s_stmt_%d_pr_%d", baseName, stmtIdx, i+1),
+			BucketRef:           bucketRef,
+			AllowBucketResource: stmt.HasBucketLevelResource(),
+			AllowObjectResource: stmt.HasObjectLevelResource(),
+			DenyBucketResource:  stmt.HasBucketLevelResource(),
+			DenyObjectResource:  stmt.HasObjectLevelResource(),
+		}
+
+		if stmt.HasABACCondition() {
+			p.HasABAC = true
+		}
+
+		if stmt.IsAllow() {
+			p.AllowActions = append(p.AllowActions, stmt.Actions...)
+			switch principal {
+			case "*":
+				p.AllowAnyPrincipal = true
+			case "":
+			default:
+				p.AllowPrincipals = []string{principal}
+			}
+		}
+
+		if stmt.IsDeny() && stmt.HasVPCECondition() {
+			p.DenyVpceID = stmt.GetVPCEID()
+		}
+
+		if stmt.IsDeny() && !stmt.HasVPCECondition() {
+			p.DenyActions = append(p.DenyActions, stmt.Actions...)
+			switch principal {
+			case "*":
+				p.DenyAnyPrincipal = true
+			case "":
+			default:
+				p.DenyPrincipals = []string{principal}
+			}
+		}
+
+		out = append(out, p)
+	}
+
+	return out
 }
 
 // analyzeBucketPolicy extracts relevant information from a bucket policy.

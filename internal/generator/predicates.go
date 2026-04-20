@@ -21,20 +21,22 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "explicitDenyVpce",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 1a: VPCE guard — bucket policy denies requests without the required VPCE.",
+			Comment: "Layer 1a: VPCE guard — deny applies only if statement resource scope matches the action.",
 			Body: `some bp: BucketPolicy |
-    bp.bucket        = req.target and
-    bp.denyAllExcept != none      and
-    req.sourceVpce  != bp.denyAllExcept`,
+    bp.bucket = req.target and
+    bp.denyAllExcept != none and
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
+    req.sourceVpce != bp.denyAllExcept`,
 		},
 		{
 			Name:    "explicitDenyAction",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 1b: Explicit Deny statement in bucket policy matching action and (optionally) principal.",
+			Comment: "Layer 1b: Explicit Deny statement in bucket policy matching action, principal, and resource scope.",
 			Body: `some bp: BucketPolicy |
     bp.bucket = req.target and
     req.action in bp.denyActions and
-    (bp.denyPrincipal = none or bp.denyPrincipal = req.principal)`,
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
+    (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal)`,
 		},
 		{
 			Name:    "explicitDeny",
@@ -69,11 +71,12 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "resourcePolicyAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 4: Resource-based policy — bucket policy allows principal + action (+ ABAC tag match when required).",
+			Comment: "Layer 4: Resource-based policy — statement must match principal, action, resource scope, and ABAC condition.",
 			Body: `some bp: BucketPolicy |
-    bp.bucket         = req.target    and
-    bp.allowPrincipal = req.principal and
-    req.action in bp.allowActions     and
+    bp.bucket = req.target and
+    req.action in bp.allowActions and
+    statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
+    (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)`,
 		},
@@ -117,13 +120,38 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "accessAllowed",
 			Params:  []string{"req: Request"},
-			Comment: "Final: all 7 layers must pass — no explicit deny and at least one grant path (resource OR identity policy).",
+			Comment: "Final: no explicit deny, limiting layers pass, and at least one grant path allows.",
 			Body: `not explicitDeny[req] and
   rcpAllows[req] and
   scpAllows[req] and
-  (resourcePolicyAllows[req] or identityPolicyAllows[req]) and
+  grantPathAllows[req] and
   permBoundaryAllows[req] and
   sessionPolicyAllows[req]`,
+		},
+		{
+			Name:    "grantPathAllows",
+			Params:  []string{"req: Request"},
+			Comment: "At least one same-account grant path allows the request.",
+			Body:    `resourcePolicyAllows[req] or identityPolicyAllows[req]`,
+		},
+		{
+			Name:    "actionTargetsBucket",
+			Params:  []string{"a: Action"},
+			Comment: "True for bucket-level S3 actions.",
+			Body:    `a = S3_ListBucket`,
+		},
+		{
+			Name:    "actionTargetsObject",
+			Params:  []string{"a: Action"},
+			Comment: "True for object-level S3 actions.",
+			Body:    `a = S3_GetObject`,
+		},
+		{
+			Name:    "statementMatchesResource",
+			Params:  []string{"req: Request, bucketRes: Bool, objectRes: Bool"},
+			Comment: "A policy statement applies only when its resource scope matches the action's required S3 resource type.",
+			Body: `(actionTargetsBucket[req.action] and bucketRes = True) or
+  (actionTargetsObject[req.action] and objectRes = True)`,
 		},
 	}
 }

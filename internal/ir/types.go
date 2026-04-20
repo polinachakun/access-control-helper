@@ -24,15 +24,24 @@ type S3Bucket struct {
 
 // BucketPolicy represents an aws_s3_bucket_policy resource.
 type BucketPolicy struct {
-	TFName          string             // Terraform resource name
-	BucketRef       string             // Reference to the bucket (e.g., "aws_s3_bucket.data")
-	Policy          *IAMPolicyDocument // Parsed policy document
-	DenyVpceID      string             // VPCE ID from explicit deny condition
-	AllowPrincipals []string           // Principal ARNs/refs that are allowed
-	AllowActions    []string           // Actions that are allowed
-	DenyActions     []string           // Actions that are explicitly denied
-	DenyPrincipals  []string           // Principals that are explicitly denied
-	HasABAC         bool               // Has PrincipalTag condition
+	TFName     string
+	BucketRef  string
+	Policy     *IAMPolicyDocument
+	DenyVpceID string
+
+	AllowPrincipals     []string
+	AllowAnyPrincipal   bool
+	AllowActions        []string
+	AllowBucketResource bool
+	AllowObjectResource bool
+
+	DenyActions        []string
+	DenyPrincipals     []string
+	DenyAnyPrincipal   bool
+	DenyBucketResource bool
+	DenyObjectResource bool
+
+	HasABAC bool
 }
 
 // IAMRole represents an aws_iam_role resource.

@@ -24,12 +24,13 @@ type LayerInfo struct {
 
 // TripleResult holds the Alloy-derived access decision for one (principal, bucket, action) triple.
 type TripleResult struct {
-	Principal    string
-	Bucket       string
-	Action       string
-	Decision     string // "ALLOW" or "DENY"
-	DeniedAtDesc string // e.g. "Layer 1" or "Layer 4/5" or "" if allowed
-	Layers       [7]LayerInfo
+	Principal          string
+	Bucket             string
+	Action             string
+	Decision           string
+	DeniedAtDesc       string
+	AdditionalFindings []string
+	Layers             [7]LayerInfo
 }
 
 var layerNames = [7]string{
@@ -85,7 +86,7 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		}
 
 		if tr.Decision == "DENY" {
-			tr.DeniedAtDesc = deniedAtDescription(tr.Layers)
+			tr.DeniedAtDesc, tr.AdditionalFindings = deniedAtDescription(tr.Layers)
 		}
 
 		results = append(results, tr)
@@ -93,28 +94,33 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 	return results
 }
 
-func deniedAtDescription(layers [7]LayerInfo) string {
-	// Check blocking layers first.
-	for i := 0; i < 7; i++ {
-		if layers[i].Status == "DENY" {
-			return fmt.Sprintf("Layer %d", i+1)
+func deniedAtDescription(layers [7]LayerInfo) (string, []string) {
+	var additional []string
+
+	l4ng := layers[3].Status == "NOT GRANTED"
+	l5ng := layers[4].Status == "NOT GRANTED"
+
+	// blocking layers first
+	for _, idx := range []int{0, 1, 2, 5, 6} {
+		if layers[idx].Status == "DENY" {
+			if l4ng && l5ng {
+				additional = append(additional, "No grant from Layer 4/5")
+			}
+			return fmt.Sprintf("Layer %d", idx+1), additional
 		}
 	}
 
-	// Grant layers: need at least one of L4/L5 to grant.
-	l4ng := layers[3].Status == "NOT GRANTED"
-	l5ng := layers[4].Status == "NOT GRANTED"
 	if l4ng && l5ng {
-		return "Layer 4/5"
+		return "Layer 4/5", nil
 	}
 	if l5ng {
-		return "Layer 5"
+		return "Layer 5", nil
 	}
 	if l4ng {
-		return "Layer 4"
+		return "Layer 4", nil
 	}
 
-	return "unknown"
+	return "unknown", nil
 }
 
 type Reporter struct {
@@ -161,6 +167,9 @@ func (r *Reporter) reportTriple(res *TripleResult) {
 		fmt.Fprintln(r.w, "  Result: ALLOW")
 	} else {
 		fmt.Fprintf(r.w, "  Result: DENY at %s\n", res.DeniedAtDesc)
+		for _, finding := range res.AdditionalFindings {
+			fmt.Fprintf(r.w, "  Additional finding: %s\n", finding)
+		}
 	}
 	fmt.Fprintln(r.w)
 }

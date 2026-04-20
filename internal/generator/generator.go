@@ -270,9 +270,6 @@ func (g *Generator) buildConfigFacts() string {
 			}
 		}
 
-		allowActions := toAlloyActionSet(p.AllowActions)
-		denyActions := toAlloyActionSet(p.DenyActions)
-
 		denyPrincipal := "none"
 		for _, prin := range p.DenyPrincipals {
 			if ref := extractRoleFromPrincipal(prin, g.config); ref != "" {
@@ -281,14 +278,53 @@ func (g *Generator) buildConfigFacts() string {
 			}
 		}
 
-		sb.WriteString(fmt.Sprintf("  %s.bucket         = %s\n", sig, bucketSig))
-		sb.WriteString(fmt.Sprintf("  %s.denyAllExcept  = %s\n", sig, denyAllExcept))
-		sb.WriteString(fmt.Sprintf("  %s.allowPrincipal = %s\n", sig, allowPrincipal))
-		sb.WriteString(fmt.Sprintf("  %s.allowActions   = %s\n", sig, allowActions))
-		sb.WriteString(fmt.Sprintf("  %s.denyActions    = %s\n", sig, denyActions))
-		sb.WriteString(fmt.Sprintf("  %s.denyPrincipal  = %s\n", sig, denyPrincipal))
-		sb.WriteString(fmt.Sprintf("  %s.abacCondition  = %s\n", sig, BoolToAlloy(p.HasABAC)))
-		sb.WriteString(fmt.Sprintf("  %s.dependsOn      = %s\n\n", sig, bucketSig))
+		allowAnyPrincipal := "False"
+		if p.AllowAnyPrincipal {
+			allowAnyPrincipal = "True"
+		}
+
+		denyAnyPrincipal := "False"
+		if p.DenyAnyPrincipal {
+			denyAnyPrincipal = "True"
+		}
+
+		allowBucketResource := "False"
+		if p.AllowBucketResource {
+			allowBucketResource = "True"
+		}
+
+		allowObjectResource := "False"
+		if p.AllowObjectResource {
+			allowObjectResource = "True"
+		}
+
+		denyBucketResource := "False"
+		if p.DenyBucketResource {
+			denyBucketResource = "True"
+		}
+
+		denyObjectResource := "False"
+		if p.DenyObjectResource {
+			denyObjectResource = "True"
+		}
+
+		allowActions := toAlloyActionSet(p.AllowActions)
+		denyActions := toAlloyActionSet(p.DenyActions)
+
+		sb.WriteString(fmt.Sprintf("  %s.bucket              = %s\n", sig, bucketSig))
+		sb.WriteString(fmt.Sprintf("  %s.denyAllExcept       = %s\n", sig, denyAllExcept))
+		sb.WriteString(fmt.Sprintf("  %s.allowPrincipal      = %s\n", sig, allowPrincipal))
+		sb.WriteString(fmt.Sprintf("  %s.allowAnyPrincipal   = %s\n", sig, allowAnyPrincipal))
+		sb.WriteString(fmt.Sprintf("  %s.allowActions        = %s\n", sig, allowActions))
+		sb.WriteString(fmt.Sprintf("  %s.allowBucketResource = %s\n", sig, allowBucketResource))
+		sb.WriteString(fmt.Sprintf("  %s.allowObjectResource = %s\n", sig, allowObjectResource))
+		sb.WriteString(fmt.Sprintf("  %s.denyActions         = %s\n", sig, denyActions))
+		sb.WriteString(fmt.Sprintf("  %s.denyPrincipal       = %s\n", sig, denyPrincipal))
+		sb.WriteString(fmt.Sprintf("  %s.denyAnyPrincipal    = %s\n", sig, denyAnyPrincipal))
+		sb.WriteString(fmt.Sprintf("  %s.denyBucketResource  = %s\n", sig, denyBucketResource))
+		sb.WriteString(fmt.Sprintf("  %s.denyObjectResource  = %s\n", sig, denyObjectResource))
+		sb.WriteString(fmt.Sprintf("  %s.abacCondition       = %s\n", sig, BoolToAlloy(p.HasABAC)))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn           = %s\n\n", sig, bucketSig))
 	}
 
 	// ── OrgRCPs ───────────────────────────────────────────────────────────

@@ -293,6 +293,48 @@ func (s *Statement) GetPrincipalARNs() []string {
 	return arns
 }
 
+func (s *Statement) HasWildcardPrincipal() bool {
+	for _, p := range s.Principals {
+		if p.Type == "*" && p.Value == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Statement) HasBucketLevelResource() bool {
+	for _, r := range s.Resources {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		if r == "*" {
+			return true
+		}
+		// bucket ARN, not object ARN
+		if !strings.Contains(r, "/*") {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Statement) HasObjectLevelResource() bool {
+	for _, r := range s.Resources {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		if r == "*" {
+			return true
+		}
+		if strings.Contains(r, "/*") {
+			return true
+		}
+	}
+	return false
+}
+
 // Helper methods for IAMPolicyDocument
 
 // GetDenyStatements returns all Deny statements.

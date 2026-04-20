@@ -39,13 +39,22 @@ sig S3Bucket extends Resource {
 
 // Bucket Policy — resource-based policy evaluated at Layer 4
 sig BucketPolicy extends Resource {
-  bucket:         one S3Bucket,
-  denyAllExcept:  lone VpceId,
-  allowPrincipal: lone IAMRole,
-  allowActions:   set Action,
-  denyActions:    set Action,
-  denyPrincipal:  lone IAMRole,
-  abacCondition:  one Bool
+  bucket:              one S3Bucket,
+  denyAllExcept:       lone VpceId,
+
+  allowPrincipal:      lone IAMRole,
+  allowAnyPrincipal:   one Bool,
+  allowActions:        set Action,
+  allowBucketResource: one Bool,
+  allowObjectResource: one Bool,
+
+  denyActions:         set Action,
+  denyPrincipal:       lone IAMRole,
+  denyAnyPrincipal:    one Bool,
+  denyBucketResource:  one Bool,
+  denyObjectResource:  one Bool,
+
+  abacCondition:       one Bool
 }
 
 // AWS Organizations Resource Control Policy (Layer 2)
