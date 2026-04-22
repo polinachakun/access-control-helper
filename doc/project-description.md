@@ -58,9 +58,7 @@ The current implementation focuses on **AWS S3 access control scenarios derived 
 The tool is designed around **role → bucket → action** queries and reports results per `(principal, bucket, action)` triple.
 
 ---
-## AWS S3 Policy Evaluation Order (CHECK IF IT IS CORRECT)
-
-AWS evaluates policies in a strict sequential order. The first explicit `Deny` wins. An `Allow` must survive all layers.
+## AWS S3 Policy Evaluation Order (SIMPLE VERSION)
 
 ```
 1. Deny Evaluation (Explicit Deny Check)              → DENY immediately if any policy has explicit Deny
@@ -72,15 +70,6 @@ AWS evaluates policies in a strict sequential order. The first explicit `Deny` w
 7. Session Policies                                   → must have Allow, else DENY → ALLOW
 ```
 
-The overall decision follows AWS semantics:
-
-- an explicit Deny takes precedence,
-- access must survive each applicable layer,
-- and a request is allowed only if the required permissions are available and not blocked by later constraints.
-
-The tool encodes each layer as an Alloy predicate, then asserts reachability through all layers for a given `(principal, resource, action)` triple.
-
----
 
 ---
 
