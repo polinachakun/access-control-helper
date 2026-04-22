@@ -27,15 +27,22 @@ sig S3Bucket extends Resource {
 
 // Bucket Policy — resource-based policy evaluated at Layer 4
 sig BucketPolicy extends Resource {
-  bucket:            one S3Bucket,
-  denyAllExcept:     lone VpceId,
-  allowPrincipal:    lone IAMRole,
-  allowAnyPrincipal: one Bool,
-  allowActions:      set Action,
-  denyActions:       set Action,
-  denyPrincipal:     lone IAMRole,
-  denyAnyPrincipal:  one Bool,
-  abacCondition:     one Bool
+  bucket:              one S3Bucket,
+  denyAllExcept:       lone VpceId,
+
+  allowPrincipal:      lone IAMRole,
+  allowAnyPrincipal:   one Bool,
+  allowActions:        set Action,
+  allowBucketResource: one Bool,
+  allowObjectResource: one Bool,
+
+  denyActions:         set Action,
+  denyPrincipal:       lone IAMRole,
+  denyAnyPrincipal:    one Bool,
+  denyBucketResource:  one Bool,
+  denyObjectResource:  one Bool,
+
+  abacCondition:       one Bool
 }
 
 // AWS Organizations Resource Control Policy (Layer 2)
@@ -82,27 +89,35 @@ fact ConfigFacts {
   bucket_my_bucket.blockPublicAccess = False
   bucket_my_bucket.dependsOn         = none
 
-  policy_deny_delete_stmt_1_pr_1.bucket            = bucket_my_bucket
-  policy_deny_delete_stmt_1_pr_1.denyAllExcept     = none
-  policy_deny_delete_stmt_1_pr_1.allowPrincipal    = none
-  policy_deny_delete_stmt_1_pr_1.allowAnyPrincipal = False
-  policy_deny_delete_stmt_1_pr_1.allowActions      = none
-  policy_deny_delete_stmt_1_pr_1.denyActions       = S3_DeleteObject
-  policy_deny_delete_stmt_1_pr_1.denyPrincipal     = none
-  policy_deny_delete_stmt_1_pr_1.denyAnyPrincipal  = True
-  policy_deny_delete_stmt_1_pr_1.abacCondition     = False
-  policy_deny_delete_stmt_1_pr_1.dependsOn         = bucket_my_bucket
+  policy_deny_delete_stmt_1_pr_1.bucket              = bucket_my_bucket
+  policy_deny_delete_stmt_1_pr_1.denyAllExcept       = none
+  policy_deny_delete_stmt_1_pr_1.allowPrincipal      = none
+  policy_deny_delete_stmt_1_pr_1.allowAnyPrincipal   = False
+  policy_deny_delete_stmt_1_pr_1.allowActions        = none
+  policy_deny_delete_stmt_1_pr_1.allowBucketResource = False
+  policy_deny_delete_stmt_1_pr_1.allowObjectResource = True
+  policy_deny_delete_stmt_1_pr_1.denyActions         = S3_DeleteObject
+  policy_deny_delete_stmt_1_pr_1.denyPrincipal       = none
+  policy_deny_delete_stmt_1_pr_1.denyAnyPrincipal    = True
+  policy_deny_delete_stmt_1_pr_1.denyBucketResource  = False
+  policy_deny_delete_stmt_1_pr_1.denyObjectResource  = True
+  policy_deny_delete_stmt_1_pr_1.abacCondition       = False
+  policy_deny_delete_stmt_1_pr_1.dependsOn           = bucket_my_bucket
 
-  policy_deny_delete_stmt_2_pr_1.bucket            = bucket_my_bucket
-  policy_deny_delete_stmt_2_pr_1.denyAllExcept     = none
-  policy_deny_delete_stmt_2_pr_1.allowPrincipal    = role_app_role
-  policy_deny_delete_stmt_2_pr_1.allowAnyPrincipal = False
-  policy_deny_delete_stmt_2_pr_1.allowActions      = S3_GetObject + S3_ListBucket
-  policy_deny_delete_stmt_2_pr_1.denyActions       = none
-  policy_deny_delete_stmt_2_pr_1.denyPrincipal     = none
-  policy_deny_delete_stmt_2_pr_1.denyAnyPrincipal  = False
-  policy_deny_delete_stmt_2_pr_1.abacCondition     = False
-  policy_deny_delete_stmt_2_pr_1.dependsOn         = bucket_my_bucket
+  policy_deny_delete_stmt_2_pr_1.bucket              = bucket_my_bucket
+  policy_deny_delete_stmt_2_pr_1.denyAllExcept       = none
+  policy_deny_delete_stmt_2_pr_1.allowPrincipal      = role_app_role
+  policy_deny_delete_stmt_2_pr_1.allowAnyPrincipal   = False
+  policy_deny_delete_stmt_2_pr_1.allowActions        = S3_GetObject + S3_ListBucket
+  policy_deny_delete_stmt_2_pr_1.allowBucketResource = True
+  policy_deny_delete_stmt_2_pr_1.allowObjectResource = True
+  policy_deny_delete_stmt_2_pr_1.denyActions         = none
+  policy_deny_delete_stmt_2_pr_1.denyPrincipal       = none
+  policy_deny_delete_stmt_2_pr_1.denyAnyPrincipal    = False
+  policy_deny_delete_stmt_2_pr_1.denyBucketResource  = True
+  policy_deny_delete_stmt_2_pr_1.denyObjectResource  = True
+  policy_deny_delete_stmt_2_pr_1.abacCondition       = False
+  policy_deny_delete_stmt_2_pr_1.dependsOn           = bucket_my_bucket
 
   role_app_role.envTag               = TAG_PROD
   role_app_role.hasRolePolicy        = True
@@ -131,19 +146,21 @@ sig Request {
 //  EVALUATION PREDICATES — AWS 7-layer policy evaluation order
 // ============================================================
 
-// Layer 1a: VPCE guard — bucket policy denies requests without the required VPCE.
+// Layer 1a: VPCE guard — deny applies only if statement resource scope matches the action.
 pred explicitDenyVpce[req: Request] {
   some bp: BucketPolicy |
-    bp.bucket        = req.target and
-    bp.denyAllExcept != none      and
-    req.sourceVpce  != bp.denyAllExcept
+    bp.bucket = req.target and
+    bp.denyAllExcept != none and
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
+    req.sourceVpce != bp.denyAllExcept
 }
 
-// Layer 1b: Explicit Deny statement in bucket policy matching action and principal.
+// Layer 1b: Explicit Deny statement in bucket policy matching action, principal, and resource scope.
 pred explicitDenyAction[req: Request] {
   some bp: BucketPolicy |
     bp.bucket = req.target and
     req.action in bp.denyActions and
+    statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
     (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal)
 }
 
@@ -168,11 +185,12 @@ pred scpAllows[req: Request] {
     req.action not in scp.scpDenyActions)
 }
 
-// Layer 4: Resource-based policy — bucket policy allows principal + action (+ ABAC tag match when required).
+// Layer 4: Resource-based policy — statement must match principal, action, resource scope, and ABAC condition.
 pred resourcePolicyAllows[req: Request] {
   some bp: BucketPolicy |
     bp.bucket = req.target and
     req.action in bp.allowActions and
+    statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
     (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)
@@ -201,7 +219,7 @@ pred sessionPolicyAllows[req: Request] {
   req.action in req.principal.sessionPolicyActions
 }
 
-// Final: no explicit deny, all limiting layers pass, and at least one grant path allows.
+// Final: no explicit deny, limiting layers pass, and at least one grant path allows.
 pred accessAllowed[req: Request] {
   not explicitDeny[req] and
   rcpAllows[req] and
@@ -211,9 +229,25 @@ pred accessAllowed[req: Request] {
   sessionPolicyAllows[req]
 }
 
-// Grant path: at least one of resource policy or identity policy allows the request.
+// At least one same-account grant path allows the request.
 pred grantPathAllows[req: Request] {
   resourcePolicyAllows[req] or identityPolicyAllows[req]
+}
+
+// True for bucket-level S3 actions.
+pred actionTargetsBucket[a: Action] {
+  a = S3_ListBucket
+}
+
+// True for object-level S3 actions.
+pred actionTargetsObject[a: Action] {
+  a = S3_GetObject
+}
+
+// A policy statement applies only when its resource scope matches the action's required S3 resource type.
+pred statementMatchesResource[req: Request, bucketRes: Bool, objectRes: Bool] {
+  (actionTargetsBucket[req.action] and bucketRes = True) or
+  (actionTargetsObject[req.action] and objectRes = True)
 }
 
 

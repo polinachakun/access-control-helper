@@ -95,12 +95,12 @@ fact ConfigFacts {
   policy_data_stmt_1_pr_1.allowPrincipal      = none
   policy_data_stmt_1_pr_1.allowAnyPrincipal   = False
   policy_data_stmt_1_pr_1.allowActions        = none
-  policy_data_stmt_1_pr_1.allowBucketResource = False
+  policy_data_stmt_1_pr_1.allowBucketResource = True
   policy_data_stmt_1_pr_1.allowObjectResource = True
   policy_data_stmt_1_pr_1.denyActions         = none
   policy_data_stmt_1_pr_1.denyPrincipal       = none
   policy_data_stmt_1_pr_1.denyAnyPrincipal    = False
-  policy_data_stmt_1_pr_1.denyBucketResource  = False
+  policy_data_stmt_1_pr_1.denyBucketResource  = True
   policy_data_stmt_1_pr_1.denyObjectResource  = True
   policy_data_stmt_1_pr_1.abacCondition       = False
   policy_data_stmt_1_pr_1.dependsOn           = bucket_data
@@ -121,8 +121,8 @@ fact ConfigFacts {
   policy_data_stmt_2_pr_1.dependsOn           = bucket_data
 
   role_developer.envTag               = TAG_DEV
-  role_developer.hasRolePolicy        = True
-  role_developer.roleAllowActions     = S3_GetObject + S3_ListBucket
+  role_developer.hasRolePolicy        = False
+  role_developer.roleAllowActions     = none
   role_developer.hasBoundary          = False
   role_developer.boundaryActions      = none
   role_developer.hasSessionPolicy     = False

@@ -2,11 +2,14 @@
 
 ## Overview
 
-`access-control-helper` is a static analysis tool for AWS S3 access control validation. It parses Terraform infrastructure-as-code files, transforms the resource definitions into a formal Alloy specification, and uses the Alloy model checker to verify whether specific principals (roles, users) can or cannot reach S3 buckets — and at which policy evaluation step access is granted or denied.
+`access-control-helper` is a static analysis tool for validating AWS S3 access control from Terraform source code. It parses Terraform `.tf` files, resolves references and interpolations, builds an internal authorization model, translates that model into Alloy, and uses the Alloy Analyzer to check whether a given principal can access a bucket with a given S3 action.
 
-The tool answers: **"Can principal X access S3 bucket Y with action Z, and why?"** and **"If not, at which AWS policy evaluation layer is access denied?"**
+The tool answers two practical questions:
 
-The tool models the combined effect of interacting AWS resources and policy layers and checks access properties directly on a formal representation of the target infrastructure.
+- **Can principal X perform action Z on bucket Y?**
+- **If not, what policy layer blocks the request, or which expected grant path does not apply?**
+
+The purpose of the tool is not only to produce an `ALLOW` or `DENY` verdict, but also to expose misconfigurations that contribute to the result, such as explicit deny statements, missing identity-based grants, permission-boundary restrictions, or conditional bucket-policy grants that do not apply.
 
 ---
 
@@ -14,11 +17,15 @@ The tool models the combined effect of interacting AWS resources and policy laye
 
 AWS access control is layered. A single `s3:GetObject` call passes through up to seven policy evaluation layers before AWS grants or denies the request. When access is misconfigured, debugging the exact denial reason across IAM roles, bucket policies, SCPs, and permission boundaries is time-consuming and error-prone.
 
-This tool automates that reasoning  without making any live AWS API calls by:
-- operating directly on Terraform source code,
-- building a local model of the target AWS access-control state,
-- translating that model into Alloy,
-checking concrete access properties using formal model checking.
+This project addresses that problem through static pre-deployment analysis:
+
+- it operates directly on Terraform source code,
+- it builds a local semantic model of the access-control configuration,
+- it translates that model into Alloy,
+- and Alloy checks concrete access properties through formal model checking rather than through ad hoc rule matching.
+
+No live AWS API calls are required.
+
 
 ---
 ## Research Goal
@@ -30,11 +37,28 @@ The goal of the project is to bridge the gap between:
 
 The tool combines:
 - pre-deployment operation,
-- IaC source code as input,
+- Terraform source as input,,
 - local model construction from interacting Terraform resources, 
-- semantic access evaluation through formal reasoning.
+- semantic access evaluation through formal reasoning using Alloy.
+---
 
-## AWS S3 Policy Evaluation Order
+## Current Scope
+
+The current implementation focuses on **AWS S3 access control scenarios derived from Terraform configurations**. It currently models:
+
+- S3 buckets,
+- S3 bucket policies,
+- IAM roles,
+- inline and attached IAM role policies,
+- permissions boundaries,
+- AWS Organizations SCPs and RCPs,
+- selected ABAC-style conditions such as environment-tag matching,
+- and per-action evaluation for supported S3 actions.
+
+The tool is designed around **role → bucket → action** queries and reports results per `(principal, bucket, action)` triple.
+
+---
+## AWS S3 Policy Evaluation Order (CHECK IF IT IS CORRECT)
 
 AWS evaluates policies in a strict sequential order. The first explicit `Deny` wins. An `Allow` must survive all layers.
 
@@ -58,6 +82,56 @@ The tool encodes each layer as an Alloy predicate, then asserts reachability thr
 
 ---
 
+---
+
+## AWS Policy Evaluation Semantics Relevant to This Tool
+
+AWS policy evaluation is layered, but the semantics are more subtle than a simple linear “must allow at every step” pipeline.
+
+The key rules relevant to this project are:
+
+1. **Any applicable explicit `Deny` overrides all allows.** :contentReference[oaicite:4]{index=4}
+
+2. **Within the same account, identity-based and resource-based policies are combined by union.**  
+   If an action is allowed by an identity-based policy, a resource-based policy, or both, then the action can be allowed unless another policy type blocks it. :contentReference[oaicite:5]{index=5}
+
+3. **Permissions boundaries and session policies restrict effective permissions.**  
+   For IAM roles, permissions granted through policy evaluation are still limited by applicable permissions boundaries and session policies. :contentReference[oaicite:6]{index=6}
+
+4. **A failed `Condition` in an `Allow` statement is not an explicit deny.**  
+   It means the statement does not apply, so the expected allow is not granted. :contentReference[oaicite:7]{index=7}
+
+5. **S3 actions must match the correct resource type.**  
+   For example, `s3:ListBucket` is bucket-level and requires the bucket ARN, while `s3:GetObject` is object-level and requires the object ARN (`bucket/*`). :contentReference[oaicite:8]{index=8}
+
+This project therefore treats AWS evaluation as a combination of:
+
+- **blocking checks** such as explicit deny, SCP/RCP restrictions, permissions boundaries, and session policies, and
+- **grant paths** such as resource-based and identity-based permissions.
+
+---
+
+## Policy Evaluation View Used by the Tool
+
+For each `(principal, bucket, action)` triple, the tool evaluates the following logical structure:
+
+1. **Deny evaluation** — detect applicable explicit deny conditions.
+2. **Organizations constraints** — evaluate RCP and SCP effects if present.
+3. **Grant paths**
+    - resource-based bucket-policy grant,
+    - identity-based IAM grant.
+4. **Bounding constraints**
+    - permissions boundary,
+    - session policy.
+
+This means that the tool distinguishes between:
+
+- a request that is denied because a blocking layer explicitly rejects it, and
+- a request that is denied because an expected grant path does not apply.
+
+That distinction is especially important for ABAC-style bucket policies, where a tag mismatch may prevent an `Allow` statement from applying without creating an explicit deny.
+
+
 ## Core Concepts
 
 | Concept | Description |
@@ -67,9 +141,9 @@ The tool encodes each layer as an Alloy predicate, then asserts reachability thr
 | **Action** | An S3 API action (`s3:GetObject`, `s3:PutObject`, etc.) |
 | **Policy** | A collection of `Statement`s attached to a principal or resource |
 | **Statement** | A single Allow/Deny rule with Actions, Resources, Conditions |
-| **Permission Boundary** | A policy that caps the maximum permissions of an IAM entity |
-| **SCP / RCP** | AWS Organizations policies that further constrain access |
-| **Evaluation Layer** | One of the 7 AWS policy evaluation steps |
+| **Grant Path** | A policy path that can grant access, such as a resource-based or identity-based policy |
+| **Blocking Layer** | A policy layer that can independently block access, such as explicit deny or a permissions boundary |
+| **ABAC Condition** | A condition based on attributes or tags, such as `aws:PrincipalTag/environment` |
 
 ---
 
@@ -145,75 +219,6 @@ This makes the project primarily a formal model extraction and checking approach
          ▼
   Human-readable report
 ```
-
----
-
-## Input Format
-
-The tool accepts standard Terraform resource definitions:
-
-```hcl
-resource "aws_iam_role" "example" {
-  name = "example-role"
-  assume_role_policy = jsonencode({ ... })
-}
-
-resource "aws_iam_policy" "s3_read" {
-  policy = jsonencode({
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject"]
-      Resource = ["arn:aws:s3:::my-bucket/*"]
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "attach" {
-  role       = aws_iam_role.example.name
-  policy_arn = aws_iam_policy.s3_read.arn
-}
-
-resource "aws_s3_bucket" "my_bucket" {
-  bucket = "my-bucket"
-}
-
-resource "aws_s3_bucket_policy" "my_bucket_policy" {
-  bucket = aws_s3_bucket.my_bucket.id
-  policy = jsonencode({ ... })
-}
-```
-
----
-
-## Output Format
-
-```
-Access Analysis Report
-======================
-
-Query: Can role "example-role" perform s3:GetObject on bucket "my-bucket"?
-
-Layer 1 - Deny Evaluation:     PASS (no explicit deny found)
-Layer 2 - RCP:                 PASS (no RCP restrictions)
-Layer 3 - SCP:                 PASS (no SCP restrictions)
-Layer 4 - Resource Policy:     PASS (bucket policy allows)
-Layer 5 - Identity Policy:     PASS (IAM policy allows s3:GetObject)
-Layer 6 - Permission Boundary: PASS (no boundary set)
-Layer 7 - Session Policy:      PASS (no session policy)
-
-Result: ALLOW
-```
-
-Or on denial:
-
-```
-Layer 1 - Deny Evaluation:  DENY
-  → Found explicit Deny in bucket policy for principal "example-role"
-  → Statement: sid="BlockExternalAccess", Effect=Deny, Action=s3:*
-
-Result: DENY at Layer 1
-```
-
 ---
 
 ## Project Structure
@@ -252,32 +257,31 @@ access-control-helper/
 
 ## Key Design Decisions
 
-1. **Alloy as the sole evaluation engine** — Alloy's relational model naturally maps to the multi-layered evaluation graph. All access decisions are produced by the Alloy model checker through formal verification, eliminating the need for a parallel Go-based evaluator.
+1. **Static, pre-deployment reasoning**  —  The tool works directly on Terraform source and does not depend on live AWS credentials or deployed infrastructure.
 
-2. **Per-layer Alloy assertions** — For each (principal, bucket, action) triple, the tool generates 8 Alloy assertions: one combined (`accessAllowed`) and one per evaluation layer (L1–L7). This allows the reporter to reconstruct which layer denied access purely from Alloy SAT/UNSAT results.
+2. **Alloy as the evaluation engine** — Alloy's relational model naturally maps to the multi-layered evaluation graph. All access decisions are produced by the Alloy model checker through formal verification, eliminating the need for a parallel Go-based evaluator.
 
-3. **Static analysis only** — No AWS API calls. The tool works entirely from Terraform source, making it safe to run in CI without credentials.
+2. **Per-triple analysis** — For each (principal, bucket, action) triple, the tool generates 8 Alloy assertions: one combined (`accessAllowed`) and one per evaluation layer (L1–L7). This allows the reporter to reconstruct which layer denied access purely from Alloy SAT/UNSAT results.
+  
+3. **Per-triple analysis** —  The tool generates checks per (principal, bucket, action) triple, which makes results concrete and testable.
+  
+4. **Per-layer diagnostics** —  The report distinguishes between blocking failures and missing grant paths rather than returning only a single ALLOW/DENY bit.
 
-4. **Layer-by-layer reporting** — Rather than just ALLOW/DENY, the tool reports which layer made the decision, directly guiding remediation.
-
-5. **Terraform as source of truth** — Most AWS infrastructure is managed via Terraform. Parsing `.tf` directly means no intermediate state file dependency, though `terraform show -json` output is also a supported input.
-
----
-
-## Requirements: Per-Action Access Evaluation
-
-The tool must, for every (principal, bucket, action) triple:
-- Evaluate access according to all AWS S3 policy evaluation steps (explicit Deny, RCP, SCP, resource-based, identity-based, permission boundaries, session policies).
-- Correctly model explicit Deny and Allow statements from Terraform policies, including Deny for specific actions (e.g., s3:DeleteObject) and Allow for others (e.g., s3:GetObject).
-- Output, for each query, the final access decision (ALLOW or DENY) and the evaluation layer responsible (e.g., DENY at Layer 1 due to explicit Deny in bucket policy).
-- Generate Alloy assertions for every (principal, bucket, action) triple, so that Alloy checks confirm the tool's reasoning for each action.
-
-### Example Requirement
-
-Given a Terraform file with a bucket policy that Denies s3:DeleteObject and Allows s3:GetObject for a principal:
-- The generated Alloy model must DENY DeleteObject at Layer 1 (explicit Deny) and ALLOW GetObject if it passes all layers.
-- The Alloy output must show which layer made the decision and why, matching the AWS evaluation logic.
+5. **PResource-aware S3 evaluation** — The tool models the correct resource types for each S3 action, such as bucket-level vs object-level actions, and correctly evaluates bucket policies that may apply only to certain actions or resources.
 
 ---
 
+## What Is Already Implemented
+
+The current implementation already supports the following ideas central to the project:
+
+1. Terraform parsing and reference resolution, 
+2. IR construction for interacting AWS resources, 
+3. policy parsing into normalized statements, 
+4. Alloy generation with configuration facts and access assertions,
+5. per-action checks, 
+6. explicit deny handling, 
+7. bucket-level vs object-level resource matching, 
+8. ABAC-style tag-sensitive resource-policy evaluation, 
+9. human-readable reporting of per-layer results.
 
