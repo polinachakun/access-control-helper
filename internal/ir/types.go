@@ -32,10 +32,14 @@ type BucketPolicy struct {
 	AllowPrincipals     []string
 	AllowAnyPrincipal   bool
 	AllowActions        []string
+	AllowNotActions     []string
+	HasAllowNotAction   bool
 	AllowBucketResource bool
 	AllowObjectResource bool
 
 	DenyActions        []string
+	DenyNotActions     []string
+	HasDenyNotAction   bool
 	DenyPrincipals     []string
 	DenyAnyPrincipal   bool
 	DenyBucketResource bool
@@ -51,12 +55,16 @@ type IAMRole struct {
 	EnvTag            string // Environment tag value
 	Tags              map[string]string
 	HasRolePolicy     bool     // Has attached role policy
-	RolePolicyActions []string // Actions from attached policies
+	RolePolicyActions []string // Actions explicitly allowed by role policies
+	RoleDenyActions   []string // Actions explicitly denied by role policies (Bug 2 fix)
+	RoleNotActions    []string // Actions excluded from Allow via NotAction (Bug 4 fix)
+	HasRoleNotAction  bool     // Role policy uses NotAction in an Allow statement (Bug 4 fix)
 	HasBoundary       bool     // Has permissions boundary
 	BoundaryRef       string   // Reference to boundary policy
 	BoundaryActions   []string // Actions allowed by boundary
 	HasSessionPolicy  bool     // AssumeRole with session policy
 	AssumeRolePolicy  *IAMPolicyDocument
+	CrossAccount      bool // Principal is from a different AWS account (Bug 3 fix)
 }
 
 // RolePolicy represents an aws_iam_role_policy resource.

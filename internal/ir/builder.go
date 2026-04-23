@@ -149,7 +149,12 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.IsAllow() {
-			p.AllowActions = append(p.AllowActions, stmt.Actions...)
+			if len(stmt.NotActions) > 0 {
+				p.HasAllowNotAction = true
+				p.AllowNotActions = append(p.AllowNotActions, stmt.NotActions...)
+			} else {
+				p.AllowActions = append(p.AllowActions, stmt.Actions...)
+			}
 			switch principal {
 			case "*":
 				p.AllowAnyPrincipal = true
@@ -164,7 +169,13 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.IsDeny() && !stmt.HasVPCECondition() {
-			p.DenyActions = append(p.DenyActions, stmt.Actions...)
+			// Bug 4 fix: a statement uses either Action or NotAction, never both.
+			if len(stmt.NotActions) > 0 {
+				p.HasDenyNotAction = true
+				p.DenyNotActions = append(p.DenyNotActions, stmt.NotActions...)
+			} else {
+				p.DenyActions = append(p.DenyActions, stmt.Actions...)
+			}
 			switch principal {
 			case "*":
 				p.DenyAnyPrincipal = true
@@ -477,6 +488,15 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 				policyName := strings.TrimPrefix(policyRef, "aws_iam_policy.")
 				if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
 					role.RolePolicyActions = append(role.RolePolicyActions, p.Policy.GetAllActions()...)
+					// Bug 2 fix: collect explicit deny actions from attached policies
+					role.RoleDenyActions = append(role.RoleDenyActions, p.Policy.GetDeniedActions()...)
+					// Bug 4 fix: collect NotAction exclusions from Allow statements
+					for _, stmt := range p.Policy.Statements {
+						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+							role.HasRoleNotAction = true
+							role.RoleNotActions = append(role.RoleNotActions, stmt.NotActions...)
+						}
+					}
 				}
 			}
 			break
@@ -497,6 +517,15 @@ func (b *Builder) linkResources() {
 				role.HasRolePolicy = true
 				if rp.Policy != nil {
 					role.RolePolicyActions = append(role.RolePolicyActions, rp.Policy.GetAllActions()...)
+					// Bug 2 fix: collect explicit deny actions from inline role policies
+					role.RoleDenyActions = append(role.RoleDenyActions, rp.Policy.GetDeniedActions()...)
+					// Bug 4 fix: collect NotAction exclusions from Allow statements
+					for _, stmt := range rp.Policy.Statements {
+						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+							role.HasRoleNotAction = true
+							role.RoleNotActions = append(role.RoleNotActions, stmt.NotActions...)
+						}
+					}
 				}
 				break
 			}

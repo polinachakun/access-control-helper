@@ -83,6 +83,12 @@ func (g *Generator) collectValues() {
 		for _, a := range ExpandAnalyzableActions(r.RolePolicyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range ExpandAnalyzableActions(r.RoleDenyActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+		for _, a := range ExpandAnalyzableActions(r.RoleNotActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 		for _, a := range ExpandAnalyzableActions(r.BoundaryActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
@@ -96,7 +102,13 @@ func (g *Generator) collectValues() {
 		for _, a := range ExpandAnalyzableActions(p.AllowActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range ExpandAnalyzableActions(p.AllowNotActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 		for _, a := range ExpandAnalyzableActions(p.DenyActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+		for _, a := range ExpandAnalyzableActions(p.DenyNotActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 	}
@@ -309,16 +321,22 @@ func (g *Generator) buildConfigFacts() string {
 		}
 
 		allowActions := toAlloyActionSet(p.AllowActions)
+		allowNotActions := toAlloyActionSet(p.AllowNotActions)
 		denyActions := toAlloyActionSet(p.DenyActions)
+		denyNotActions := toAlloyActionSet(p.DenyNotActions)
 
 		sb.WriteString(fmt.Sprintf("  %s.bucket              = %s\n", sig, bucketSig))
 		sb.WriteString(fmt.Sprintf("  %s.denyAllExcept       = %s\n", sig, denyAllExcept))
 		sb.WriteString(fmt.Sprintf("  %s.allowPrincipal      = %s\n", sig, allowPrincipal))
 		sb.WriteString(fmt.Sprintf("  %s.allowAnyPrincipal   = %s\n", sig, allowAnyPrincipal))
 		sb.WriteString(fmt.Sprintf("  %s.allowActions        = %s\n", sig, allowActions))
+		sb.WriteString(fmt.Sprintf("  %s.allowNotActions     = %s\n", sig, allowNotActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasAllowNotAction   = %s\n", sig, BoolToAlloy(p.HasAllowNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.allowBucketResource = %s\n", sig, allowBucketResource))
 		sb.WriteString(fmt.Sprintf("  %s.allowObjectResource = %s\n", sig, allowObjectResource))
 		sb.WriteString(fmt.Sprintf("  %s.denyActions         = %s\n", sig, denyActions))
+		sb.WriteString(fmt.Sprintf("  %s.denyNotActions      = %s\n", sig, denyNotActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasDenyNotAction    = %s\n", sig, BoolToAlloy(p.HasDenyNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.denyPrincipal       = %s\n", sig, denyPrincipal))
 		sb.WriteString(fmt.Sprintf("  %s.denyAnyPrincipal    = %s\n", sig, denyAnyPrincipal))
 		sb.WriteString(fmt.Sprintf("  %s.denyBucketResource  = %s\n", sig, denyBucketResource))
@@ -352,12 +370,18 @@ func (g *Generator) buildConfigFacts() string {
 		sig := "role_" + AlloyID(r.TFName)
 		envTag := tagOrDefault(r.EnvTag, "TAG_DEV")
 		roleActions := toAlloyActionSet(r.RolePolicyActions)
+		roleDenyActions := toAlloyActionSet(r.RoleDenyActions)
+		roleNotActions := toAlloyActionSet(r.RoleNotActions)
 		boundaryActions := toAlloyActionSet(r.BoundaryActions)
 		sessionActions := toAlloyActionSet(nil) // session policy actions: Phase 3
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
+		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(r.CrossAccount)))
 		sb.WriteString(fmt.Sprintf("  %s.hasRolePolicy        = %s\n", sig, BoolToAlloy(r.HasRolePolicy)))
 		sb.WriteString(fmt.Sprintf("  %s.roleAllowActions     = %s\n", sig, roleActions))
+		sb.WriteString(fmt.Sprintf("  %s.roleDenyActions      = %s\n", sig, roleDenyActions))
+		sb.WriteString(fmt.Sprintf("  %s.roleNotActions       = %s\n", sig, roleNotActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasRoleNotAction     = %s\n", sig, BoolToAlloy(r.HasRoleNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(r.HasBoundary)))
 		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(r.HasSessionPolicy)))

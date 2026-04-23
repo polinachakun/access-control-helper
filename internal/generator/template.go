@@ -45,10 +45,14 @@ sig BucketPolicy extends Resource {
   allowPrincipal:      lone IAMRole,
   allowAnyPrincipal:   one Bool,
   allowActions:        set Action,
+  allowNotActions:     set Action,
+  hasAllowNotAction:   one Bool,
   allowBucketResource: one Bool,
   allowObjectResource: one Bool,
 
   denyActions:         set Action,
+  denyNotActions:      set Action,
+  hasDenyNotAction:    one Bool,
   denyPrincipal:       lone IAMRole,
   denyAnyPrincipal:    one Bool,
   denyBucketResource:  one Bool,
@@ -72,8 +76,12 @@ abstract sig OrgSCP extends Resource {
 // IAM Role principal — identity policy (Layer 5), boundary (Layer 6), session (Layer 7)
 sig IAMRole extends Resource {
   envTag:               one TagValue,
+  crossAccount:         one Bool,
   hasRolePolicy:        one Bool,
   roleAllowActions:     set Action,
+  roleDenyActions:      set Action,
+  roleNotActions:       set Action,
+  hasRoleNotAction:     one Bool,
   hasBoundary:          one Bool,
   boundaryActions:      set Action,
   hasSessionPolicy:     one Bool,

@@ -4,7 +4,6 @@
 #   - IAM Role "app-role" with identity policy allowing s3:GetObject on my-bucket
 #   - S3 bucket "my-bucket" with NO bucket policy
 #
-# Expected: ALLOW at Layer 6 (identity policy)
 
 resource "aws_iam_role" "app_role" {
   name = "app-role"

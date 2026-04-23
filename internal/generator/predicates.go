@@ -31,12 +31,15 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "explicitDenyAction",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 1b: Explicit Deny statement in bucket policy matching action, principal, and resource scope.",
-			Body: `some bp: BucketPolicy |
+			Comment: "Layer 1b: Explicit Deny via Action list or NotAction exclusion — in bucket policy OR identity policy.",
+			Body: `(some bp: BucketPolicy |
     bp.bucket = req.target and
-    req.action in bp.denyActions and
+    (req.action in bp.denyActions or
+     (bp.hasDenyNotAction = True and req.action not in bp.denyNotActions)) and
     statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
-    (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal)`,
+    (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal))
+  or
+  req.action in req.principal.roleDenyActions`,
 		},
 		{
 			Name:    "explicitDeny",
@@ -71,10 +74,11 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "resourcePolicyAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 4: Resource-based policy — statement must match principal, action, resource scope, and ABAC condition.",
+			Comment: "Layer 4: Resource-based policy — matches via Action list OR NotAction exclusion.",
 			Body: `some bp: BucketPolicy |
     bp.bucket = req.target and
-    req.action in bp.allowActions and
+    (req.action in bp.allowActions or
+     (bp.hasAllowNotAction = True and req.action not in bp.allowNotActions)) and
     statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
     (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.abacCondition = True implies
@@ -93,9 +97,10 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "identityPolicyAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 5: Identity-based policy — the IAM role has a policy that explicitly allows the action.",
+			Comment: "Layer 5: Identity-based policy — allows via Action list OR NotAction exclusion.",
 			Body: `req.principal.hasRolePolicy = True and
-  req.action in req.principal.roleAllowActions`,
+  (req.action in req.principal.roleAllowActions or
+   (req.principal.hasRoleNotAction = True and req.action not in req.principal.roleNotActions))`,
 		},
 
 		// ── Layer 6: IAM Permission Boundary ────────────────────────────────
@@ -131,8 +136,11 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "grantPathAllows",
 			Params:  []string{"req: Request"},
-			Comment: "At least one same-account grant path allows the request.",
-			Body:    `resourcePolicyAllows[req] or identityPolicyAllows[req]`,
+			Comment: "Same-account: either grant path suffices (union). Cross-account: both must allow (intersection).",
+			Body: `req.principal.crossAccount = False implies
+    (resourcePolicyAllows[req] or identityPolicyAllows[req])
+  req.principal.crossAccount = True implies
+    (resourcePolicyAllows[req] and identityPolicyAllows[req])`,
 		},
 		{
 			Name:    "actionTargetsBucket",
@@ -143,8 +151,8 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "actionTargetsObject",
 			Params:  []string{"a: Action"},
-			Comment: "True for object-level S3 actions.",
-			Body:    `a = S3_GetObject`,
+			Comment: "True for object-level S3 actions (GetObject, PutObject, DeleteObject).",
+			Body:    `a = S3_GetObject or a = S3_PutObject or a = S3_DeleteObject`,
 		},
 		{
 			Name:    "statementMatchesResource",
