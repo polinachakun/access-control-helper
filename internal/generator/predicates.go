@@ -137,22 +137,23 @@ func GeneratePredicates() []Predicate {
 			Name:    "grantPathAllows",
 			Params:  []string{"req: Request"},
 			Comment: "Same-account: either grant path suffices (union). Cross-account: both must allow (intersection).",
-			Body: `req.principal.crossAccount = False implies
-    (resourcePolicyAllows[req] or identityPolicyAllows[req])
-  req.principal.crossAccount = True implies
-    (resourcePolicyAllows[req] and identityPolicyAllows[req])`,
+			Body: `((req.principal.crossAccount = False) and
+    (resourcePolicyAllows[req] or identityPolicyAllows[req]))
+  or
+  ((req.principal.crossAccount = True) and
+    (resourcePolicyAllows[req] and identityPolicyAllows[req]))`,
 		},
 		{
 			Name:    "actionTargetsBucket",
 			Params:  []string{"a: Action"},
 			Comment: "True for bucket-level S3 actions.",
-			Body:    `a = S3_ListBucket`,
+			Body:    `a.bucketLevel = True`,
 		},
 		{
 			Name:    "actionTargetsObject",
 			Params:  []string{"a: Action"},
-			Comment: "True for object-level S3 actions (GetObject, PutObject, DeleteObject).",
-			Body:    `a = S3_GetObject or a = S3_PutObject or a = S3_DeleteObject`,
+			Comment: "True for object-level S3 actions.",
+			Body:    `a.objectLevel = True`,
 		},
 		{
 			Name:    "statementMatchesResource",

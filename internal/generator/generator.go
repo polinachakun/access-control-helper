@@ -389,10 +389,28 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
 	}
 
+	// ── Actions ───────────────────────────────────────────────────────────
+	for _, action := range g.sortedKeys(g.actions) {
+		bucketLevel, objectLevel := actionLevelFacts(action)
+		sb.WriteString(fmt.Sprintf("  %s.bucketLevel = %s\n", action, bucketLevel))
+		sb.WriteString(fmt.Sprintf("  %s.objectLevel = %s\n\n", action, objectLevel))
+	}
+
 	return sb.String()
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+func actionLevelFacts(action string) (bucketLevel string, objectLevel string) {
+	switch action {
+	case "S3_ListBucket":
+		return "True", "False"
+	case "S3_GetObject", "S3_PutObject", "S3_DeleteObject":
+		return "False", "True"
+	default:
+		return "False", "False"
+	}
+}
 
 // toAlloyActionSet converts a slice of IAM action strings to an Alloy set expression.
 // If any action is a wildcard (s3:*), returns "Action" (the full universe).

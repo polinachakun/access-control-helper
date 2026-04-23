@@ -81,18 +81,22 @@ func (a *Analyzer) JarPath() string { return a.jarPath }
 // Returns an error only when the Alloy process cannot be started.
 func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	if !a.Available() {
-		return nil, fmt.Errorf("Alloy not available)")
+		return nil, fmt.Errorf("alloy not available")
 	}
 
 	output, err := runAlloy(a.javaPath, a.jarPath, specFile)
-	if err != nil && len(output) == 0 {
-		return nil, fmt.Errorf("alloy execution failed: %w", err)
+
+	// Clean up the output directory Alloy creates (e.g. "output4.als" → "output4/").
+	defer cleanupAlloyOutput(specFile)
+
+	if err != nil {
+		return nil, fmt.Errorf("alloy execution failed: %w\nraw output:\n%s", err, output)
 	}
 
 	results := parseOutput(output)
-
-	// Clean up the output directory Alloy creates (e.g. "output4.als" → "output4/").
-	cleanupAlloyOutput(specFile)
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no Alloy check results were parsed\nraw output:\n%s", output)
+	}
 
 	return results, nil
 }

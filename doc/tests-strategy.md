@@ -150,10 +150,27 @@ Expected contents include:
 - denial layer, if any,
 - layer-by-layer statuses.
 
+#### Layer status vocabulary
+
+Every `expect.json` uses the following fixed set of status values for each layer:
+
+| Value | Applies to | Meaning |
+|---|---|---|
+| `DENY` | Any layer | An explicit Deny statement applied at this layer |
+| `PASS` | Blocking layers (L1, L2, L3, L6, L7) | This layer did not block access |
+| `GRANT` | Grant layers (L4, L5) | Access was granted at this layer |
+| `NOT GRANTED` | Grant layers (L4, L5) | No applicable Allow statement found |
+| `NOT APPLICABLE` | Any layer | This layer is absent from the scenario (e.g. no SCP configured) |
+
+For ALLOW outcomes, `denied_at` must be `null`. For DENY outcomes, `denied_at` must name the blocking layer.
+
+All `expect.json` files must include a `schema_version` field. The current version is `1`. This allows old files to be identified and migrated if the layer model changes.
+
 Example:
 
 ```json
 {
+  "schema_version": 1,
   "name": "abac_explicit_deny",
   "queries": [
     {
@@ -176,13 +193,59 @@ Example:
 }
 ```
 
+For error scenarios (invalid input, malformed policy), use `"decision": "ERROR"` with an `"error_contains"` field instead of layer statuses:
+
+```json
+{
+  "schema_version": 1,
+  "name": "malformed_policy_json",
+  "queries": [
+    {
+      "principal": "developer",
+      "bucket": "data",
+      "action": "s3:GetObject",
+      "decision": "ERROR",
+      "error_contains": "invalid character"
+    }
+  ]
+}
+```
+
 This is the main semantic source of truth.
+
+#### Generating `expect.json`
+
+For 100+ scenarios, writing `expect.json` by hand is not practical.
+
+The test runner should support a generate mode that runs the full pipeline and writes the initial `expect.json` from actual Alloy output:
+
+```bash
+go test ./tests/ -update
+```
+
+Workflow:
+
+1. Create a new `input.tf` scenario folder.
+2. Run `go test ./tests/ -update` — the test runner writes `expect.json` from the current pipeline output.
+3. Review the generated file: verify that each decision reflects real AWS semantics.
+4. Commit the reviewed `expect.json` as the oracle for that scenario.
+
+This is the same pattern as snapshot update flags (`-update-snapshots`, `-update-golden`). The file is machine-generated, but human-reviewed before commit.
 
 ### `report.golden.txt`
 
 Optional snapshot of the human-readable report output.
 
 Use this only when the formatting of the report itself needs protection against regressions.
+
+Maintain exactly **one golden file per distinct verdict type**:
+
+- `ALLOW`
+- `DENY` at a blocking layer (e.g. Layer 1 explicit deny)
+- `DENY` at a grant layer (missing grant path, Layer 4/5)
+- `DENY` at a bounding layer (e.g. Layer 6 permission boundary)
+
+These four cases cover all formatting branches in `reporter.go`. Do not add additional golden files unless a new verdict type is introduced.
 
 ---
 
@@ -285,6 +348,16 @@ The suite should eventually include at least the following categories.
 - different resources and actions must remain distinct
 - separate principals must not be mixed across statements
 
+### Error Handling
+
+These scenarios test that the pipeline fails cleanly and produces a useful error message:
+
+- `unresolved_reference` — a role attached to a policy that does not exist in the Terraform configuration
+- `malformed_policy_json` — a bucket policy with invalid JSON in its document
+- `unsupported_action_type` — a policy statement using an action outside the supported S3 action set
+
+Error scenarios use the `"decision": "ERROR"` and `"error_contains"` fields in `expect.json` instead of layer statuses.
+
 ---
 
 ## Regression and Metamorphic Tests
@@ -300,6 +373,24 @@ Examples:
 - changing an ABAC tag from mismatch to match must change the result in the expected direction.
 
 These tests help validate the stability of the model and reduce the risk of accidental regressions.
+
+### Implementation approach: paired scenario folders
+
+Each metamorphic test consists of two scenario folders with the same expected outcome:
+
+```text
+tests/scenarios/
+  explicit_deny_base/
+    input.tf          # base configuration
+    expect.json
+  explicit_deny_with_extra_resource/
+    input.tf          # base + one unrelated S3 bucket added
+    expect.json       # identical to the base scenario's expect.json
+```
+
+The test runner verifies that both folders produce identical structured results.
+
+This approach is preferred over programmatic transformation because every test case is fully inspectable as a file in the repository, which is important for thesis reproducibility and review.
 
 ---
 
@@ -353,15 +444,41 @@ Test:
 
 ## CI Requirements
 
-The continuous integration pipeline should run:
+The continuous integration pipeline runs two distinct jobs.
 
-- `go test ./...`
-- end-to-end scenario tests
-- reporter snapshot tests
-- `terraform fmt -check` for all fixtures
-- `terraform validate` for all fixtures
+### Job 1: Go tests
 
-This keeps the project safe against regressions in both logic and fixture quality.
+```bash
+go test ./...
+```
+
+This single command covers:
+
+- all package-level unit tests (`internal/ir/`, `internal/generator/`, `internal/reporter/`)
+- end-to-end scenario tests (`tests/e2e_scenarios_test.go`)
+- reporter snapshot tests (`tests/reporter_snapshot_test.go`)
+
+`go test ./...` already includes `tests/` because it is part of the module. Do not list e2e and snapshot tests separately — they are covered by this command.
+
+**Prerequisites for end-to-end tests**: Alloy requires a Java runtime and the Alloy JAR.
+
+- Java version: JDK 17 or later
+- Alloy JAR: `tools/org.alloytools.alloy.dist.jar` (pin a specific version, e.g. `6.0.0`)
+- GitHub Actions setup: use `actions/setup-java` with `distribution: temurin, java-version: 17`
+- If the JAR is absent, the test runner must skip end-to-end tests with a clear message (`SKIP: alloy JAR not found at tools/`) rather than failing silently or panicking.
+
+### Job 2: Terraform fixture validation
+
+Run separately via shell:
+
+```bash
+terraform fmt -check tests/scenarios/*/input.tf
+terraform validate tests/scenarios/*/
+```
+
+**Note on `terraform init`**: Running `terraform init -backend=false` downloads provider plugins from the registry, which is slow and requires network access. Check whether `terraform validate` can run without initializing providers for the fixture patterns in this project (fixtures that only declare resources and do not use provider-specific datasources may not require `init`). If `init` is required, cache the `.terraform` plugin directory in CI to avoid re-downloading on every run.
+
+Live parity tests run as a separate, manually triggered job gated by an environment variable (`RUN_LIVE_PARITY=true`) and a sandbox AWS account. They are never part of normal CI.
 
 ---
 
@@ -402,6 +519,23 @@ It is intended for:
 - validation against AWS as an external oracle,
 - thesis evaluation,
 - and manual confidence-building for canonical scenarios.
+
+### Thesis evaluation methodology
+
+For thesis purposes, the live parity suite must define a measurable evaluation methodology:
+
+**Coverage target**: run live parity for at least one scenario from each required category (Explicit Deny, Grant Paths, S3 Resource Matching, Bounding Policies). This ensures every layer type is validated against real AWS.
+
+**Parity metric**: report results as `N correct / M total` verdicts per category and overall. A correct verdict is one where the tool's final decision (ALLOW / DENY) matches the real AWS API response.
+
+**Discrepancy protocol**: when the tool result differs from the AWS result, classify the discrepancy as one of:
+- **Tool bug** — the pipeline produces a wrong result that should be fixed.
+- **Model gap** — a real AWS behavior that the model does not currently cover (document as a known limitation).
+- **Out-of-scope** — a configuration the tool explicitly does not claim to support.
+
+Each discrepancy must be documented in the thesis with its classification.
+
+**AWS environment**: use a dedicated sandbox account with no production data. Configure SCPs in the sandbox account to match the scenarios being tested, so the live environment reflects the modeled constraints.
 
 ---
 

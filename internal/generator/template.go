@@ -22,7 +22,10 @@ one sig {{.TagValues}} extends TagValue {}
 abstract sig VpceId {}
 {{range .VpceIds}}one sig {{.}} extends VpceId {}
 {{end}}
-abstract sig Action {}
+abstract sig Action {
+  bucketLevel: one Bool,
+  objectLevel: one Bool
+}
 one sig {{.ActionValues}} extends Action {}
 
 abstract sig Bool {}
