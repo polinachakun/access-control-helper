@@ -69,6 +69,12 @@ func (g *Generator) collectValues() {
 	g.tags["PROD"] = true
 	g.vpces["VPCE_OTHER"] = true
 
+	for _, actions := range SupportedActionsByService {
+		for _, a := range actions {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+	}
+
 	for _, b := range g.config.Buckets {
 		if b.EnvTag != "" {
 			g.tags[strings.ToUpper(b.EnvTag)] = true
@@ -142,11 +148,6 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	data.VpceIds = g.sortedKeys(g.vpces)
 
 	// ── Action values ─────────────────────────────────────────────────────
-	// If the config only has wildcard policies (s3:*), no concrete actions are
-	// collected. The Alloy model requires at least one Action atom.
-	if len(g.actions) == 0 {
-		g.actions["S3_GetObject"] = true
-	}
 	data.ActionValues = strings.Join(g.sortedKeys(g.actions), ", ")
 
 	// ── S3 Buckets ────────────────────────────────────────────────────────

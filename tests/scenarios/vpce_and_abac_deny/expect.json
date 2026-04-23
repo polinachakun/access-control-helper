@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "name": "vpce_and_abac_deny",
+  "queries": [
+    {
+      "principal": "developer",
+      "bucket": "data",
+      "action": "S3_DeleteObject",
+      "decision": "DENY",
+      "denied_at": "Layer 1",
+      "layers": {
+        "L1": "DENY",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "PASS"
+      }
+    },
+    {
+      "principal": "developer",
+      "bucket": "data",
+      "action": "S3_GetObject",
+      "decision": "DENY",
+      "denied_at": "Layer 1",
+      "layers": {
+        "L1": "DENY",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "PASS"
+      }
+    },
+    {
+      "principal": "developer",
+      "bucket": "data",
+      "action": "S3_ListBucket",
+      "decision": "DENY",
+      "denied_at": "Layer 1",
+      "layers": {
+        "L1": "DENY",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "PASS"
+      }
+    },
+    {
+      "principal": "developer",
+      "bucket": "data",
+      "action": "S3_PutObject",
+      "decision": "DENY",
+      "denied_at": "Layer 1",
+      "layers": {
+        "L1": "DENY",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "PASS"
+      }
+    }
+  ]
+}

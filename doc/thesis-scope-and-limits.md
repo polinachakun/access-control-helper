@@ -204,14 +204,43 @@ The current prototype focuses on the most central S3 policy interactions, but do
 
 ### Full S3 Action Matrix
 
-The current implementation only models a selected set of S3 actions.
+AWS S3 defines over 60 IAM actions across two resource levels:
+
+**Object-level actions** (applied to `arn:aws:s3:::bucket/*`):
+`s3:GetObject`, `s3:GetObjectAcl`, `s3:GetObjectVersion`, `s3:GetObjectVersionAcl`,
+`s3:GetObjectTagging`, `s3:GetObjectVersionTagging`, `s3:PutObject`, `s3:PutObjectAcl`,
+`s3:PutObjectTagging`, `s3:DeleteObject`, `s3:DeleteObjectVersion`, `s3:DeleteObjectTagging`,
+`s3:RestoreObject`, `s3:AbortMultipartUpload`, `s3:ListMultipartUploadParts`
+
+**Bucket-level actions** (applied to `arn:aws:s3:::bucket`):
+`s3:ListBucket`, `s3:ListBucketVersions`, `s3:ListBucketMultipartUploads`,
+`s3:CreateBucket`, `s3:DeleteBucket`, `s3:GetBucketPolicy`, `s3:PutBucketPolicy`,
+`s3:DeleteBucketPolicy`, `s3:GetBucketAcl`, `s3:PutBucketAcl`,
+`s3:GetBucketVersioning`, `s3:PutBucketVersioning`, `s3:GetBucketTagging`,
+`s3:PutBucketTagging`, `s3:GetEncryptionConfiguration`, `s3:PutEncryptionConfiguration`,
+`s3:GetBucketPublicAccessBlock`, `s3:PutBucketPublicAccessBlock`,
+`s3:GetBucketLogging`, `s3:PutBucketLogging`, `s3:GetBucketNotification`,
+`s3:PutBucketNotification`
+
+The current prototype models **4 actions**:
+
+| Action | Resource level | Represents |
+|---|---|---|
+| `s3:GetObject` | object | read access |
+| `s3:PutObject` | object | write access |
+| `s3:DeleteObject` | object | delete access |
+| `s3:ListBucket` | bucket | list access |
+
+These four were chosen because they cover all four fundamental access patterns (read, write, delete, list) and exercise all 7 policy evaluation layers in distinct ways. They are sufficient to validate the core thesis contribution — multi-layer, multi-resource formal access-control reasoning — without requiring a complete action catalog.
 
 A complete S3 access-control analyzer would require a broader and systematically maintained matrix of:
 
-- S3 actions,
-- required resource types,
+- all S3 actions,
+- required resource types per action,
 - action/resource compatibility rules,
-- and possibly dependent permissions.
+- and possibly dependent permissions (e.g. `s3:GetObject` implicitly needed for `s3:CopyObject`).
+
+Extending the action catalog beyond the current 4 is listed as future work.
 
 ### Full Terraform Language Support
 
