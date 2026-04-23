@@ -1,0 +1,20 @@
+# Alloy counterexample artifacts — folders created next to .als files during analysis
+# These appear wherever Alloy is invoked and are named after the .als file
+**/spec/
+/fixed/
+/minimal_fixture/
+/output/
+/output*/
+/vpce_and_abac_deny/
+/identity_allow_only/
+/explicit_deny_wins/
+/permission_boundary_blocks/
+
+# Alloy artifacts that appear inside test folders
+tests/unit/*/
+
+# Stray generated .als files in project root (from manual runs)
+/*.als
+
+# Go build output
+access-control-helper
