@@ -612,24 +612,20 @@ func rolePolicyResource(tfName, roleAttr, policyJSON string) func() (string, *re
 	}
 }
 
-func TestBuilder_MalformedBucketPolicyJSON_Warning(t *testing.T) {
-	_, warnings := buildWithWarnings(t,
+func TestBuilder_MalformedBucketPolicyJSON_FatalError(t *testing.T) {
+	// AWS rejects malformed bucket policy JSON at put-bucket-policy time.
+	// The pipeline must abort — not silently drop the policy and continue.
+	resources := makeResources(
 		bucket("my_bucket", "prod"),
 		bucketPolicyResource("bad_policy", "aws_s3_bucket.my_bucket.id",
 			`{not valid json`, []string{"aws_s3_bucket.my_bucket"}),
 	)
-
-	if len(warnings) == 0 {
-		t.Fatal("expected a warning for malformed bucket policy JSON, got none")
+	_, _, err := ir.BuildFromResources(resources, nil)
+	if err == nil {
+		t.Fatal("expected fatal error for malformed bucket policy JSON, got nil")
 	}
-	found := false
-	for _, w := range warnings {
-		if strings.Contains(w, "bad_policy") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("warning should name the offending resource; got: %v", warnings)
+	if !strings.Contains(err.Error(), "bad_policy") {
+		t.Errorf("error should name the offending resource; got: %v", err)
 	}
 }
 

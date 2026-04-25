@@ -49,7 +49,9 @@ func (b *Builder) Build() (*Config, error) {
 	for ref, res := range b.resources {
 		switch res.Type {
 		case "aws_s3_bucket_policy":
-			b.buildBucketPolicy(ref, res)
+			if err := b.buildBucketPolicy(ref, res); err != nil {
+				return nil, err
+			}
 		case "aws_iam_role_policy":
 			b.buildRolePolicy(ref, res)
 		case "aws_iam_user_policy":
@@ -88,7 +90,10 @@ func (b *Builder) buildS3Bucket(ref string, res *resolver.ResolvedResource) {
 }
 
 // buildBucketPolicy builds a BucketPolicy from a resolved resource.
-func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) {
+// Returns an error when the policy document is present but unparseable — AWS
+// rejects such a policy at put-bucket-policy time, so the Terraform config
+// is invalid and analysis cannot be trusted.
+func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) error {
 	bucketRef := ""
 
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
@@ -105,14 +110,13 @@ func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) 
 
 	policyDoc := b.getAttrAsString(res, "policy")
 	if policyDoc == "" {
-		return
+		return nil
 	}
 
 	doc, err := ParsePolicyDocument(policyDoc)
 	if err != nil || doc == nil {
-		b.warnings = append(b.warnings, fmt.Sprintf(
-			"bucket policy %q: failed to parse policy document: %v", res.Name, err))
-		return
+		return fmt.Errorf("bucket policy %q has an unparseable policy document: %w\n"+
+			"  AWS rejects this at put-bucket-policy time — the Terraform config is invalid", res.Name, err)
 	}
 
 	stmtIdx := 0
@@ -121,6 +125,7 @@ func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) 
 		entries := b.expandBucketPolicyStatement(res.Name, bucketRef, stmtIdx, stmt)
 		b.config.BucketPolicies = append(b.config.BucketPolicies, entries...)
 	}
+	return nil
 }
 
 func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtIdx int, stmt *Statement) []*BucketPolicy {

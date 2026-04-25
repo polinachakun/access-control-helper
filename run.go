@@ -10,6 +10,7 @@ import (
 	"access-control-helper/internal/generator"
 	"access-control-helper/internal/ir"
 	"access-control-helper/internal/parser"
+	"access-control-helper/internal/preflight"
 	"access-control-helper/internal/reporter"
 	"access-control-helper/internal/resolver"
 )
@@ -56,6 +57,12 @@ func runToStdout(inputPath string) error {
 // run executes the full pipeline for inputPath, writes the Alloy spec to
 // outputPath, runs Alloy verification, and writes the report to out.
 func run(inputPath, outputPath string, out io.Writer) error {
+	// ── Step 0: Terraform HCL syntax pre-check ────────────────────────────
+	if r := preflight.CheckTerraform(inputPath, os.Stderr); !r.Passed {
+		return fmt.Errorf("Terraform HCL syntax check failed — fix formatting before analysis:\n%s\n"+
+			"  Run: terraform fmt %s", r.Output, inputPath)
+	}
+
 	// ── Step 1: Parse ─────────────────────────────────────────────────────
 	p := parser.NewParser()
 

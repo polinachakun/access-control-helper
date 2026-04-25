@@ -257,7 +257,10 @@ func discoverScenarios(t *testing.T) []string {
 	}
 	var names []string
 	for _, e := range entries {
-		if e.IsDir() {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("scenarios", e.Name(), "expect.json")); err == nil {
 			names = append(names, e.Name())
 		}
 	}
