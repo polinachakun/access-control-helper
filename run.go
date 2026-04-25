@@ -111,8 +111,20 @@ func run(inputPath, outputPath string, out io.Writer) error {
 	}
 	fmt.Fprintf(os.Stderr, "Alloy completed %d check(s).\n", len(checkResults))
 
-	// ── Step 6: Report ────────────────────────────────────────────────────
-	tripleResults := reporter.BuildTripleResults(checkResults, tripleKeys)
+	// ── Step 6: Consistency check ─────────────────────────────────────────
+	expectedChecks := len(tripleKeys) * 8
+	if len(checkResults) != expectedChecks {
+		return fmt.Errorf(
+			"Alloy returned %d check result(s), expected %d (8 per triple × %d triple(s)); pipeline is inconsistent",
+			len(checkResults), expectedChecks, len(tripleKeys),
+		)
+	}
+
+	// ── Step 7: Report ────────────────────────────────────────────────────
+	tripleResults, err := reporter.BuildTripleResults(checkResults, tripleKeys)
+	if err != nil {
+		return fmt.Errorf("report: %w", err)
+	}
 	rep := reporter.New(out)
 	rep.Summary(tripleResults)
 	rep.Report(tripleResults)

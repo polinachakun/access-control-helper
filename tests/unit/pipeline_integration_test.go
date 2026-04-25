@@ -25,7 +25,10 @@ func TestPipeline_AlloyResultsDriveReport(t *testing.T) {
 		[]string{"S3_GetObject", "S3_PutObject", "S3_ListBucket", "S3_DeleteObject"},
 	)
 
-	results := reporter.BuildTripleResults(checks, tripleKeys)
+	results, err := reporter.BuildTripleResults(checks, tripleKeys)
+	if err != nil {
+		t.Fatalf("BuildTripleResults: %v", err)
+	}
 
 	if len(results) == 0 {
 		t.Fatal("reporter returned no results — expected one per triple")
@@ -76,7 +79,10 @@ func TestPipeline_ReportOutputReflectsAlloyDecisions(t *testing.T) {
 		[]string{"S3_GetObject", "S3_DeleteObject"},
 	)
 
-	results := reporter.BuildTripleResults(checks, tripleKeys)
+	results, err := reporter.BuildTripleResults(checks, tripleKeys)
+	if err != nil {
+		t.Fatalf("BuildTripleResults: %v", err)
+	}
 
 	var sb strings.Builder
 	rep := reporter.New(&sb)
@@ -115,7 +121,10 @@ func TestPipeline_ReportDecisionsAreNotHardcoded(t *testing.T) {
 		[]string{"S3_GetObject", "S3_DeleteObject"},
 	)
 
-	results := reporter.BuildTripleResults(checks, tripleKeys)
+	results, err := reporter.BuildTripleResults(checks, tripleKeys)
+	if err != nil {
+		t.Fatalf("BuildTripleResults: %v", err)
+	}
 
 	allowCount := 0
 	denyCount := 0

@@ -45,10 +45,7 @@ var layerNames = [7]string{
 
 var layerSuffixes = [7]string{"_L1", "_L2", "_L3", "_L4", "_L5", "_L6", "_L7"}
 
-// BuildTripleResults converts Alloy CheckResults into TripleResults using the
-// TripleKey mapping from the generator.
-func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKey) []*TripleResult {
-	// Index check results by assertion name.
+func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKey) ([]*TripleResult, error) {
 	byName := make(map[string]analyzer.CheckResult, len(checks))
 	for _, cr := range checks {
 		byName[cr.Name] = cr
@@ -56,6 +53,12 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 
 	var results []*TripleResult
 	for _, key := range keys {
+		// Verify the combined assertion is present before reading any result.
+		combined, ok := byName[key.AssertionBaseName]
+		if !ok {
+			return nil, fmt.Errorf("missing Alloy result for assertion %q: Alloy did not return a result for this check", key.AssertionBaseName)
+		}
+
 		tr := &TripleResult{
 			Principal: key.Role,
 			Bucket:    key.Bucket,
@@ -63,8 +66,7 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		}
 
 		// Combined assertion: UNSAT → ALLOW, SAT → DENY.
-		combined, ok := byName[key.AssertionBaseName]
-		if ok && combined.Valid {
+		if combined.Valid {
 			tr.Decision = "ALLOW"
 		} else {
 			tr.Decision = "DENY"
@@ -74,9 +76,13 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		// "granting" layers (4, 5) show "NOT GRANTED" on failure (they don't
 		// block, they just didn't grant). "blocking" layers show "DENY".
 		for i, suffix := range layerSuffixes {
+			assertionName := key.AssertionBaseName + suffix
+			cr, ok := byName[assertionName]
+			if !ok {
+				return nil, fmt.Errorf("missing Alloy result for assertion %q: Alloy did not return a result for this check", assertionName)
+			}
 			tr.Layers[i] = LayerInfo{Name: layerNames[i]}
-			cr, ok := byName[key.AssertionBaseName+suffix]
-			if ok && cr.Valid {
+			if cr.Valid {
 				tr.Layers[i].Status = "PASS"
 			} else if generator.LayerPredicates[i].Kind == "granting" {
 				tr.Layers[i].Status = "NOT GRANTED"
@@ -91,7 +97,7 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 
 		results = append(results, tr)
 	}
-	return results
+	return results, nil
 }
 
 func deniedAtDescription(layers [7]LayerInfo) (string, []string) {

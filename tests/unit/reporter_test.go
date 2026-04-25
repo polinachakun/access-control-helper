@@ -33,7 +33,10 @@ func TestBuildTripleResults_Allow(t *testing.T) {
 	key := makeKey("app_role", "my_bucket", "S3_GetObject")
 	checks := makeChecks(key, true, allPass())
 
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -63,7 +66,10 @@ func TestBuildTripleResults_DenyAtLayer1(t *testing.T) {
 	layers[0] = false
 
 	checks := makeChecks(key, false, layers)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	r := results[0]
 	if r.Decision != "DENY" {
@@ -83,7 +89,10 @@ func TestBuildTripleResults_DenyAtLayer6(t *testing.T) {
 	layers[5] = false
 
 	checks := makeChecks(key, false, layers)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	r := results[0]
 	if r.Decision != "DENY" {
@@ -104,7 +113,10 @@ func TestBuildTripleResults_DenyAtLayer45(t *testing.T) {
 	layers[4] = false
 
 	checks := makeChecks(key, false, layers)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	r := results[0]
 	if r.Decision != "DENY" {
@@ -127,7 +139,10 @@ func TestBuildTripleResults_DenyAtLayer5Only(t *testing.T) {
 	layers[4] = false
 
 	checks := makeChecks(key, false, layers)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	r := results[0]
 	if r.DeniedAtDesc != "Layer 5" {
@@ -143,7 +158,10 @@ func TestBuildTripleResults_BlockingPlusNoGrant_AdditionalFinding(t *testing.T) 
 	layers[4] = false
 
 	checks := makeChecks(key, false, layers)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	r := results[0]
 	if r.DeniedAtDesc != "Layer 1" {
@@ -165,7 +183,10 @@ func TestBuildTripleResults_MultipleTriples(t *testing.T) {
 		makeChecks(k1, true, allPass()),
 		makeChecks(k2, false, layers2)...,
 	)
-	results := reporter.BuildTripleResults(checks, []generator.TripleKey{k1, k2})
+	results, err := reporter.BuildTripleResults(checks, []generator.TripleKey{k1, k2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
@@ -178,14 +199,28 @@ func TestBuildTripleResults_MultipleTriples(t *testing.T) {
 	}
 }
 
-func TestBuildTripleResults_MissingCheckDefaultsToDeny(t *testing.T) {
+func TestBuildTripleResults_MissingCombined_ReturnsError(t *testing.T) {
 	key := makeKey("app_role", "my_bucket", "S3_GetObject")
-	results := reporter.BuildTripleResults(nil, []generator.TripleKey{key})
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result even with no checks, got %d", len(results))
+	_, err := reporter.BuildTripleResults(nil, []generator.TripleKey{key})
+	if err == nil {
+		t.Fatal("expected error when combined assertion is missing, got nil")
 	}
-	if results[0].Decision != "DENY" {
-		t.Errorf("missing combined check should default to DENY, got %q", results[0].Decision)
+}
+
+func TestBuildTripleResults_MissingLayerAssertion_ReturnsError(t *testing.T) {
+	key := makeKey("app_role", "my_bucket", "S3_GetObject")
+	checks := []analyzer.CheckResult{
+		{Name: key.AssertionBaseName, Valid: true},
+	}
+	for i, lp := range generator.LayerPredicates {
+		if i == 3 {
+			continue // intentionally omit Layer 4
+		}
+		checks = append(checks, analyzer.CheckResult{Name: key.AssertionBaseName + lp.Suffix, Valid: true})
+	}
+	_, err := reporter.BuildTripleResults(checks, []generator.TripleKey{key})
+	if err == nil {
+		t.Fatal("expected error when a layer assertion is missing, got nil")
 	}
 }
 

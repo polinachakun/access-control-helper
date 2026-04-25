@@ -103,7 +103,10 @@ func runScenarioVerification(t *testing.T, name string, a *analyzer.Analyzer) {
 		t.Fatalf("Alloy check failed: %v", err)
 	}
 
-	results := reporter.BuildTripleResults(checks, tripleKeys)
+	results, err := reporter.BuildTripleResults(checks, tripleKeys)
+	if err != nil {
+		t.Fatalf("BuildTripleResults: %v", err)
+	}
 
 	if *update {
 		writeExpect(t, expectPath, name, results)
