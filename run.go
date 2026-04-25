@@ -40,9 +40,12 @@ func runToStdout(inputPath string) error {
 		return fmt.Errorf("resolve: %w", err)
 	}
 
-	config, err := ir.BuildFromResources(resources, res.GetGraph())
+	config, warnings, err := ir.BuildFromResources(resources, res.GetGraph())
 	if err != nil {
 		return fmt.Errorf("IR build: %w", err)
+	}
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 	}
 
 	sourceFile := filepath.Base(inputPath)
@@ -79,9 +82,20 @@ func run(inputPath, outputPath string, out io.Writer) error {
 	}
 
 	// ── Step 3: Build intermediate representation ─────────────────────────
-	config, err := ir.BuildFromResources(resources, res.GetGraph())
+	config, warnings, err := ir.BuildFromResources(resources, res.GetGraph())
 	if err != nil {
 		return fmt.Errorf("IR build: %w", err)
+	}
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+	}
+
+	// Fail fast before invoking Alloy if the config is structurally invalid.
+	for _, ve := range config.Validate() {
+		if ve.Fatal {
+			return fmt.Errorf("configuration error: %s", ve.Message)
+		}
+		fmt.Fprintf(os.Stderr, "warning: %s\n", ve.Message)
 	}
 
 	fmt.Fprintf(os.Stderr, "IR: %d bucket(s), %d role(s), %d bucket policy(ies), %d RCP(s), %d SCP(s)\n",
@@ -97,6 +111,10 @@ func run(inputPath, outputPath string, out io.Writer) error {
 	}
 
 	tripleKeys := gen.TripleMetadata()
+	if len(tripleKeys) == 0 {
+		return fmt.Errorf("no (principal, bucket, action) triples to analyse — " +
+			"check that the input contains both IAM roles with S3 actions and S3 buckets")
+	}
 
 	// ── Step 5: Alloy formal verification ────────────────────────────────
 	alloyAnalyzer := analyzer.New()

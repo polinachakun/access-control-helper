@@ -13,7 +13,10 @@ type Builder struct {
 	resources map[string]*resolver.ResolvedResource
 	graph     *resolver.DependencyGraph
 	config    *Config
+	warnings  []string
 }
+
+func (b *Builder) Warnings() []string { return b.warnings }
 
 // NewBuilder creates a new Builder.
 func NewBuilder(resources map[string]*resolver.ResolvedResource, graph *resolver.DependencyGraph) *Builder {
@@ -107,6 +110,8 @@ func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) 
 
 	doc, err := ParsePolicyDocument(policyDoc)
 	if err != nil || doc == nil {
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %q: failed to parse policy document: %v", res.Name, err))
 		return
 	}
 
@@ -130,7 +135,9 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		principals = append([]string{"*"}, principals...)
 	}
 	if len(principals) == 0 {
-		principals = []string{""}
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %s statement %d has no principals; statement skipped", baseName, stmtIdx))
+		return nil
 	}
 
 	var out []*BucketPolicy
@@ -297,7 +304,10 @@ func (b *Builder) buildRolePolicy(ref string, res *resolver.ResolvedResource) {
 	// Parse policy document
 	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
 		doc, err := ParsePolicyDocument(policyDoc)
-		if err == nil {
+		if err != nil {
+			b.warnings = append(b.warnings, fmt.Sprintf(
+				"role policy %q: failed to parse policy document: %v", res.Name, err))
+		} else {
 			rolePolicy.Policy = doc
 		}
 	}
@@ -378,7 +388,10 @@ func (b *Builder) buildIAMPolicy(ref string, res *resolver.ResolvedResource) {
 	// Parse policy document
 	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
 		doc, err := ParsePolicyDocument(policyDoc)
-		if err == nil {
+		if err != nil {
+			b.warnings = append(b.warnings, fmt.Sprintf(
+				"IAM policy %q: failed to parse policy document: %v", res.Name, err))
+		} else {
 			policy.Policy = doc
 		}
 	}
@@ -407,9 +420,11 @@ func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 	// Parse policy document (content attribute)
 	if content := b.getAttrAsString(res, "content"); content != "" {
 		doc, err := ParsePolicyDocument(content)
-		if err == nil {
+		if err != nil {
+			b.warnings = append(b.warnings, fmt.Sprintf(
+				"org policy %q: failed to parse policy document: %v", res.Name, err))
+		} else {
 			orgPolicy.Policy = doc
-			// Extract actions
 			orgPolicy.AllowActions = doc.GetAllActions()
 			orgPolicy.DenyActions = doc.GetDeniedActions()
 		}
@@ -595,8 +610,8 @@ func extractResourceRef(s string) string {
 	return ""
 }
 
-// BuildFromResources is a convenience function that creates a Builder and builds the Config.
-func BuildFromResources(resources map[string]*resolver.ResolvedResource, graph *resolver.DependencyGraph) (*Config, error) {
-	builder := NewBuilder(resources, graph)
-	return builder.Build()
+func BuildFromResources(resources map[string]*resolver.ResolvedResource, graph *resolver.DependencyGraph) (*Config, []string, error) {
+	b := NewBuilder(resources, graph)
+	config, err := b.Build()
+	return config, b.Warnings(), err
 }

@@ -1,6 +1,7 @@
 package unit_test
 
 import (
+	"strings"
 	"testing"
 
 	"access-control-helper/internal/ir"
@@ -80,11 +81,21 @@ func policyAttachment(tfName, roleTF, policyTF string) func() (string, *resolver
 func build(t *testing.T, entries ...func() (string, *resolver.ResolvedResource)) *ir.Config {
 	t.Helper()
 	resources := makeResources(entries...)
-	config, err := ir.BuildFromResources(resources, nil)
+	config, _, err := ir.BuildFromResources(resources, nil)
 	if err != nil {
 		t.Fatalf("BuildFromResources failed: %v", err)
 	}
 	return config
+}
+
+func buildWithWarnings(t *testing.T, entries ...func() (string, *resolver.ResolvedResource)) (*ir.Config, []string) {
+	t.Helper()
+	resources := makeResources(entries...)
+	config, warnings, err := ir.BuildFromResources(resources, nil)
+	if err != nil {
+		t.Fatalf("BuildFromResources failed: %v", err)
+	}
+	return config, warnings
 }
 
 func TestBuilder_S3Bucket_BasicFields(t *testing.T) {
@@ -568,5 +579,106 @@ func TestBuilder_EmptyResources_ReturnsEmptyConfig(t *testing.T) {
 	}
 	if len(config.BucketPolicies) != 0 {
 		t.Errorf("expected 0 bucket policies, got %d", len(config.BucketPolicies))
+	}
+}
+
+// ── Warning-collection tests ──────────────────────────────────────────────────
+
+func bucketPolicyResource(tfName, bucketAttr, policyJSON string, refs []string) func() (string, *resolver.ResolvedResource) {
+	return func() (string, *resolver.ResolvedResource) {
+		return "aws_s3_bucket_policy." + tfName, &resolver.ResolvedResource{
+			Type: "aws_s3_bucket_policy",
+			Name: tfName,
+			Attributes: map[string]interface{}{
+				"bucket": bucketAttr,
+				"policy": policyJSON,
+			},
+			References: refs,
+		}
+	}
+}
+
+func rolePolicyResource(tfName, roleAttr, policyJSON string) func() (string, *resolver.ResolvedResource) {
+	return func() (string, *resolver.ResolvedResource) {
+		return "aws_iam_role_policy." + tfName, &resolver.ResolvedResource{
+			Type: "aws_iam_role_policy",
+			Name: tfName,
+			Attributes: map[string]interface{}{
+				"role":   roleAttr,
+				"policy": policyJSON,
+			},
+			References: []string{"aws_iam_role." + roleAttr},
+		}
+	}
+}
+
+func TestBuilder_MalformedBucketPolicyJSON_Warning(t *testing.T) {
+	_, warnings := buildWithWarnings(t,
+		bucket("my_bucket", "prod"),
+		bucketPolicyResource("bad_policy", "aws_s3_bucket.my_bucket.id",
+			`{not valid json`, []string{"aws_s3_bucket.my_bucket"}),
+	)
+
+	if len(warnings) == 0 {
+		t.Fatal("expected a warning for malformed bucket policy JSON, got none")
+	}
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w, "bad_policy") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("warning should name the offending resource; got: %v", warnings)
+	}
+}
+
+func TestBuilder_EmptyPrincipals_StatementSkipped_Warning(t *testing.T) {
+	// Policy statement with no Principal field — should be skipped with a warning.
+	policyJSON := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:GetObject","Resource":"*"}]}`
+
+	config, warnings := buildWithWarnings(t,
+		bucket("my_bucket", "prod"),
+		bucketPolicyResource("no_principal_policy", "aws_s3_bucket.my_bucket.id",
+			policyJSON, []string{"aws_s3_bucket.my_bucket"}),
+	)
+
+	if len(warnings) == 0 {
+		t.Fatal("expected a warning for statement with no principals, got none")
+	}
+	if len(config.BucketPolicies) != 0 {
+		t.Errorf("statement with no principals should produce no BucketPolicy entries, got %d", len(config.BucketPolicies))
+	}
+}
+
+func TestBuilder_MalformedRolePolicyJSON_Warning(t *testing.T) {
+	_, warnings := buildWithWarnings(t,
+		role("app_role", "app-role", ""),
+		rolePolicyResource("bad_inline", "app_role", `{broken`),
+	)
+
+	if len(warnings) == 0 {
+		t.Fatal("expected a warning for malformed role policy JSON, got none")
+	}
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w, "bad_inline") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("warning should name the offending resource; got: %v", warnings)
+	}
+}
+
+func TestBuilder_MalformedRolePolicy_RoleStillBuilt(t *testing.T) {
+	// A malformed inline policy must not prevent the role itself from being built.
+	config, _ := buildWithWarnings(t,
+		role("app_role", "app-role", ""),
+		rolePolicyResource("bad_inline", "app_role", `{broken`),
+	)
+
+	if config.GetRoleByTFName("app_role") == nil {
+		t.Error("role should still be present even when its inline policy fails to parse")
 	}
 }

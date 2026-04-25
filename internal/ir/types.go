@@ -2,6 +2,8 @@
 // This domain model is independent of Terraform and HCL parsing details.
 package ir
 
+import "fmt"
+
 // Config holds the complete parsed AWS configuration.
 type Config struct {
 	Buckets        []*S3Bucket
@@ -211,4 +213,38 @@ func (c *Config) RCPs() []*OrgPolicy {
 		}
 	}
 	return rcps
+}
+
+type ValidationError struct {
+	Fatal   bool
+	Message string
+}
+
+// Validate checks invariants on the built Config
+func (c *Config) Validate() []ValidationError {
+	var errs []ValidationError
+
+	if len(c.Buckets) == 0 {
+		errs = append(errs, ValidationError{Fatal: true,
+			Message: "no S3 buckets found in configuration; nothing to analyse"})
+	}
+	if len(c.Roles) == 0 {
+		errs = append(errs, ValidationError{Fatal: true,
+			Message: "no IAM roles found in configuration; nothing to analyse"})
+	}
+
+	for _, bp := range c.BucketPolicies {
+		if bp.BucketRef == "" {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("bucket policy %q has no resolvable bucket reference and will appear unattached", bp.TFName)})
+		}
+		hasActions := len(bp.AllowActions)+len(bp.DenyActions)+
+			len(bp.AllowNotActions)+len(bp.DenyNotActions) > 0
+		if !hasActions && !bp.AllowAnyPrincipal && !bp.DenyAnyPrincipal && bp.DenyVpceID == "" {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("bucket policy %q has no actions and no VPCE condition; it will have no effect", bp.TFName)})
+		}
+	}
+
+	return errs
 }

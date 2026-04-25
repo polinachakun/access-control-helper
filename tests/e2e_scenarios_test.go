@@ -137,7 +137,7 @@ func buildAndGenerate(t *testing.T, inputPath string) (*ir.Config, []generator.T
 		t.Fatalf("resolve %s: %v", inputPath, err)
 	}
 
-	config, err := ir.BuildFromResources(resources, res.GetGraph())
+	config, _, err := ir.BuildFromResources(resources, res.GetGraph())
 	if err != nil {
 		t.Fatalf("IR build %s: %v", inputPath, err)
 	}
