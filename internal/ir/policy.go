@@ -58,13 +58,11 @@ func normalizeStatements(raw json.RawMessage) ([]*Statement, error) {
 		return nil, nil
 	}
 
-	// Try as array first
 	var stmts []rawStatement
 	if err := json.Unmarshal(raw, &stmts); err == nil {
 		return parseStatements(stmts)
 	}
 
-	// Try as single statement
 	var stmt rawStatement
 	if err := json.Unmarshal(raw, &stmt); err != nil {
 		return nil, fmt.Errorf("failed to parse statements: %w", err)
@@ -82,7 +80,6 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			Effect: raw.Effect,
 		}
 
-		// Parse actions
 		if raw.Action != nil {
 			actions, err := normalizeStringOrArray(raw.Action)
 			if err != nil {
@@ -99,7 +96,6 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			stmt.NotActions = notActions
 		}
 
-		// Parse resources
 		if raw.Resource != nil {
 			resources, err := normalizeStringOrArray(raw.Resource)
 			if err != nil {
@@ -108,7 +104,6 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			stmt.Resources = resources
 		}
 
-		// Parse principals
 		if raw.Principal != nil {
 			principals, err := parsePrincipals(raw.Principal)
 			if err != nil {
@@ -117,7 +112,6 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			stmt.Principals = principals
 		}
 
-		// Parse conditions
 		if raw.Condition != nil {
 			conditions, err := parseConditions(raw.Condition)
 			if err != nil {
@@ -138,13 +132,11 @@ func normalizeStringOrArray(raw json.RawMessage) ([]string, error) {
 		return nil, nil
 	}
 
-	// Try as string
 	var str string
 	if err := json.Unmarshal(raw, &str); err == nil {
 		return []string{str}, nil
 	}
 
-	// Try as array
 	var arr []string
 	if err := json.Unmarshal(raw, &arr); err != nil {
 		return nil, err
@@ -162,7 +154,6 @@ func parsePrincipals(raw json.RawMessage) ([]Principal, error) {
 		return nil, nil
 	}
 
-	// Try as "*"
 	var star string
 	if err := json.Unmarshal(raw, &star); err == nil {
 		if star == "*" {
@@ -172,7 +163,6 @@ func parsePrincipals(raw json.RawMessage) ([]Principal, error) {
 		return []Principal{{Type: "AWS", Value: star}}, nil
 	}
 
-	// Try as object
 	var obj map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil, err
@@ -221,8 +211,6 @@ func parseConditions(raw json.RawMessage) ([]Condition, error) {
 
 	return conditions, nil
 }
-
-// Helper methods for Statement
 
 // IsAllow returns true if this is an Allow statement.
 func (s *Statement) IsAllow() bool {
@@ -334,8 +322,6 @@ func (s *Statement) HasObjectLevelResource() bool {
 	}
 	return false
 }
-
-// Helper methods for IAMPolicyDocument
 
 // GetDenyStatements returns all Deny statements.
 func (d *IAMPolicyDocument) GetDenyStatements() []*Statement {

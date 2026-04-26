@@ -231,7 +231,6 @@ func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []As
      req.action = %s and
      req.target = bucket_%s`, role, action, bucket)
 
-				// Combined assertion: accessAllowed
 				assertions = append(assertions, Assertion{
 					Name:    baseName,
 					Comment: fmt.Sprintf("Checks if %s can perform %s on %s.", role, action, bucket),
@@ -240,7 +239,6 @@ func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []As
     implies accessAllowed[req]`, reqMatch),
 				})
 
-				// Per-layer assertions
 				for _, lp := range LayerPredicates {
 					assertions = append(assertions, Assertion{
 						Name:    baseName + lp.Suffix,

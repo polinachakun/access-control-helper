@@ -141,8 +141,6 @@ type Condition struct {
 	Values   []string
 }
 
-// Helper methods
-
 // IsSCP returns true if this is a Service Control Policy.
 func (op *OrgPolicy) IsSCP() bool {
 	return op.PolicyType == "SERVICE_CONTROL_POLICY" || op.PolicyType == "SCP"

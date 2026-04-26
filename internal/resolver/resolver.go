@@ -49,7 +49,6 @@ func NewResolver() *Resolver {
 
 // Resolve processes parsed resources and resolves references.
 func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*ResolvedResource, error) {
-	// Build the evaluation context
 	r.evalCtx = r.buildEvalContext(parseResult)
 
 	// First pass: evaluate locals
@@ -60,7 +59,6 @@ func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*Resolve
 		}
 	}
 
-	// Update eval context with resolved locals
 	r.updateLocalsInContext()
 
 	// Second pass: add all resources to the graph
@@ -84,14 +82,12 @@ func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*Resolve
 		return nil, fmt.Errorf("dependency resolution failed: %w", err)
 	}
 
-	// Build a map of raw resources for quick lookup
 	rawMap := make(map[string]*parser.RawResource)
 	for i := range parseResult.Resources {
 		raw := &parseResult.Resources[i]
 		rawMap[raw.GetResourceRef()] = raw
 	}
 
-	// Resolve resources in order
 	for _, ref := range order {
 		raw := rawMap[ref]
 		if raw == nil {
@@ -104,7 +100,6 @@ func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*Resolve
 		}
 		r.resources[ref] = resolved
 
-		// Update eval context with resolved resource
 		r.updateResourceInContext(resolved)
 	}
 
@@ -123,7 +118,6 @@ func (r *Resolver) buildEvalContext(parseResult *parser.ParseResult) *hcl.EvalCo
 		Functions: make(map[string]function.Function),
 	}
 
-	// Add standard functions
 	ctx.Functions["jsonencode"] = stdlib.JSONEncodeFunc
 	ctx.Functions["jsondecode"] = stdlib.JSONDecodeFunc
 	ctx.Functions["lower"] = stdlib.LowerFunc
@@ -142,11 +136,9 @@ func (r *Resolver) buildEvalContext(parseResult *parser.ParseResult) *hcl.EvalCo
 	ctx.Functions["toset"] = createToSetFunc()
 	ctx.Functions["tomap"] = createToMapFunc()
 
-	// Initialize empty containers
 	ctx.Variables["local"] = cty.EmptyObjectVal
 	ctx.Variables["var"] = cty.EmptyObjectVal
 
-	// Add variables with defaults
 	varVals := make(map[string]cty.Value)
 	for name, expr := range parseResult.Variables {
 		val, diags := expr.Value(nil)
@@ -170,25 +162,21 @@ func (r *Resolver) updateLocalsInContext() {
 
 // updateResourceInContext adds a resolved resource to the eval context.
 func (r *Resolver) updateResourceInContext(res *ResolvedResource) {
-	// Build a cty.Value representing the resource
 	attrs := make(map[string]cty.Value)
 
 	for name, val := range res.Attributes {
 		attrs[name] = interfaceToCty(val)
 	}
 
-	// Add common computed attributes
 	if _, ok := attrs["id"]; !ok {
 		attrs["id"] = cty.StringVal(res.Name)
 	}
 	if _, ok := attrs["arn"]; !ok {
-		// Generate a placeholder ARN
 		attrs["arn"] = cty.StringVal(fmt.Sprintf("arn:aws::::%s", res.Name))
 	}
 
 	resourceVal := cty.ObjectVal(attrs)
 
-	// Get or create the resource type namespace
 	typeKey := res.Type
 	existing := r.evalCtx.Variables[typeKey]
 	var typeVals map[string]cty.Value
@@ -214,7 +202,6 @@ func (r *Resolver) extractDependencies(raw *parser.RawResource) []string {
 	var deps []string
 	seen := make(map[string]bool)
 
-	// Extract from attributes
 	for _, expr := range raw.Attributes {
 		refs := extractRefsFromExpr(expr)
 		for _, ref := range refs {
@@ -225,7 +212,6 @@ func (r *Resolver) extractDependencies(raw *parser.RawResource) []string {
 		}
 	}
 
-	// Extract from blocks
 	for _, blocks := range raw.Blocks {
 		for _, block := range blocks {
 			for _, expr := range block.Attributes {
@@ -281,7 +267,6 @@ func traversalToRef(traversal hcl.Traversal) string {
 		return ""
 	}
 
-	// Check if it looks like a resource type
 	if !strings.HasPrefix(root.Name, "aws_") {
 		return ""
 	}
@@ -303,17 +288,14 @@ func (r *Resolver) resolveResource(raw *parser.RawResource) (*ResolvedResource, 
 		Blocks:     make(map[string][]ResolvedBlock),
 	}
 
-	// Resolve attributes
 	for name, expr := range raw.Attributes {
 		val := r.resolveExpression(expr)
 		resolved.Attributes[name] = val
 
-		// Track references
 		refs := extractRefsFromExpr(expr)
 		resolved.References = append(resolved.References, refs...)
 	}
 
-	// Resolve blocks
 	for blockType, blocks := range raw.Blocks {
 		for _, block := range blocks {
 			resolvedBlock := ResolvedBlock{
@@ -340,7 +322,6 @@ func (r *Resolver) resolveExpression(expr hcl.Expression) interface{} {
 	// Check if it's a jsonencode call
 	if call, diags := hcl.ExprCall(expr); !diags.HasErrors() && call != nil {
 		if call.Name == "jsonencode" && len(call.Arguments) > 0 {
-			// Evaluate the argument and convert to JSON
 			val, diags := call.Arguments[0].Value(r.evalCtx)
 			if !diags.HasErrors() {
 				jsonBytes, err := ctyToJSON(val)
@@ -351,10 +332,8 @@ func (r *Resolver) resolveExpression(expr hcl.Expression) interface{} {
 		}
 	}
 
-	// Try to evaluate the expression
 	val, diags := expr.Value(r.evalCtx)
 	if diags.HasErrors() {
-		// Return the expression source as a string for unresolvable expressions
 		return exprToString(expr)
 	}
 
@@ -363,11 +342,8 @@ func (r *Resolver) resolveExpression(expr hcl.Expression) interface{} {
 
 // exprToString extracts the source text of an expression.
 func exprToString(expr hcl.Expression) string {
-	// Get the range and try to extract the text
-	// For unresolvable expressions, we return a placeholder
 	vars := expr.Variables()
 	if len(vars) > 0 {
-		// Build a reference string from the variables
 		var parts []string
 		for _, v := range vars {
 			parts = append(parts, formatTraversal(v))
@@ -387,7 +363,6 @@ func formatTraversal(traversal hcl.Traversal) string {
 		case hcl.TraverseAttr:
 			parts = append(parts, t.Name)
 		case hcl.TraverseIndex:
-			// Handle index
 			parts = append(parts, "[...]")
 		}
 	}
@@ -479,8 +454,6 @@ func ctyToJSON(val cty.Value) ([]byte, error) {
 	goVal := ctyToInterface(val)
 	return json.Marshal(goVal)
 }
-
-// Helper functions for common HCL functions
 
 func createLookupFunc() function.Function {
 	return function.New(&function.Spec{
@@ -576,7 +549,6 @@ func ExtractResourceRefFromString(s string) string {
 		return matches[1] + "." + matches[2]
 	}
 
-	// Match direct reference
 	re = regexp.MustCompile(`^(aws_[a-z0-9_]+)\.([a-z0-9_]+)`)
 	matches = re.FindStringSubmatch(s)
 	if len(matches) >= 3 {

@@ -69,14 +69,12 @@ func (b *Builder) Build() (*Config, error) {
 	return b.config, nil
 }
 
-// buildS3Bucket builds an S3Bucket from a resolved resource.
 func (b *Builder) buildS3Bucket(ref string, res *resolver.ResolvedResource) {
 	bucket := &S3Bucket{
 		TFName: res.Name,
 		Tags:   make(map[string]string),
 	}
 
-	// Extract tags
 	if tags := b.getAttrAsMap(res, "tags"); tags != nil {
 		bucket.Tags = tags
 		if env, ok := tags["environment"]; ok {
@@ -203,22 +201,18 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 	return out
 }
 
-// analyzeBucketPolicy extracts relevant information from a bucket policy.
 func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocument) {
 	for _, stmt := range doc.Statements {
-		// Check for VPCE guard (explicit deny without correct VPCE)
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
 			policy.DenyVpceID = stmt.GetVPCEID()
 		}
 
-		// Check for Allow with principals and actions
 		if stmt.IsAllow() {
 			for _, p := range stmt.GetPrincipalARNs() {
 				policy.AllowPrincipals = append(policy.AllowPrincipals, p)
 			}
 			policy.AllowActions = append(policy.AllowActions, stmt.Actions...)
 
-			// Check for ABAC condition
 			if stmt.HasABACCondition() {
 				policy.HasABAC = true
 			}
@@ -234,21 +228,18 @@ func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocume
 	}
 }
 
-// buildIAMRole builds an IAMRole from a resolved resource.
 func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 	role := &IAMRole{
 		TFName: res.Name,
 		Tags:   make(map[string]string),
 	}
 
-	// Extract name
 	if name := b.getAttrAsString(res, "name"); name != "" {
 		role.Name = name
 	} else {
 		role.Name = res.Name
 	}
 
-	// Extract tags
 	if tags := b.getAttrAsMap(res, "tags"); tags != nil {
 		role.Tags = tags
 		if env, ok := tags["environment"]; ok {
@@ -276,7 +267,6 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 		}
 	}
 
-	// Parse assume role policy
 	if assumePolicy := b.getAttrAsString(res, "assume_role_policy"); assumePolicy != "" {
 		doc, err := ParsePolicyDocument(assumePolicy)
 		if err == nil {
@@ -287,13 +277,11 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 	b.config.Roles = append(b.config.Roles, role)
 }
 
-// buildRolePolicy builds a RolePolicy from a resolved resource.
 func (b *Builder) buildRolePolicy(ref string, res *resolver.ResolvedResource) {
 	rolePolicy := &RolePolicy{
 		TFName: res.Name,
 	}
 
-	// Extract role reference
 	if role := b.getAttrAsString(res, "role"); role != "" {
 		rolePolicy.RoleRef = extractResourceRef(role)
 		if rolePolicy.RoleRef == "" {
@@ -306,7 +294,6 @@ func (b *Builder) buildRolePolicy(ref string, res *resolver.ResolvedResource) {
 		}
 	}
 
-	// Parse policy document
 	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
 		doc, err := ParsePolicyDocument(policyDoc)
 		if err != nil {
@@ -320,21 +307,18 @@ func (b *Builder) buildRolePolicy(ref string, res *resolver.ResolvedResource) {
 	b.config.RolePolicies = append(b.config.RolePolicies, rolePolicy)
 }
 
-// buildIAMUser builds an IAMUser from a resolved resource.
 func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 	user := &IAMUser{
 		TFName: res.Name,
 		Tags:   make(map[string]string),
 	}
 
-	// Extract name
 	if name := b.getAttrAsString(res, "name"); name != "" {
 		user.Name = name
 	} else {
 		user.Name = res.Name
 	}
 
-	// Extract tags
 	if tags := b.getAttrAsMap(res, "tags"); tags != nil {
 		user.Tags = tags
 		if env, ok := tags["environment"]; ok {
@@ -347,13 +331,11 @@ func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 	b.config.Users = append(b.config.Users, user)
 }
 
-// buildUserPolicy builds a UserPolicy from a resolved resource.
 func (b *Builder) buildUserPolicy(ref string, res *resolver.ResolvedResource) {
 	userPolicy := &UserPolicy{
 		TFName: res.Name,
 	}
 
-	// Extract user reference
 	if user := b.getAttrAsString(res, "user"); user != "" {
 		userPolicy.UserRef = extractResourceRef(user)
 		if userPolicy.UserRef == "" {
@@ -366,7 +348,6 @@ func (b *Builder) buildUserPolicy(ref string, res *resolver.ResolvedResource) {
 		}
 	}
 
-	// Parse policy document
 	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
 		doc, err := ParsePolicyDocument(policyDoc)
 		if err == nil {
@@ -377,20 +358,17 @@ func (b *Builder) buildUserPolicy(ref string, res *resolver.ResolvedResource) {
 	b.config.UserPolicies = append(b.config.UserPolicies, userPolicy)
 }
 
-// buildIAMPolicy builds an IAMPolicy from a resolved resource.
 func (b *Builder) buildIAMPolicy(ref string, res *resolver.ResolvedResource) {
 	policy := &IAMPolicy{
 		TFName: res.Name,
 	}
 
-	// Extract name
 	if name := b.getAttrAsString(res, "name"); name != "" {
 		policy.Name = name
 	} else {
 		policy.Name = res.Name
 	}
 
-	// Parse policy document
 	if policyDoc := b.getAttrAsString(res, "policy"); policyDoc != "" {
 		doc, err := ParsePolicyDocument(policyDoc)
 		if err != nil {
@@ -404,25 +382,21 @@ func (b *Builder) buildIAMPolicy(ref string, res *resolver.ResolvedResource) {
 	b.config.Policies = append(b.config.Policies, policy)
 }
 
-// buildOrgPolicy builds an OrgPolicy from a resolved resource.
 func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 	orgPolicy := &OrgPolicy{
 		TFName: res.Name,
 	}
 
-	// Extract name
 	if name := b.getAttrAsString(res, "name"); name != "" {
 		orgPolicy.Name = name
 	}
 
-	// Extract type (defaults to SCP)
 	if policyType := b.getAttrAsString(res, "type"); policyType != "" {
 		orgPolicy.PolicyType = policyType
 	} else {
 		orgPolicy.PolicyType = "SERVICE_CONTROL_POLICY"
 	}
 
-	// Parse policy document (content attribute)
 	if content := b.getAttrAsString(res, "content"); content != "" {
 		doc, err := ParsePolicyDocument(content)
 		if err != nil {
@@ -440,7 +414,6 @@ func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 
 // handlePublicAccessBlock updates the corresponding bucket's HasBPA flag.
 func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
-	// Find the bucket reference
 	bucketRef := ""
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
 		bucketRef = extractResourceRef(bucket)
@@ -458,7 +431,6 @@ func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
 		return
 	}
 
-	// Find and update the bucket
 	bucketName := strings.TrimPrefix(bucketRef, "aws_s3_bucket.")
 	for _, bucket := range b.config.Buckets {
 		if bucket.TFName == bucketName {
@@ -470,7 +442,6 @@ func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
 
 // handleRolePolicyAttachment updates the corresponding role's HasRolePolicy flag.
 func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
-	// Find the role reference from attributes or references
 	roleRef := ""
 	if role := b.getAttrAsString(res, "role"); role != "" {
 		roleRef = extractResourceRef(role)
@@ -488,7 +459,6 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 		return
 	}
 
-	// Find the policy reference from attributes or references
 	policyRef := ""
 	for _, r := range res.References {
 		if strings.HasPrefix(r, "aws_iam_policy.") {
@@ -497,13 +467,11 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 		}
 	}
 
-	// Find and update the role
 	roleName := strings.TrimPrefix(roleRef, "aws_iam_role.")
 	for _, role := range b.config.Roles {
 		if role.TFName == roleName {
 			role.HasRolePolicy = true
 
-			// Extract actions from the attached policy
 			if policyRef != "" {
 				policyName := strings.TrimPrefix(policyRef, "aws_iam_policy.")
 				if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
@@ -526,7 +494,6 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 
 // linkResources establishes relationships between resources.
 func (b *Builder) linkResources() {
-	// Link role policies to roles
 	for _, rp := range b.config.RolePolicies {
 		if rp.RoleRef == "" {
 			continue
@@ -552,7 +519,6 @@ func (b *Builder) linkResources() {
 		}
 	}
 
-	// Link user policies to users
 	for _, up := range b.config.UserPolicies {
 		if up.UserRef == "" {
 			continue
@@ -566,7 +532,6 @@ func (b *Builder) linkResources() {
 		}
 	}
 
-	// Link boundaries to roles
 	for _, role := range b.config.Roles {
 		if role.BoundaryRef == "" {
 			continue
@@ -577,8 +542,6 @@ func (b *Builder) linkResources() {
 		}
 	}
 }
-
-// Helper methods
 
 func (b *Builder) getAttrAsString(res *resolver.ResolvedResource, name string) string {
 	if val, ok := res.Attributes[name]; ok {
@@ -606,7 +569,6 @@ func (b *Builder) getAttrAsMap(res *resolver.ResolvedResource, name string) map[
 
 // extractResourceRef extracts a resource reference from various formats.
 func extractResourceRef(s string) string {
-	// Try Terraform reference format: aws_s3_bucket.name.attribute
 	re := regexp.MustCompile(`(aws_[a-z0-9_]+)\.([a-z0-9_]+)`)
 	matches := re.FindStringSubmatch(s)
 	if len(matches) >= 3 {

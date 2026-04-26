@@ -108,8 +108,6 @@ func cleanupAlloyOutput(specFile string) {
 	os.RemoveAll(dir)
 }
 
-// ── Output parsing ────────────────────────────────────────────────────────────
-
 var checkLineRe = regexp.MustCompile(`^\d+\.\s+check\s+(\w+)\s+.*\b(SAT|UNSAT)\s*$`)
 
 func parseOutput(raw string) []CheckResult {
@@ -134,16 +132,12 @@ func parseOutput(raw string) []CheckResult {
 	return results
 }
 
-// ── Alloy invocation ──────────────────────────────────────────────────────────
-
 func runAlloy(javaPath, jarPath, specFile string) (string, error) {
 	// -f overwrites the output directory if it already exists from a prior run.
 	cmd := exec.Command(javaPath, "-jar", jarPath, "exec", "-f", specFile)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
-
-// ── Java discovery ────────────────────────────────────────────────────────────
 
 func findJava() string {
 	if home := os.Getenv("JAVA_HOME"); home != "" {
