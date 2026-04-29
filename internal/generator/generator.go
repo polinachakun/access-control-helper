@@ -20,8 +20,7 @@ type Generator struct {
 	vpces   map[string]bool
 	actions map[string]bool
 
-	// Populated during buildTemplateData for TripleMetadata().
-	roleNames   []string
+	principals  []PrincipalEntry
 	bucketNames []string
 	actionNames []string
 }
@@ -85,7 +84,6 @@ func (g *Generator) collectValues() {
 		if r.EnvTag != "" {
 			g.tags[strings.ToUpper(r.EnvTag)] = true
 		}
-
 		for _, a := range ExpandAnalyzableActions(r.RolePolicyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
@@ -96,6 +94,21 @@ func (g *Generator) collectValues() {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 		for _, a := range ExpandAnalyzableActions(r.BoundaryActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+	}
+
+	for _, u := range g.config.Users {
+		if u.EnvTag != "" {
+			g.tags[strings.ToUpper(u.EnvTag)] = true
+		}
+		for _, a := range ExpandAnalyzableActions(u.UserPolicyActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+		for _, a := range ExpandAnalyzableActions(u.UserDenyActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
+		for _, a := range ExpandAnalyzableActions(u.UserNotActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
 	}
@@ -192,18 +205,33 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	data.Roles = roleNames
 	data.RoleUnion = g.buildUnion(roleNames, "role_")
 
+	// ── IAM Users ─────────────────────────────────────────────────────────
+	userNames := make([]string, len(g.config.Users))
+	for i, u := range g.config.Users {
+		userNames[i] = AlloyID(u.TFName)
+	}
+	data.Users = userNames
+	data.UserUnion = g.buildUnion(userNames, "user_")
+
 	// ── Config facts ──────────────────────────────────────────────────────
 	data.ConfigFacts = g.buildConfigFacts()
 
-	// ── Store names for TripleMetadata() ─────────────────────────────────
+	// ── Build principals list for TripleMetadata() and assertions ─────────
 	sortedActions := g.sortedKeys(g.actions)
-	g.roleNames = roleNames
+	principals := make([]PrincipalEntry, 0, len(roleNames)+len(userNames))
+	for _, n := range roleNames {
+		principals = append(principals, PrincipalEntry{Name: n, SigName: "role_" + n})
+	}
+	for _, n := range userNames {
+		principals = append(principals, PrincipalEntry{Name: n, SigName: "user_" + n})
+	}
+	g.principals = principals
 	g.bucketNames = bucketNames
 	g.actionNames = sortedActions
 
 	// ── Per-triple access assertions (combined + per-layer) ──────────────
-	data.AccessAssertions = GenerateAccessAssertions(
-		roleNames, bucketNames, sortedActions,
+	data.AccessAssertions = GenerateAccessAssertionsForPrincipals(
+		g.principals, bucketNames, sortedActions,
 	)
 
 	// ── Scope & checks ────────────────────────────────────────────────────
@@ -211,8 +239,8 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	tagCount := len(g.sortedKeys(g.tags))
 	vpceCount := len(g.sortedKeys(g.vpces))
 
-	// Request count: need at least one atom per (role, bucket, action) triple.
-	requestCount := len(g.config.Roles) * len(g.config.Buckets) * actionCount
+	// Request count: need at least one atom per (principal, bucket, action) triple.
+	requestCount := (len(g.config.Roles) + len(g.config.Users)) * len(g.config.Buckets) * actionCount
 	if requestCount < 1 {
 		requestCount = 1
 	}
@@ -220,12 +248,12 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	scope := fmt.Sprintf(
 		"for exactly %d S3Bucket, exactly %d BucketPolicy,\n"+
 			"      exactly %d OrgRCP, exactly %d OrgSCP,\n"+
-			"      exactly %d IAMRole, exactly %d Request,\n"+
+			"      exactly %d IAMRole, exactly %d IAMUser, exactly %d Request,\n"+
 			"      exactly %d VpceId, exactly %d TagValue,\n"+
 			"      exactly %d Action, exactly 2 Bool",
 		len(g.config.Buckets), len(g.config.BucketPolicies),
 		len(rcps), len(scps),
-		len(g.config.Roles), requestCount,
+		len(g.config.Roles), len(g.config.Users), requestCount,
 		vpceCount, tagCount,
 		actionCount,
 	)
@@ -378,15 +406,37 @@ func (g *Generator) buildConfigFacts() string {
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(r.CrossAccount)))
-		sb.WriteString(fmt.Sprintf("  %s.hasRolePolicy        = %s\n", sig, BoolToAlloy(r.HasRolePolicy)))
-		sb.WriteString(fmt.Sprintf("  %s.roleAllowActions     = %s\n", sig, roleActions))
-		sb.WriteString(fmt.Sprintf("  %s.roleDenyActions      = %s\n", sig, roleDenyActions))
-		sb.WriteString(fmt.Sprintf("  %s.roleNotActions       = %s\n", sig, roleNotActions))
-		sb.WriteString(fmt.Sprintf("  %s.hasRoleNotAction     = %s\n", sig, BoolToAlloy(r.HasRoleNotAction)))
+		sb.WriteString(fmt.Sprintf("  %s.hasIdentityPolicy    = %s\n", sig, BoolToAlloy(r.HasRolePolicy)))
+		sb.WriteString(fmt.Sprintf("  %s.identityAllowActions = %s\n", sig, roleActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = %s\n", sig, roleDenyActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, roleNotActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(r.HasRoleNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(r.HasBoundary)))
 		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(r.HasSessionPolicy)))
 		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, sessionActions))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
+	}
+
+	// ── IAM Users ─────────────────────────────────────────────────────────
+	for _, u := range g.config.Users {
+		sig := "user_" + AlloyID(u.TFName)
+		envTag := tagOrDefault(u.EnvTag, "TAG_DEV")
+		userActions := toAlloyActionSet(u.UserPolicyActions)
+		userDenyActions := toAlloyActionSet(u.UserDenyActions)
+		userNotActions := toAlloyActionSet(u.UserNotActions)
+
+		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
+		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(false)))
+		sb.WriteString(fmt.Sprintf("  %s.hasIdentityPolicy    = %s\n", sig, BoolToAlloy(u.HasUserPolicy)))
+		sb.WriteString(fmt.Sprintf("  %s.identityAllowActions = %s\n", sig, userActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = %s\n", sig, userDenyActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, userNotActions))
+		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(u.HasUserNotAction)))
+		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(false)))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, toAlloyActionSet(nil)))
+		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(false)))
+		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, toAlloyActionSet(nil)))
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
 	}
 
@@ -471,10 +521,10 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 	return keys
 }
 
-// TripleMetadata returns a TripleKey for every (role, bucket, action) triple.
+// TripleMetadata returns a TripleKey for every (principal, bucket, action) triple.
 // Must be called after GenerateToFile or GenerateToWriter.
 func (g *Generator) TripleMetadata() []TripleKey {
-	return BuildTripleKeys(g.roleNames, g.bucketNames, g.actionNames)
+	return BuildTripleKeysFromPrincipals(g.principals, g.bucketNames, g.actionNames)
 }
 
 func Generate(config *ir.Config, sourceFile, outputFile string) error {

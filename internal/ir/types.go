@@ -78,11 +78,15 @@ type RolePolicy struct {
 
 // IAMUser represents an aws_iam_user resource.
 type IAMUser struct {
-	TFName        string
-	Name          string
-	EnvTag        string
-	Tags          map[string]string
-	HasUserPolicy bool
+	TFName            string
+	Name              string
+	EnvTag            string
+	Tags              map[string]string
+	HasUserPolicy     bool
+	UserPolicyActions []string
+	UserDenyActions   []string
+	UserNotActions    []string
+	HasUserNotAction  bool
 }
 
 // UserPolicy represents an aws_iam_user_policy resource.
@@ -229,6 +233,27 @@ func (c *Config) Validate() []ValidationError {
 	if len(c.Roles) == 0 {
 		errs = append(errs, ValidationError{Fatal: true,
 			Message: "no IAM roles found in configuration; nothing to analyse"})
+	}
+
+	for _, role := range c.Roles {
+		if role.HasRolePolicy && len(role.RolePolicyActions) == 0 && !role.HasRoleNotAction {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("role %q has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty", role.TFName)})
+		}
+	}
+
+	bucketHasPublicPolicy := make(map[string]bool)
+	for _, bp := range c.BucketPolicies {
+		if bp.AllowAnyPrincipal {
+			bucketHasPublicPolicy[bp.BucketRef] = true
+		}
+	}
+	for _, b := range c.Buckets {
+		ref := "aws_s3_bucket." + b.TFName
+		if bucketHasPublicPolicy[ref] && !b.HasBPA {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("bucket %q has a wildcard-principal allow policy but no public access block; potential public exposure", b.TFName)})
+		}
 	}
 
 	for _, bp := range c.BucketPolicies {

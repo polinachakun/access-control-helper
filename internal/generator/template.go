@@ -45,7 +45,7 @@ sig BucketPolicy extends Resource {
   bucket:              one S3Bucket,
   denyAllExcept:       lone VpceId,
 
-  allowPrincipal:      lone IAMRole,
+  allowPrincipal:      lone Principal,
   allowAnyPrincipal:   one Bool,
   allowActions:        set Action,
   allowNotActions:     set Action,
@@ -56,7 +56,7 @@ sig BucketPolicy extends Resource {
   denyActions:         set Action,
   denyNotActions:      set Action,
   hasDenyNotAction:    one Bool,
-  denyPrincipal:       lone IAMRole,
+  denyPrincipal:       lone Principal,
   denyAnyPrincipal:    one Bool,
   denyBucketResource:  one Bool,
   denyObjectResource:  one Bool,
@@ -76,20 +76,23 @@ abstract sig OrgSCP extends Resource {
   scpDenyActions:  set Action
 }
 
-// IAM Role principal — identity policy (Layer 5), boundary (Layer 6), session (Layer 7)
-sig IAMRole extends Resource {
-  envTag:               one TagValue,
-  crossAccount:         one Bool,
-  hasRolePolicy:        one Bool,
-  roleAllowActions:     set Action,
-  roleDenyActions:      set Action,
-  roleNotActions:       set Action,
-  hasRoleNotAction:     one Bool,
-  hasBoundary:          one Bool,
-  boundaryActions:      set Action,
-  hasSessionPolicy:     one Bool,
-  sessionPolicyActions: set Action
+// Principal — abstract base for all IAM principals (roles, users)
+abstract sig Principal extends Resource {
+  envTag:                 one TagValue,
+  crossAccount:           one Bool,
+  hasIdentityPolicy:      one Bool,
+  identityAllowActions:   set Action,
+  identityDenyActions:    set Action,
+  identityNotActions:     set Action,
+  hasNotAction:           one Bool,
+  hasBoundary:            one Bool,
+  boundaryActions:        set Action,
+  hasSessionPolicy:       one Bool,
+  sessionPolicyActions:   set Action
 }
+
+sig IAMRole extends Principal {}
+sig IAMUser extends Principal {}
 
 // ── Concrete resources ──────────────────────────────────────────────────────
 {{range .Buckets}}one sig bucket_{{.}} extends S3Bucket {}
@@ -97,6 +100,7 @@ sig IAMRole extends Resource {
 {{end}}{{range .RCPs}}one sig rcp_{{.}} extends OrgRCP {}
 {{end}}{{range .SCPs}}one sig scp_{{.}} extends OrgSCP {}
 {{end}}{{range .Roles}}one sig role_{{.}} extends IAMRole {}
+{{end}}{{range .Users}}one sig user_{{.}} extends IAMUser {}
 {{end}}
 fact ExactUniverse {
   S3Bucket     = {{.BucketUnion}}
@@ -104,7 +108,9 @@ fact ExactUniverse {
   OrgRCP       = {{.RCPUnion}}
   OrgSCP       = {{.SCPUnion}}
   IAMRole      = {{.RoleUnion}}
-  Resource     = S3Bucket + BucketPolicy + OrgRCP + OrgSCP + IAMRole
+  IAMUser      = {{.UserUnion}}
+  Principal    = IAMRole + IAMUser
+  Resource     = S3Bucket + BucketPolicy + OrgRCP + OrgSCP + Principal
 }
 
 // ── Configuration facts ─────────────────────────────────────────────────────
@@ -117,7 +123,7 @@ fact ConfigFacts {
 // ============================================================
 
 sig Request {
-  principal:  one IAMRole,
+  principal:  one Principal,
   action:     one Action,
   target:     one S3Bucket,
   sourceVpce: lone VpceId
@@ -160,6 +166,7 @@ type TemplateData struct {
 	Buckets           []string
 	BucketPolicies    []string
 	Roles             []string
+	Users             []string
 	RCPs              []string
 	SCPs              []string
 	BucketUnion       string
@@ -167,6 +174,7 @@ type TemplateData struct {
 	RCPUnion          string
 	SCPUnion          string
 	RoleUnion         string
+	UserUnion         string
 	ConfigFacts       string
 	Predicates        []Predicate
 	AccessAssertions  []Assertion

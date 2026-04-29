@@ -274,6 +274,24 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 		}
 	}
 
+	for _, nav := range NavResource(res).Blocks("inline_policy") {
+		doc, err := ParsePolicyDocument(nav.Str("policy"))
+		if err != nil {
+			b.warnings = append(b.warnings, fmt.Sprintf(
+				"role %q inline_policy: failed to parse policy document: %v", res.Name, err))
+			continue
+		}
+		role.HasRolePolicy = true
+		role.RolePolicyActions = append(role.RolePolicyActions, doc.GetAllActions()...)
+		role.RoleDenyActions = append(role.RoleDenyActions, doc.GetDeniedActions()...)
+		for _, stmt := range doc.Statements {
+			if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+				role.HasRoleNotAction = true
+				role.RoleNotActions = append(role.RoleNotActions, stmt.NotActions...)
+			}
+		}
+	}
+
 	b.config.Roles = append(b.config.Roles, role)
 }
 
@@ -527,6 +545,16 @@ func (b *Builder) linkResources() {
 		for _, user := range b.config.Users {
 			if user.TFName == userName {
 				user.HasUserPolicy = true
+				if up.Policy != nil {
+					user.UserPolicyActions = append(user.UserPolicyActions, up.Policy.GetAllActions()...)
+					user.UserDenyActions = append(user.UserDenyActions, up.Policy.GetDeniedActions()...)
+					for _, stmt := range up.Policy.Statements {
+						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+							user.HasUserNotAction = true
+							user.UserNotActions = append(user.UserNotActions, stmt.NotActions...)
+						}
+					}
+				}
 				break
 			}
 		}

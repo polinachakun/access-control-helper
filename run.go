@@ -137,7 +137,7 @@ func run(inputPath, outputPath string, out io.Writer) error {
 	fmt.Fprintf(os.Stderr, "Alloy completed %d check(s).\n", len(checkResults))
 
 	// ── Step 6: Consistency check ─────────────────────────────────────────
-	expectedChecks := len(tripleKeys) * 8
+	expectedChecks := len(tripleKeys) * (len(generator.LayerPredicates) + 1)
 	if len(checkResults) != expectedChecks {
 		return fmt.Errorf(
 			"Alloy returned %d check result(s), expected %d (8 per triple × %d triple(s)); pipeline is inconsistent",

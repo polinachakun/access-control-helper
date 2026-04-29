@@ -39,7 +39,7 @@ func GeneratePredicates() []Predicate {
     statementMatchesResource[req, bp.denyBucketResource, bp.denyObjectResource] and
     (bp.denyAnyPrincipal = True or bp.denyPrincipal = req.principal))
   or
-  req.action in req.principal.roleDenyActions`,
+  req.action in req.principal.identityDenyActions`,
 		},
 		{
 			Name:    "explicitDeny",
@@ -81,6 +81,7 @@ func GeneratePredicates() []Predicate {
      (bp.hasAllowNotAction = True and req.action not in bp.allowNotActions)) and
     statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
     (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
+    (bp.allowAnyPrincipal = True implies req.target.blockPublicAccess = False) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)`,
 		},
@@ -98,16 +99,16 @@ func GeneratePredicates() []Predicate {
 			Name:    "identityPolicyAllows",
 			Params:  []string{"req: Request"},
 			Comment: "Layer 5: Identity-based policy — allows via Action list OR NotAction exclusion.",
-			Body: `req.principal.hasRolePolicy = True and
-  (req.action in req.principal.roleAllowActions or
-   (req.principal.hasRoleNotAction = True and req.action not in req.principal.roleNotActions))`,
+			Body: `req.principal.hasIdentityPolicy = True and
+  (req.action in req.principal.identityAllowActions or
+   (req.principal.hasNotAction = True and req.action not in req.principal.identityNotActions))`,
 		},
 
 		// ── Layer 6: IAM Permission Boundary ────────────────────────────────
 		{
 			Name:    "permBoundaryAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 6: IAM Permission Boundary — if a boundary is set, the action must appear in its allow set.",
+			Comment: "Layer 6: IAM Permission Boundary — if a boundary is set, the action must appear in its allow set. IAMUser always passes (no boundary).",
 			Body: `req.principal.hasBoundary = False or
   req.action in req.principal.boundaryActions`,
 		},
@@ -116,7 +117,7 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "sessionPolicyAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 7: Session Policy — if a session policy is present, the action must appear in its allow set.",
+			Comment: "Layer 7: Session Policy — if a session policy is present, the action must appear in its allow set. IAMUser always passes (no session).",
 			Body: `req.principal.hasSessionPolicy = False or
   req.action in req.principal.sessionPolicyActions`,
 		},
@@ -184,6 +185,12 @@ var LayerPredicates = []LayerPredicateInfo{
 	{"_L7", "sessionPolicyAllows[req]", "Layer 7: Session policy allows", "blocking"},
 }
 
+// PrincipalEntry holds the display name and the Alloy sig name for a principal.
+type PrincipalEntry struct {
+	Name    string
+	SigName string
+}
+
 // TripleKey maps a base assertion name back to its human-readable components.
 type TripleKey struct {
 	Role              string
@@ -194,13 +201,22 @@ type TripleKey struct {
 
 // BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.
 func BuildTripleKeys(roleNames, bucketNames, actionNames []string) []TripleKey {
+	principals := make([]PrincipalEntry, len(roleNames))
+	for i, r := range roleNames {
+		principals[i] = PrincipalEntry{Name: r, SigName: "role_" + r}
+	}
+	return BuildTripleKeysFromPrincipals(principals, bucketNames, actionNames)
+}
+
+// BuildTripleKeysFromPrincipals computes a TripleKey for every (principal, bucket, action) combination.
+func BuildTripleKeysFromPrincipals(principals []PrincipalEntry, bucketNames, actionNames []string) []TripleKey {
 	var keys []TripleKey
-	for _, role := range roleNames {
+	for _, p := range principals {
 		for _, bucket := range bucketNames {
 			for _, action := range actionNames {
-				name := tripleBaseName(role, bucket, action)
+				name := tripleBaseName(p.Name, bucket, action)
 				keys = append(keys, TripleKey{
-					Role:              role,
+					Role:              p.Name,
 					Bucket:            bucket,
 					Action:            action,
 					AssertionBaseName: name,
@@ -221,19 +237,28 @@ func tripleBaseName(role, bucket, action string) string {
 // GenerateAccessAssertions creates 8 assertions per (role, bucket, action) triple:
 // one combined assertion (accessAllowed) plus one per evaluation layer (L1–L7).
 func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []Assertion {
+	principals := make([]PrincipalEntry, len(roleNames))
+	for i, r := range roleNames {
+		principals[i] = PrincipalEntry{Name: r, SigName: "role_" + r}
+	}
+	return GenerateAccessAssertionsForPrincipals(principals, bucketNames, actionNames)
+}
+
+// GenerateAccessAssertionsForPrincipals creates 8 assertions per (principal, bucket, action) triple.
+func GenerateAccessAssertionsForPrincipals(principals []PrincipalEntry, bucketNames, actionNames []string) []Assertion {
 	var assertions []Assertion
-	for _, role := range roleNames {
+	for _, p := range principals {
 		for _, bucket := range bucketNames {
 			for _, action := range actionNames {
-				baseName := tripleBaseName(role, bucket, action)
+				baseName := tripleBaseName(p.Name, bucket, action)
 				reqMatch := fmt.Sprintf(
-					`req.principal = role_%s and
+					`req.principal = %s and
      req.action = %s and
-     req.target = bucket_%s`, role, action, bucket)
+     req.target = bucket_%s`, p.SigName, action, bucket)
 
 				assertions = append(assertions, Assertion{
 					Name:    baseName,
-					Comment: fmt.Sprintf("Checks if %s can perform %s on %s.", role, action, bucket),
+					Comment: fmt.Sprintf("Checks if %s can perform %s on %s.", p.Name, action, bucket),
 					Body: fmt.Sprintf(`all req: Request |
     (%s)
     implies accessAllowed[req]`, reqMatch),
@@ -242,7 +267,7 @@ func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []As
 				for _, lp := range LayerPredicates {
 					assertions = append(assertions, Assertion{
 						Name:    baseName + lp.Suffix,
-						Comment: fmt.Sprintf("%s for %s performing %s on %s.", lp.Comment, role, action, bucket),
+						Comment: fmt.Sprintf("%s for %s performing %s on %s.", lp.Comment, p.Name, action, bucket),
 						Body: fmt.Sprintf(`all req: Request |
     (%s)
     implies %s`, reqMatch, lp.Predicate),
