@@ -28,6 +28,7 @@ type ResolvedBlock struct {
 	Type       string
 	Labels     []string
 	Attributes map[string]interface{}
+	Blocks     map[string][]ResolvedBlock
 }
 
 // Resolver handles reference resolution and value evaluation.
@@ -201,11 +202,12 @@ func (r *Resolver) updateResourceInContext(res *ResolvedResource) {
 func (r *Resolver) extractDependencies(raw *parser.RawResource) []string {
 	var deps []string
 	seen := make(map[string]bool)
+	selfRef := raw.GetResourceRef()
 
 	for _, expr := range raw.Attributes {
 		refs := extractRefsFromExpr(expr)
 		for _, ref := range refs {
-			if !seen[ref] && ref != raw.GetResourceRef() {
+			if !seen[ref] && ref != selfRef {
 				seen[ref] = true
 				deps = append(deps, ref)
 			}
@@ -214,19 +216,27 @@ func (r *Resolver) extractDependencies(raw *parser.RawResource) []string {
 
 	for _, blocks := range raw.Blocks {
 		for _, block := range blocks {
-			for _, expr := range block.Attributes {
-				refs := extractRefsFromExpr(expr)
-				for _, ref := range refs {
-					if !seen[ref] && ref != raw.GetResourceRef() {
-						seen[ref] = true
-						deps = append(deps, ref)
-					}
-				}
-			}
+			collectRefsFromRawBlock(block, seen, &deps, selfRef)
 		}
 	}
 
 	return deps
+}
+
+func collectRefsFromRawBlock(block parser.RawBlock, seen map[string]bool, deps *[]string, selfRef string) {
+	for _, expr := range block.Attributes {
+		for _, ref := range extractRefsFromExpr(expr) {
+			if !seen[ref] && ref != selfRef {
+				seen[ref] = true
+				*deps = append(*deps, ref)
+			}
+		}
+	}
+	for _, children := range block.Blocks {
+		for _, child := range children {
+			collectRefsFromRawBlock(child, seen, deps, selfRef)
+		}
+	}
 }
 
 // extractRefsFromExpr extracts resource references from an expression.
@@ -289,28 +299,35 @@ func (r *Resolver) resolveResource(raw *parser.RawResource) (*ResolvedResource, 
 	}
 
 	for name, expr := range raw.Attributes {
-		val := r.resolveExpression(expr)
-		resolved.Attributes[name] = val
-
-		refs := extractRefsFromExpr(expr)
-		resolved.References = append(resolved.References, refs...)
+		resolved.Attributes[name] = r.resolveExpression(expr)
+		resolved.References = append(resolved.References, extractRefsFromExpr(expr)...)
 	}
 
 	for blockType, blocks := range raw.Blocks {
 		for _, block := range blocks {
-			resolvedBlock := ResolvedBlock{
-				Type:       block.Type,
-				Labels:     block.Labels,
-				Attributes: make(map[string]interface{}),
-			}
-			for name, expr := range block.Attributes {
-				resolvedBlock.Attributes[name] = r.resolveExpression(expr)
-			}
-			resolved.Blocks[blockType] = append(resolved.Blocks[blockType], resolvedBlock)
+			resolved.Blocks[blockType] = append(resolved.Blocks[blockType], r.resolveBlock(block))
 		}
 	}
 
 	return resolved, nil
+}
+
+func (r *Resolver) resolveBlock(raw parser.RawBlock) ResolvedBlock {
+	resolved := ResolvedBlock{
+		Type:       raw.Type,
+		Labels:     raw.Labels,
+		Attributes: make(map[string]interface{}),
+		Blocks:     make(map[string][]ResolvedBlock),
+	}
+	for name, expr := range raw.Attributes {
+		resolved.Attributes[name] = r.resolveExpression(expr)
+	}
+	for blockType, children := range raw.Blocks {
+		for _, child := range children {
+			resolved.Blocks[blockType] = append(resolved.Blocks[blockType], r.resolveBlock(child))
+		}
+	}
+	return resolved
 }
 
 // resolveExpression evaluates an HCL expression to a Go value.

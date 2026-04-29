@@ -186,12 +186,21 @@ func (p *Parser) extractBlock(block *hcl.Block) RawBlock {
 		Blocks:     make(map[string][]RawBlock),
 	}
 
-	attrs, _ := block.Body.JustAttributes()
-	for attrName, attr := range attrs {
+	childSchema := BlockChildSchema(block.Type)
+	content, remain, _ := block.Body.PartialContent(childSchema)
+
+	for attrName, attr := range content.Attributes {
 		rawBlock.Attributes[attrName] = attr.Expr
 	}
-
-	// TODO: For deeply nested blocks, it needed recursive handling
+	if remainAttrs, _ := remain.JustAttributes(); remainAttrs != nil {
+		for attrName, attr := range remainAttrs {
+			rawBlock.Attributes[attrName] = attr.Expr
+		}
+	}
+	for _, childBlock := range content.Blocks {
+		child := p.extractBlock(childBlock)
+		rawBlock.Blocks[childBlock.Type] = append(rawBlock.Blocks[childBlock.Type], child)
+	}
 
 	return rawBlock
 }

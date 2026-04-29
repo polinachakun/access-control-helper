@@ -201,3 +201,36 @@ var SupportedResourceTypes = map[string]bool{
 func IsSupportedResourceType(resourceType string) bool {
 	return SupportedResourceTypes[resourceType]
 }
+
+func BlockChildSchema(blockType string) *hcl.BodySchema {
+	switch blockType {
+	case "inline_policy":
+		return &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+			{Name: "name"},
+			{Name: "policy"},
+		}}
+	case "server_side_encryption_configuration":
+		return &hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{{Type: "rule"}}}
+	case "rule":
+		return &hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{
+			{Type: "apply_server_side_encryption_by_default"},
+		}}
+	case "apply_server_side_encryption_by_default":
+		return &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+			{Name: "sse_algorithm"},
+			{Name: "kms_master_key_id"},
+		}}
+	case "versioning":
+		return &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+			{Name: "enabled"},
+			{Name: "mfa_delete"},
+		}}
+	case "logging":
+		return &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
+			{Name: "target_bucket"},
+			{Name: "target_prefix"},
+		}}
+	default:
+		return &hcl.BodySchema{}
+	}
+}
