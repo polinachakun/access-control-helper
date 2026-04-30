@@ -66,14 +66,16 @@ sig BucketPolicy extends Resource {
 
 // AWS Organizations Resource Control Policy (Layer 2)
 abstract sig OrgRCP extends Resource {
-  rcpAllowActions: set Action,
-  rcpDenyActions:  set Action
+  rcpAllowActions:    set Action,
+  rcpAllowNotActions: set Action,
+  rcpDenyActions:     set Action
 }
 
 // AWS Organizations Service Control Policy (Layer 3)
 abstract sig OrgSCP extends Resource {
-  scpAllowActions: set Action,
-  scpDenyActions:  set Action
+  scpAllowActions:    set Action,
+  scpAllowNotActions: set Action,
+  scpDenyActions:     set Action
 }
 
 // Principal — abstract base for all IAM principals (roles, users)

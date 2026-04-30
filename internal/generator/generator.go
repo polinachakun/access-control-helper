@@ -139,6 +139,9 @@ func (g *Generator) collectValues() {
 		for _, a := range ExpandAnalyzableActions(op.AllowActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range ExpandAnalyzableActions(op.AllowNotActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 		for _, a := range ExpandAnalyzableActions(op.DenyActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
@@ -387,20 +390,24 @@ func (g *Generator) buildConfigFacts() string {
 	for _, rcp := range g.config.RCPs() {
 		sig := "rcp_" + AlloyID(rcp.TFName)
 		allowA := toAlloyActionSet(rcp.AllowActions)
+		allowNotA := toAlloyActionSet(rcp.AllowNotActions)
 		denyA := toAlloyActionSet(rcp.DenyActions)
-		sb.WriteString(fmt.Sprintf("  %s.rcpAllowActions = %s\n", sig, allowA))
-		sb.WriteString(fmt.Sprintf("  %s.rcpDenyActions  = %s\n", sig, denyA))
-		sb.WriteString(fmt.Sprintf("  %s.dependsOn       = none\n\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.rcpAllowActions    = %s\n", sig, allowA))
+		sb.WriteString(fmt.Sprintf("  %s.rcpAllowNotActions = %s\n", sig, allowNotA))
+		sb.WriteString(fmt.Sprintf("  %s.rcpDenyActions     = %s\n", sig, denyA))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn          = none\n\n", sig))
 	}
 
 	// ── OrgSCPs ───────────────────────────────────────────────────────────
 	for _, scp := range g.config.SCPs() {
 		sig := "scp_" + AlloyID(scp.TFName)
 		allowA := toAlloyActionSet(scp.AllowActions)
+		allowNotA := toAlloyActionSet(scp.AllowNotActions)
 		denyA := toAlloyActionSet(scp.DenyActions)
-		sb.WriteString(fmt.Sprintf("  %s.scpAllowActions = %s\n", sig, allowA))
-		sb.WriteString(fmt.Sprintf("  %s.scpDenyActions  = %s\n", sig, denyA))
-		sb.WriteString(fmt.Sprintf("  %s.dependsOn       = none\n\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.scpAllowActions    = %s\n", sig, allowA))
+		sb.WriteString(fmt.Sprintf("  %s.scpAllowNotActions = %s\n", sig, allowNotA))
+		sb.WriteString(fmt.Sprintf("  %s.scpDenyActions     = %s\n", sig, denyA))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn          = none\n\n", sig))
 	}
 
 	// ── IAM Roles ─────────────────────────────────────────────────────────

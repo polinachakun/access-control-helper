@@ -439,6 +439,11 @@ func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 			orgPolicy.Policy = doc
 			orgPolicy.AllowActions = doc.GetAllActions()
 			orgPolicy.DenyActions = doc.GetDeniedActions()
+			for _, stmt := range doc.Statements {
+				if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+					orgPolicy.AllowNotActions = append(orgPolicy.AllowNotActions, stmt.NotActions...)
+				}
+			}
 		}
 	}
 
@@ -603,13 +608,7 @@ func (b *Builder) linkResources() {
 	b.detectCrossAccount()
 }
 
-// detectCrossAccount sets CrossAccount=true on roles whose AssumeRolePolicy
-// trusts a principal from a different AWS account. It compares account IDs
-// extracted from trust-policy principal ARNs against those found in other
-// resource ARNs in the same config. Defaults to false when no account context
-// is available (e.g. configs using data sources instead of literal ARNs).
 func (b *Builder) detectCrossAccount() {
-	// Collect account IDs mentioned in any resource ARN across the config.
 	localAccounts := b.collectLocalAccountIDs()
 
 	arnAccountRe := regexp.MustCompile(`arn:aws[^:]*:iam::(\d+):`)
@@ -625,9 +624,6 @@ func (b *Builder) detectCrossAccount() {
 					continue
 				}
 				accountID := match[1]
-				// Cross-account when the principal's account is not among local accounts,
-				// or when there are no local accounts to compare against but the ARN
-				// contains a concrete numeric account ID (not a placeholder).
 				if len(localAccounts) == 0 || !localAccounts[accountID] {
 					role.CrossAccount = true
 					break

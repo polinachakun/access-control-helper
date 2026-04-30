@@ -52,10 +52,11 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "rcpAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 2: AWS Organizations RCPs — action must be allowed by every RCP; no RCP means pass-through.",
+			Comment: "Layer 2: AWS Organizations RCPs — no RCP means pass-through. Allow-list (if present) or NotAction exclusion must pass; explicit deny blocks.",
 			Body: `no OrgRCP or
   (all rcp: OrgRCP |
-    req.action in rcp.rcpAllowActions and
+    (rcp.rcpAllowActions = none or req.action in rcp.rcpAllowActions) and
+    (rcp.rcpAllowNotActions = none or req.action not in rcp.rcpAllowNotActions) and
     req.action not in rcp.rcpDenyActions)`,
 		},
 
@@ -63,10 +64,11 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "scpAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 3: AWS Organizations SCPs — action must be allowed by every SCP; no SCP means pass-through.",
+			Comment: "Layer 3: AWS Organizations SCPs — no SCP means pass-through. Allow-list (if present) or NotAction exclusion must pass; explicit deny blocks.",
 			Body: `no OrgSCP or
   (all scp: OrgSCP |
-    req.action in scp.scpAllowActions and
+    (scp.scpAllowActions = none or req.action in scp.scpAllowActions) and
+    (scp.scpAllowNotActions = none or req.action not in scp.scpAllowNotActions) and
     req.action not in scp.scpDenyActions)`,
 		},
 

@@ -109,12 +109,13 @@ type IAMPolicy struct {
 
 // OrgPolicy represents an aws_organizations_policy resource.
 type OrgPolicy struct {
-	TFName       string             // Terraform resource name
-	Name         string             // Policy name
-	PolicyType   string             // "SERVICE_CONTROL_POLICY" (SCP) or "RESOURCE_CONTROL_POLICY" (RCP)
-	Policy       *IAMPolicyDocument // Parsed policy document
-	AllowActions []string           // Actions explicitly allowed
-	DenyActions  []string           // Actions explicitly denied
+	TFName          string             // Terraform resource name
+	Name            string             // Policy name
+	PolicyType      string             // "SERVICE_CONTROL_POLICY" (SCP) or "RESOURCE_CONTROL_POLICY" (RCP)
+	Policy          *IAMPolicyDocument // Parsed policy document
+	AllowActions    []string           // Actions explicitly allowed (from Allow + Action)
+	AllowNotActions []string           // Actions excluded from allow (from Allow + NotAction: "allow all except X")
+	DenyActions     []string           // Actions explicitly denied
 }
 
 // IAMPolicyDocument represents a parsed IAM policy document.
