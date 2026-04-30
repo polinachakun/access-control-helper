@@ -111,6 +111,9 @@ func (g *Generator) collectValues() {
 		for _, a := range ExpandAnalyzableActions(u.UserNotActions) {
 			g.actions[ActionToAlloyID(a)] = true
 		}
+		for _, a := range ExpandAnalyzableActions(u.BoundaryActions) {
+			g.actions[ActionToAlloyID(a)] = true
+		}
 	}
 
 	for _, p := range g.config.BucketPolicies {
@@ -219,10 +222,16 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	// ── Build principals list for TripleMetadata() and assertions ─────────
 	sortedActions := g.sortedKeys(g.actions)
 	principals := make([]PrincipalEntry, 0, len(roleNames)+len(userNames))
-	for _, n := range roleNames {
-		principals = append(principals, PrincipalEntry{Name: n, SigName: "role_" + n})
+	for _, r := range g.config.Roles {
+		n := AlloyID(r.TFName)
+		principals = append(principals, PrincipalEntry{
+			Name:             n,
+			SigName:          "role_" + n,
+			HasSessionPolicy: r.HasSessionPolicy,
+		})
 	}
 	for _, n := range userNames {
+		// IAM users never have session policies in static Terraform analysis.
 		principals = append(principals, PrincipalEntry{Name: n, SigName: "user_" + n})
 	}
 	g.principals = principals
@@ -402,7 +411,9 @@ func (g *Generator) buildConfigFacts() string {
 		roleDenyActions := toAlloyActionSet(r.RoleDenyActions)
 		roleNotActions := toAlloyActionSet(r.RoleNotActions)
 		boundaryActions := toAlloyActionSet(r.BoundaryActions)
-		sessionActions := toAlloyActionSet(nil) // session policy actions: Phase 3
+		// Session policies are sts:AssumeRole runtime parameters — not in Terraform source.
+		// HasSessionPolicy stays false; L7 is always NOT APPLICABLE for static analysis.
+		sessionActions := toAlloyActionSet(nil)
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(r.CrossAccount)))
@@ -425,6 +436,7 @@ func (g *Generator) buildConfigFacts() string {
 		userActions := toAlloyActionSet(u.UserPolicyActions)
 		userDenyActions := toAlloyActionSet(u.UserDenyActions)
 		userNotActions := toAlloyActionSet(u.UserNotActions)
+		boundaryActions := toAlloyActionSet(u.BoundaryActions)
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(false)))
@@ -433,8 +445,9 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = %s\n", sig, userDenyActions))
 		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, userNotActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(u.HasUserNotAction)))
-		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(false)))
-		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, toAlloyActionSet(nil)))
+		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(u.HasBoundary)))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
+		// Session policies are runtime sts:AssumeRole parameters; not applicable to IAM users.
 		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(false)))
 		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, toAlloyActionSet(nil)))
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))

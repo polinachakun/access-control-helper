@@ -75,6 +75,8 @@ func GeneratePredicates() []Predicate {
 			Name:    "resourcePolicyAllows",
 			Params:  []string{"req: Request"},
 			Comment: "Layer 4: Resource-based policy — matches via Action list OR NotAction exclusion.",
+			// blockPublicAccess is a single-boolean approximation of AWS S3 Public Access Block.
+			// HasBPA=true is treated as all four flags enabled (conservative approximation).
 			Body: `some bp: BucketPolicy |
     bp.bucket = req.target and
     (req.action in bp.allowActions or
@@ -187,8 +189,9 @@ var LayerPredicates = []LayerPredicateInfo{
 
 // PrincipalEntry holds the display name and the Alloy sig name for a principal.
 type PrincipalEntry struct {
-	Name    string
-	SigName string
+	Name             string
+	SigName          string
+	HasSessionPolicy bool
 }
 
 // TripleKey maps a base assertion name back to its human-readable components.
@@ -197,6 +200,7 @@ type TripleKey struct {
 	Bucket            string
 	Action            string
 	AssertionBaseName string
+	HasSessionPolicy  bool
 }
 
 // BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.
@@ -220,6 +224,7 @@ func BuildTripleKeysFromPrincipals(principals []PrincipalEntry, bucketNames, act
 					Bucket:            bucket,
 					Action:            action,
 					AssertionBaseName: name,
+					HasSessionPolicy:  p.HasSessionPolicy,
 				})
 			}
 		}

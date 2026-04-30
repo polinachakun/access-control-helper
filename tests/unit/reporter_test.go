@@ -54,8 +54,12 @@ func TestBuildTripleResults_Allow(t *testing.T) {
 		t.Errorf("Action = %q, want S3_GetObject", r.Action)
 	}
 	for i, layer := range r.Layers {
-		if layer.Status != "PASS" {
-			t.Errorf("Layer[%d] Status = %q, want PASS", i, layer.Status)
+		wantStatus := "PASS"
+		if i == 6 {
+			wantStatus = "NOT APPLICABLE" // L7: session policy not configured in Terraform
+		}
+		if layer.Status != wantStatus {
+			t.Errorf("Layer[%d] Status = %q, want %q", i, layer.Status, wantStatus)
 		}
 	}
 }

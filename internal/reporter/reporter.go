@@ -75,6 +75,9 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		// Per-layer status.
 		// "granting" layers (4, 5) show "NOT GRANTED" on failure (they don't
 		// block, they just didn't grant). "blocking" layers show "DENY".
+		// L7 (session policy) shows "NOT APPLICABLE" when no session policy is
+		// configured — session policies are runtime sts:AssumeRole parameters and
+		// cannot be derived from Terraform source.
 		for i, suffix := range layerSuffixes {
 			assertionName := key.AssertionBaseName + suffix
 			cr, ok := byName[assertionName]
@@ -82,7 +85,9 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 				return nil, fmt.Errorf("missing Alloy result for assertion %q: Alloy did not return a result for this check", assertionName)
 			}
 			tr.Layers[i] = LayerInfo{Name: layerNames[i]}
-			if cr.Valid {
+			if i == 6 && !key.HasSessionPolicy {
+				tr.Layers[i].Status = "NOT APPLICABLE"
+			} else if cr.Valid {
 				tr.Layers[i].Status = "PASS"
 			} else if generator.LayerPredicates[i].Kind == "granting" {
 				tr.Layers[i].Status = "NOT GRANTED"

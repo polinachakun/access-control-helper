@@ -15,7 +15,7 @@
         "L4": "PASS",
         "L5": "PASS",
         "L6": "DENY",
-        "L7": "PASS"
+        "L7": "NOT APPLICABLE"
       }
     },
     {
@@ -31,7 +31,7 @@
         "L4": "PASS",
         "L5": "PASS",
         "L6": "PASS",
-        "L7": "PASS"
+        "L7": "NOT APPLICABLE"
       }
     },
     {
@@ -47,7 +47,7 @@
         "L4": "PASS",
         "L5": "PASS",
         "L6": "DENY",
-        "L7": "PASS"
+        "L7": "NOT APPLICABLE"
       }
     },
     {
@@ -63,7 +63,7 @@
         "L4": "PASS",
         "L5": "PASS",
         "L6": "DENY",
-        "L7": "PASS"
+        "L7": "NOT APPLICABLE"
       }
     }
   ]

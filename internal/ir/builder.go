@@ -346,6 +346,21 @@ func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 		}
 	}
 
+	// Check for permissions boundary (parallel to buildIAMRole).
+	if boundary := b.getAttrAsString(res, "permissions_boundary"); boundary != "" {
+		user.HasBoundary = true
+		user.BoundaryRef = extractResourceRef(boundary)
+	}
+	if user.BoundaryRef == "" {
+		for _, r := range res.References {
+			if strings.HasPrefix(r, "aws_iam_policy.") {
+				user.HasBoundary = true
+				user.BoundaryRef = r
+				break
+			}
+		}
+	}
+
 	b.config.Users = append(b.config.Users, user)
 }
 
@@ -430,7 +445,12 @@ func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 	b.config.OrgPolicies = append(b.config.OrgPolicies, orgPolicy)
 }
 
-// handlePublicAccessBlock updates the corresponding bucket's HasBPA flag.
+// handlePublicAccessBlock sets HasBPA=true on the target bucket.
+// AWS S3 Public Access Block has four independent flags (block_public_acls,
+// ignore_public_acls, block_public_policy, restrict_public_buckets). This
+// model treats their presence as a single boolean approximation: HasBPA=true
+// is interpreted conservatively as "all four flags are enabled." This is
+// sufficient for the thesis scope — granular per-flag tracking is future work.
 func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
 	bucketRef := ""
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
@@ -569,6 +589,85 @@ func (b *Builder) linkResources() {
 			role.BoundaryActions = p.Policy.GetAllActions()
 		}
 	}
+
+	for _, user := range b.config.Users {
+		if user.BoundaryRef == "" {
+			continue
+		}
+		policyName := strings.TrimPrefix(user.BoundaryRef, "aws_iam_policy.")
+		if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
+			user.BoundaryActions = p.Policy.GetAllActions()
+		}
+	}
+
+	b.detectCrossAccount()
+}
+
+// detectCrossAccount sets CrossAccount=true on roles whose AssumeRolePolicy
+// trusts a principal from a different AWS account. It compares account IDs
+// extracted from trust-policy principal ARNs against those found in other
+// resource ARNs in the same config. Defaults to false when no account context
+// is available (e.g. configs using data sources instead of literal ARNs).
+func (b *Builder) detectCrossAccount() {
+	// Collect account IDs mentioned in any resource ARN across the config.
+	localAccounts := b.collectLocalAccountIDs()
+
+	arnAccountRe := regexp.MustCompile(`arn:aws[^:]*:iam::(\d+):`)
+
+	for _, role := range b.config.Roles {
+		if role.AssumeRolePolicy == nil {
+			continue
+		}
+		for _, stmt := range role.AssumeRolePolicy.Statements {
+			for _, p := range stmt.Principals {
+				match := arnAccountRe.FindStringSubmatch(p.Value)
+				if len(match) < 2 {
+					continue
+				}
+				accountID := match[1]
+				// Cross-account when the principal's account is not among local accounts,
+				// or when there are no local accounts to compare against but the ARN
+				// contains a concrete numeric account ID (not a placeholder).
+				if len(localAccounts) == 0 || !localAccounts[accountID] {
+					role.CrossAccount = true
+					break
+				}
+			}
+			if role.CrossAccount {
+				break
+			}
+		}
+	}
+}
+
+// collectLocalAccountIDs extracts AWS account IDs from ARNs found in role
+// assume-role policies and policy ARN attributes within the current config.
+func (b *Builder) collectLocalAccountIDs() map[string]bool {
+	ids := make(map[string]bool)
+	arnAccountRe := regexp.MustCompile(`arn:aws[^:]*:iam::(\d+):`)
+
+	// Look for account IDs in role assume-role policies (trust policies).
+	for _, role := range b.config.Roles {
+		if role.AssumeRolePolicy == nil {
+			continue
+		}
+		for _, stmt := range role.AssumeRolePolicy.Statements {
+			for _, p := range stmt.Principals {
+				if m := arnAccountRe.FindStringSubmatch(p.Value); len(m) >= 2 {
+					ids[m[1]] = true
+				}
+			}
+		}
+	}
+
+	// Look for account IDs in standalone policy ARNs.
+	for _, p := range b.config.Policies {
+		if m := arnAccountRe.FindStringSubmatch(p.ARN); len(m) >= 2 {
+			ids[m[1]] = true
+		}
+	}
+
+	return ids
 }
 
 func (b *Builder) getAttrAsString(res *resolver.ResolvedResource, name string) string {

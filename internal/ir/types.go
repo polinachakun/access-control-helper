@@ -87,6 +87,9 @@ type IAMUser struct {
 	UserDenyActions   []string
 	UserNotActions    []string
 	HasUserNotAction  bool
+	HasBoundary       bool
+	BoundaryRef       string
+	BoundaryActions   []string
 }
 
 // UserPolicy represents an aws_iam_user_policy resource.
