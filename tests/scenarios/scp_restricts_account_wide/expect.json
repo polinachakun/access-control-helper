@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "name": "scp_restricts_account_wide",
+  "queries": [
+    {
+      "principal": "admin_role",
+      "bucket": "data_bucket",
+      "action": "S3_DeleteObject",
+      "decision": "DENY",
+      "denied_at": "Layer 3",
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "DENY",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "admin_role",
+      "bucket": "data_bucket",
+      "action": "S3_GetObject",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "admin_role",
+      "bucket": "data_bucket",
+      "action": "S3_ListBucket",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "admin_role",
+      "bucket": "data_bucket",
+      "action": "S3_PutObject",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "developer_role",
+      "bucket": "data_bucket",
+      "action": "S3_DeleteObject",
+      "decision": "DENY",
+      "denied_at": "Layer 3",
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "DENY",
+        "L4": "PASS",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "developer_role",
+      "bucket": "data_bucket",
+      "action": "S3_GetObject",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "developer_role",
+      "bucket": "data_bucket",
+      "action": "S3_ListBucket",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "developer_role",
+      "bucket": "data_bucket",
+      "action": "S3_PutObject",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    }
+  ]
+}
