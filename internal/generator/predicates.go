@@ -77,15 +77,13 @@ func GeneratePredicates() []Predicate {
 			Name:    "resourcePolicyAllows",
 			Params:  []string{"req: Request"},
 			Comment: "Layer 4: Resource-based policy — matches via Action list OR NotAction exclusion.",
-			// blockPublicAccess is a single-boolean approximation of AWS S3 Public Access Block.
-			// HasBPA=true is treated as all four flags enabled (conservative approximation).
 			Body: `some bp: BucketPolicy |
     bp.bucket = req.target and
     (req.action in bp.allowActions or
      (bp.hasAllowNotAction = True and req.action not in bp.allowNotActions)) and
     statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
     (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
-    (bp.allowAnyPrincipal = True implies req.target.blockPublicAccess = False) and
+    (bp.allowAnyPrincipal = True implies req.target.restrictPublicBuckets = False) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)`,
 		},

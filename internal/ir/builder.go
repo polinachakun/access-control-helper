@@ -497,12 +497,6 @@ func (b *Builder) buildOrgPolicy(ref string, res *resolver.ResolvedResource) {
 	b.config.OrgPolicies = append(b.config.OrgPolicies, orgPolicy)
 }
 
-// handlePublicAccessBlock sets HasBPA=true on the target bucket.
-// AWS S3 Public Access Block has four independent flags (block_public_acls,
-// ignore_public_acls, block_public_policy, restrict_public_buckets). This
-// model treats their presence as a single boolean approximation: HasBPA=true
-// is interpreted conservatively as "all four flags are enabled." This is
-// sufficient for the thesis scope — granular per-flag tracking is future work.
 func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
 	bucketRef := ""
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
@@ -524,7 +518,10 @@ func (b *Builder) handlePublicAccessBlock(res *resolver.ResolvedResource) {
 	bucketName := strings.TrimPrefix(bucketRef, "aws_s3_bucket.")
 	for _, bucket := range b.config.Buckets {
 		if bucket.TFName == bucketName {
-			bucket.HasBPA = true
+			bucket.BPABlockPublicACLs = b.getAttrAsBool(res, "block_public_acls")
+			bucket.BPAIgnorePublicACLs = b.getAttrAsBool(res, "ignore_public_acls")
+			bucket.BPABlockPublicPolicy = b.getAttrAsBool(res, "block_public_policy")
+			bucket.BPARestrictPublicBuckets = b.getAttrAsBool(res, "restrict_public_buckets")
 			break
 		}
 	}
@@ -721,6 +718,15 @@ func (b *Builder) getAttrAsString(res *resolver.ResolvedResource, name string) s
 		}
 	}
 	return ""
+}
+
+func (b *Builder) getAttrAsBool(res *resolver.ResolvedResource, name string) bool {
+	if val, ok := res.Attributes[name]; ok {
+		if bv, ok := val.(bool); ok {
+			return bv
+		}
+	}
+	return false
 }
 
 func (b *Builder) getAttrAsMap(res *resolver.ResolvedResource, name string) map[string]string {

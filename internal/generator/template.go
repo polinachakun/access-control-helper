@@ -36,8 +36,11 @@ abstract sig Resource { dependsOn: set Resource }
 
 // S3 Bucket
 sig S3Bucket extends Resource {
-  envTag:            one TagValue,
-  blockPublicAccess: one Bool
+  envTag:                one TagValue,
+  blockPublicACLs:       one Bool,
+  ignorePublicACLs:      one Bool,
+  blockPublicPolicy:     one Bool,
+  restrictPublicBuckets: one Bool
 }
 
 // Bucket Policy — resource-based policy evaluated at Layer 4
@@ -219,9 +222,12 @@ type ConfigFact struct {
 
 // BucketFacts holds Alloy facts for an S3 bucket.
 type BucketFacts struct {
-	TFName            string
-	EnvTag            string
-	BlockPublicAccess string
+	TFName                string
+	EnvTag                string
+	BlockPublicACLs       string
+	IgnorePublicACLs      string
+	BlockPublicPolicy     string
+	RestrictPublicBuckets string
 }
 
 // BucketPolicyFacts holds Alloy facts for a bucket policy.

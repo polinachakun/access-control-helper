@@ -295,9 +295,12 @@ func (g *Generator) buildConfigFacts() string {
 	for _, b := range g.config.Buckets {
 		sig := "bucket_" + AlloyID(b.TFName)
 		envTag := tagOrDefault(b.EnvTag, "TAG_DEV")
-		sb.WriteString(fmt.Sprintf("  %s.envTag            = %s\n", sig, envTag))
-		sb.WriteString(fmt.Sprintf("  %s.blockPublicAccess = %s\n", sig, BoolToAlloy(b.HasBPA)))
-		sb.WriteString(fmt.Sprintf("  %s.dependsOn         = none\n\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.envTag                = %s\n", sig, envTag))
+		sb.WriteString(fmt.Sprintf("  %s.blockPublicACLs       = %s\n", sig, BoolToAlloy(b.BPABlockPublicACLs)))
+		sb.WriteString(fmt.Sprintf("  %s.ignorePublicACLs      = %s\n", sig, BoolToAlloy(b.BPAIgnorePublicACLs)))
+		sb.WriteString(fmt.Sprintf("  %s.blockPublicPolicy     = %s\n", sig, BoolToAlloy(b.BPABlockPublicPolicy)))
+		sb.WriteString(fmt.Sprintf("  %s.restrictPublicBuckets = %s\n", sig, BoolToAlloy(b.BPARestrictPublicBuckets)))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn             = none\n\n", sig))
 	}
 
 	// ── Bucket Policies ───────────────────────────────────────────────────

@@ -130,7 +130,11 @@ func TestBuilder_S3Bucket_PublicAccessBlock(t *testing.T) {
 				Type: "aws_s3_bucket_public_access_block",
 				Name: "my_bucket_bpa",
 				Attributes: map[string]interface{}{
-					"bucket": "aws_s3_bucket.my_bucket.id",
+					"bucket":                  "aws_s3_bucket.my_bucket.id",
+					"block_public_acls":       true,
+					"ignore_public_acls":      true,
+					"block_public_policy":     true,
+					"restrict_public_buckets": true,
 				},
 				References: []string{"aws_s3_bucket.my_bucket"},
 			}
@@ -141,8 +145,50 @@ func TestBuilder_S3Bucket_PublicAccessBlock(t *testing.T) {
 	if b == nil {
 		t.Fatal("bucket not found")
 	}
-	if !b.HasBPA {
-		t.Error("HasBPA should be true when public access block is configured")
+	if !b.BPABlockPublicACLs {
+		t.Error("BPABlockPublicACLs should be true")
+	}
+	if !b.BPAIgnorePublicACLs {
+		t.Error("BPAIgnorePublicACLs should be true")
+	}
+	if !b.BPABlockPublicPolicy {
+		t.Error("BPABlockPublicPolicy should be true")
+	}
+	if !b.BPARestrictPublicBuckets {
+		t.Error("BPARestrictPublicBuckets should be true")
+	}
+}
+
+func TestBuilder_S3Bucket_PublicAccessBlock_Partial(t *testing.T) {
+	// Only restrict_public_buckets=true — the flag that matters for policy analysis.
+	// block_public_acls/ignore_public_acls govern ACLs only and should not affect it.
+	config := build(t,
+		bucket("my_bucket", "prod"),
+		func() (string, *resolver.ResolvedResource) {
+			return "aws_s3_bucket_public_access_block.my_bucket", &resolver.ResolvedResource{
+				Type: "aws_s3_bucket_public_access_block",
+				Name: "my_bucket_bpa",
+				Attributes: map[string]interface{}{
+					"bucket":                  "aws_s3_bucket.my_bucket.id",
+					"block_public_acls":       true,
+					"ignore_public_acls":      false,
+					"block_public_policy":     false,
+					"restrict_public_buckets": false,
+				},
+				References: []string{"aws_s3_bucket.my_bucket"},
+			}
+		},
+	)
+
+	b := config.GetBucketByTFName("my_bucket")
+	if b == nil {
+		t.Fatal("bucket not found")
+	}
+	if !b.BPABlockPublicACLs {
+		t.Error("BPABlockPublicACLs should be true")
+	}
+	if b.BPARestrictPublicBuckets {
+		t.Error("BPARestrictPublicBuckets should be false when only block_public_acls is set")
 	}
 }
 

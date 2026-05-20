@@ -22,7 +22,11 @@ type S3Bucket struct {
 	BucketName string            // Actual S3 bucket name
 	Tags       map[string]string // Resource tags
 	EnvTag     string            // Environment tag value (extracted from tags)
-	HasBPA     bool              // Has aws_s3_bucket_public_access_block
+
+	BPABlockPublicACLs       bool
+	BPAIgnorePublicACLs      bool
+	BPABlockPublicPolicy     bool
+	BPARestrictPublicBuckets bool
 }
 
 // BucketPolicy represents an aws_s3_bucket_policy resource.
@@ -268,9 +272,9 @@ func (c *Config) Validate() []ValidationError {
 	}
 	for _, b := range c.Buckets {
 		ref := "aws_s3_bucket." + b.TFName
-		if bucketHasPublicPolicy[ref] && !b.HasBPA {
+		if bucketHasPublicPolicy[ref] && !b.BPARestrictPublicBuckets {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("bucket %q has a wildcard-principal allow policy but no public access block; potential public exposure", b.TFName)})
+				Message: fmt.Sprintf("bucket %q has a wildcard-principal allow policy but restrict_public_buckets is not enabled; potential public exposure", b.TFName)})
 		}
 	}
 
