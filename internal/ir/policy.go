@@ -43,13 +43,15 @@ type rawPolicyDocument struct {
 
 // rawStatement matches a single statement in raw JSON.
 type rawStatement struct {
-	SID       string          `json:"Sid,omitempty"`
-	Effect    string          `json:"Effect"`
-	Action    json.RawMessage `json:"Action,omitempty"`
-	NotAction json.RawMessage `json:"NotAction,omitempty"`
-	Resource  json.RawMessage `json:"Resource,omitempty"`
-	Principal json.RawMessage `json:"Principal,omitempty"`
-	Condition json.RawMessage `json:"Condition,omitempty"`
+	SID          string          `json:"Sid,omitempty"`
+	Effect       string          `json:"Effect"`
+	Action       json.RawMessage `json:"Action,omitempty"`
+	NotAction    json.RawMessage `json:"NotAction,omitempty"`
+	Resource     json.RawMessage `json:"Resource,omitempty"`
+	NotResource  json.RawMessage `json:"NotResource,omitempty"`
+	Principal    json.RawMessage `json:"Principal,omitempty"`
+	NotPrincipal json.RawMessage `json:"NotPrincipal,omitempty"`
+	Condition    json.RawMessage `json:"Condition,omitempty"`
 }
 
 // normalizeStatements handles both single statement and array of statements.
@@ -104,6 +106,15 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			stmt.Resources = resources
 		}
 
+		if raw.NotResource != nil {
+			notResources, err := normalizeStringOrArray(raw.NotResource)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse NotResource: %w", err)
+			}
+			stmt.NotResources = notResources
+			stmt.HasNotResource = true
+		}
+
 		if raw.Principal != nil {
 			principals, err := parsePrincipals(raw.Principal)
 			if err != nil {
@@ -112,12 +123,23 @@ func parseStatements(rawStmts []rawStatement) ([]*Statement, error) {
 			stmt.Principals = principals
 		}
 
+		if raw.NotPrincipal != nil {
+			notPrincipals, err := parsePrincipals(raw.NotPrincipal)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse NotPrincipal: %w", err)
+			}
+			stmt.NotPrincipals = notPrincipals
+			stmt.HasNotPrincipal = true
+		}
+
 		if raw.Condition != nil {
 			conditions, err := parseConditions(raw.Condition)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse Condition: %w", err)
 			}
-			stmt.Conditions = conditions
+			recognized, unrecognized := classifyConditions(conditions)
+			stmt.Conditions = recognized
+			stmt.UnrecognizedConditions = unrecognized
 		}
 
 		statements = append(statements, stmt)
@@ -212,6 +234,30 @@ func parseConditions(raw json.RawMessage) ([]Condition, error) {
 	return conditions, nil
 }
 
+// classifyConditions splits conditions into recognized and unrecognized.
+//
+// Recognized means the verifier fully models the condition's semantics:
+//   - StringNotEquals / aws:sourceVpce  → VPCE-deny (deny unless request comes via VPCE)
+//   - StringEquals    / aws:PrincipalTag/* → ABAC allow (allow when principal tag matches)
+//
+// Any other operator/key combination is unrecognized: the condition is dropped
+// and the statement is approximated, which may over- or under-grant access.
+func classifyConditions(conditions []Condition) (recognized, unrecognized []Condition) {
+	for _, c := range conditions {
+		key := strings.ToLower(c.Key)
+		op := strings.ToLower(c.Operator)
+		switch {
+		case key == "aws:sourcevpce" && op == "stringnotequals":
+			recognized = append(recognized, c)
+		case strings.HasPrefix(key, "aws:principaltag/") && op == "stringequals":
+			recognized = append(recognized, c)
+		default:
+			unrecognized = append(unrecognized, c)
+		}
+	}
+	return
+}
+
 // IsAllow returns true if this is an Allow statement.
 func (s *Statement) IsAllow() bool {
 	return strings.EqualFold(s.Effect, "Allow")
@@ -247,10 +293,22 @@ func (s *Statement) HasVPCECondition() bool {
 	return s.HasConditionKey("aws:sourceVpce") || s.HasConditionKey("aws:SourceVpce")
 }
 
-// GetVPCEOperator returns the condition operator for the aws:sourceVpce key, or "" if not found.
+// GetVPCEOperator returns the condition operator used for the aws:sourceVpce key,
+// or "" if no such condition exists.
 func (s *Statement) GetVPCEOperator() string {
 	for _, c := range s.Conditions {
 		if strings.EqualFold(c.Key, "aws:sourceVpce") {
+			return c.Operator
+		}
+	}
+	return ""
+}
+
+// GetABACOperator returns the condition operator used for the first aws:PrincipalTag key,
+// or "" if no such condition exists.
+func (s *Statement) GetABACOperator() string {
+	for _, c := range s.Conditions {
+		if strings.HasPrefix(strings.ToLower(c.Key), "aws:principaltag/") {
 			return c.Operator
 		}
 	}
@@ -278,16 +336,6 @@ func (s *Statement) HasABACCondition() bool {
 		}
 	}
 	return false
-}
-
-// GetABACOperator returns the condition operator for the first aws:PrincipalTag/ key found, or "" if none.
-func (s *Statement) GetABACOperator() string {
-	for _, c := range s.Conditions {
-		if strings.HasPrefix(strings.ToLower(c.Key), "aws:principaltag/") {
-			return c.Operator
-		}
-	}
-	return ""
 }
 
 // GetPrincipalARNs returns AWS principal ARNs from the statement.

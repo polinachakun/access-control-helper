@@ -136,11 +136,18 @@ type IAMPolicyDocument struct {
 type Statement struct {
 	SID        string      `json:"Sid,omitempty"`
 	Effect     string      `json:"Effect"`
-	Actions    []string    // Normalized from Action/NotAction
+	Actions    []string    // Action field
 	NotActions []string    // NotAction field
-	Resources  []string    // Normalized from Resource/NotResource
+	Resources  []string    // Resource field
 	Principals []Principal // Normalized from Principal
-	Conditions []Condition // Parsed conditions
+	Conditions []Condition // Recognized conditions (VPCE, ABAC)
+
+	// Unsupported constructs — detected at parse time, reported in builder.
+	HasNotResource         bool        // NotResource was present; statement is skipped by verifier
+	NotResources           []string    // Values of NotResource
+	HasNotPrincipal        bool        // NotPrincipal was present; statement is skipped by verifier
+	NotPrincipals          []Principal // Values of NotPrincipal
+	UnrecognizedConditions []Condition // Conditions that are not VPCE or ABAC — statement included but approximated
 }
 
 // Principal represents a principal in an IAM policy statement.

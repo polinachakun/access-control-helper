@@ -135,6 +135,44 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		return nil
 	}
 
+	sid := stmt.SID
+	if sid == "" {
+		sid = fmt.Sprintf("%d", stmtIdx)
+	}
+
+	if stmt.HasNotResource {
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %s statement %s: NotResource [%s] is not supported by this verifier; statement skipped",
+			baseName, sid, strings.Join(stmt.NotResources, ", ")))
+		return nil
+	}
+
+	if stmt.HasNotPrincipal {
+		notPrincipals := make([]string, 0, len(stmt.NotPrincipals))
+		for _, p := range stmt.NotPrincipals {
+			notPrincipals = append(notPrincipals, p.Value)
+		}
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %s statement %s: NotPrincipal [%s] is not supported by this verifier; statement skipped",
+			baseName, sid, strings.Join(notPrincipals, ", ")))
+		return nil
+	}
+
+	if len(stmt.UnrecognizedConditions) > 0 {
+		keys := make([]string, 0, len(stmt.UnrecognizedConditions))
+		for _, c := range stmt.UnrecognizedConditions {
+			keys = append(keys, fmt.Sprintf("%s/%s", c.Operator, c.Key))
+		}
+		effect := strings.ToLower(stmt.Effect)
+		approximation := "statement modeled as unconditional allow (may over-grant access in analysis)"
+		if strings.EqualFold(stmt.Effect, "Deny") {
+			approximation = "statement modeled as unconditional deny (may over-restrict access in analysis)"
+		}
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %s statement %s: unrecognized %s conditions [%s] are ignored; %s",
+			baseName, sid, effect, strings.Join(keys, ", "), approximation))
+	}
+
 	principals := stmt.GetPrincipalARNs()
 	anyPrincipal := stmt.HasWildcardPrincipal()
 
@@ -159,13 +197,7 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.HasABACCondition() {
-			if op := stmt.GetABACOperator(); op == "StringEquals" {
-				p.HasABAC = true
-			} else {
-				b.warnings = append(b.warnings, fmt.Sprintf(
-					"bucket policy %s statement %d: unsupported ABAC condition operator %q (only StringEquals aws:PrincipalTag/* is modeled) — ABAC condition skipped",
-					baseName, stmtIdx, op))
-			}
+			p.HasABAC = true
 		}
 
 		if stmt.IsAllow() {
@@ -185,13 +217,7 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
-			if op := stmt.GetVPCEOperator(); op == "StringNotEquals" {
-				p.DenyVpceID = stmt.GetVPCEID()
-			} else {
-				b.warnings = append(b.warnings, fmt.Sprintf(
-					"bucket policy %s statement %d: unsupported VPCE condition operator %q (only StringNotEquals aws:sourceVpce is modeled) — statement skipped",
-					baseName, stmtIdx, op))
-			}
+			p.DenyVpceID = stmt.GetVPCEID()
 		}
 
 		if stmt.IsDeny() && !stmt.HasVPCECondition() {
@@ -218,15 +244,9 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 }
 
 func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocument) {
-	for i, stmt := range doc.Statements {
+	for _, stmt := range doc.Statements {
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
-			if op := stmt.GetVPCEOperator(); op == "StringNotEquals" {
-				policy.DenyVpceID = stmt.GetVPCEID()
-			} else {
-				b.warnings = append(b.warnings, fmt.Sprintf(
-					"bucket policy %s statement %d: unsupported VPCE condition operator %q (only StringNotEquals aws:sourceVpce is modeled) — statement skipped",
-					policy.TFName, i, op))
-			}
+			policy.DenyVpceID = stmt.GetVPCEID()
 		}
 
 		if stmt.IsAllow() {
@@ -236,13 +256,7 @@ func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocume
 			policy.AllowActions = append(policy.AllowActions, stmt.Actions...)
 
 			if stmt.HasABACCondition() {
-				if op := stmt.GetABACOperator(); op == "StringEquals" {
-					policy.HasABAC = true
-				} else {
-					b.warnings = append(b.warnings, fmt.Sprintf(
-						"bucket policy %s statement %d: unsupported ABAC condition operator %q (only StringEquals aws:PrincipalTag/* is modeled) — ABAC condition skipped",
-						policy.TFName, i, op))
-				}
+				policy.HasABAC = true
 			}
 		}
 
