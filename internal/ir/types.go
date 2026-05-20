@@ -62,12 +62,13 @@ type IAMRole struct {
 	RoleDenyActions   []string // Actions explicitly denied by role policies
 	RoleNotActions    []string // Actions excluded from Allow via NotAction
 	HasRoleNotAction  bool     // Role policy uses NotAction in an Allow statement
-	// IdentityAllowActionsPerBucket maps bucket TFName → allowed actions.
+	// IdentityAllowActionsPerBucket maps bucket name/TFName → allowed actions.
 	// The special key "*" means the actions apply to all buckets (wildcard Resource).
 	IdentityAllowActionsPerBucket map[string][]string
 	HasBoundary                   bool // Has permissions boundary
 	BoundaryRef                   string
-	BoundaryActions               []string
+	BoundaryActions               []string // Flat union (used for action universe collection)
+	BoundaryActionsPerBucket      map[string][]string
 	HasSessionPolicy              bool // AssumeRole with session policy
 	AssumeRolePolicy              *IAMPolicyDocument
 	CrossAccount                  bool // Principal is from a different AWS account
@@ -82,21 +83,20 @@ type RolePolicy struct {
 
 // IAMUser represents an aws_iam_user resource.
 type IAMUser struct {
-	TFName            string
-	Name              string
-	EnvTag            string
-	Tags              map[string]string
-	HasUserPolicy     bool
-	UserPolicyActions []string // Flat union of Allow actions (used for validation + action universe)
-	UserDenyActions   []string
-	UserNotActions    []string
-	HasUserNotAction  bool
-	// IdentityAllowActionsPerBucket maps bucket TFName → allowed actions.
-	// The special key "*" means the actions apply to all buckets (wildcard Resource).
+	TFName                        string
+	Name                          string
+	EnvTag                        string
+	Tags                          map[string]string
+	HasUserPolicy                 bool
+	UserPolicyActions             []string // Flat union of Allow actions (used for validation + action universe)
+	UserDenyActions               []string
+	UserNotActions                []string
+	HasUserNotAction              bool
 	IdentityAllowActionsPerBucket map[string][]string
 	HasBoundary                   bool
 	BoundaryRef                   string
-	BoundaryActions               []string
+	BoundaryActions               []string // Flat union
+	BoundaryActionsPerBucket      map[string][]string
 }
 
 // UserPolicy represents an aws_iam_user_policy resource.

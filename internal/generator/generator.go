@@ -416,7 +416,6 @@ func (g *Generator) buildConfigFacts() string {
 		envTag := tagOrDefault(r.EnvTag, "TAG_DEV")
 		roleDenyActions := toAlloyActionSet(r.RoleDenyActions)
 		roleNotActions := toAlloyActionSet(r.RoleNotActions)
-		boundaryActions := toAlloyActionSet(r.BoundaryActions)
 		// Session policies are sts:AssumeRole runtime parameters — not in Terraform source.
 		sessionActions := toAlloyActionSet(nil)
 
@@ -428,7 +427,7 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, roleNotActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(r.HasRoleNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(r.HasBoundary)))
-		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryAllowedOn    = %s\n", sig, g.buildIdentityAllowedOnRelation(r.BoundaryActionsPerBucket)))
 		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(r.HasSessionPolicy)))
 		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, sessionActions))
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
@@ -440,7 +439,6 @@ func (g *Generator) buildConfigFacts() string {
 		envTag := tagOrDefault(u.EnvTag, "TAG_DEV")
 		userDenyActions := toAlloyActionSet(u.UserDenyActions)
 		userNotActions := toAlloyActionSet(u.UserNotActions)
-		boundaryActions := toAlloyActionSet(u.BoundaryActions)
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(false)))
@@ -450,7 +448,7 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, userNotActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(u.HasUserNotAction)))
 		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = %s\n", sig, BoolToAlloy(u.HasBoundary)))
-		sb.WriteString(fmt.Sprintf("  %s.boundaryActions      = %s\n", sig, boundaryActions))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryAllowedOn    = %s\n", sig, g.buildIdentityAllowedOnRelation(u.BoundaryActionsPerBucket)))
 		// Session policies are runtime sts:AssumeRole parameters; not applicable to IAM users.
 		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = %s\n", sig, BoolToAlloy(false)))
 		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = %s\n", sig, toAlloyActionSet(nil)))

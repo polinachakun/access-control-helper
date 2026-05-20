@@ -112,9 +112,9 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "permBoundaryAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 6: IAM Permission Boundary — if a boundary is set, the action must appear in its allow set. IAMUser always passes (no boundary).",
+			Comment: "Layer 6: IAM Permission Boundary — action must be permitted by the boundary on the specific target bucket.",
 			Body: `req.principal.hasBoundary = False or
-  req.action in req.principal.boundaryActions`,
+  req.action in req.principal.boundaryAllowedOn[req.target]`,
 		},
 
 		// ── Layer 7: Session Policy ──────────────────────────────────────────

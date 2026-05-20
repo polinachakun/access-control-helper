@@ -88,7 +88,7 @@ abstract sig Principal extends Resource {
   identityNotActions:     set Action,
   hasNotAction:           one Bool,
   hasBoundary:            one Bool,
-  boundaryActions:        set Action,
+  boundaryAllowedOn:      S3Bucket -> set Action,
   hasSessionPolicy:       one Bool,
   sessionPolicyActions:   set Action
 }

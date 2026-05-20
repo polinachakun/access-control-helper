@@ -237,6 +237,7 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 		TFName:                        res.Name,
 		Tags:                          make(map[string]string),
 		IdentityAllowActionsPerBucket: make(map[string][]string),
+		BoundaryActionsPerBucket:      make(map[string][]string),
 	}
 
 	if name := b.getAttrAsString(res, "name"); name != "" {
@@ -336,6 +337,7 @@ func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 		TFName:                        res.Name,
 		Tags:                          make(map[string]string),
 		IdentityAllowActionsPerBucket: make(map[string][]string),
+		BoundaryActionsPerBucket:      make(map[string][]string),
 	}
 
 	if name := b.getAttrAsString(res, "name"); name != "" {
@@ -598,6 +600,7 @@ func (b *Builder) linkResources() {
 		policyName := strings.TrimPrefix(role.BoundaryRef, "aws_iam_policy.")
 		if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
 			role.BoundaryActions = p.Policy.GetAllActions()
+			mergePerBucketActions(role.BoundaryActionsPerBucket, p.Policy.GetAllowActionsPerBucket())
 		}
 	}
 
@@ -608,6 +611,7 @@ func (b *Builder) linkResources() {
 		policyName := strings.TrimPrefix(user.BoundaryRef, "aws_iam_policy.")
 		if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
 			user.BoundaryActions = p.Policy.GetAllActions()
+			mergePerBucketActions(user.BoundaryActionsPerBucket, p.Policy.GetAllowActionsPerBucket())
 		}
 	}
 
