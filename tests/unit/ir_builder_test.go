@@ -355,6 +355,67 @@ func TestBuilder_BucketPolicy_VPCEDeny(t *testing.T) {
 	}
 }
 
+func TestBuilder_BucketPolicy_VPCEDeny_UnsupportedOperator(t *testing.T) {
+	// StringEquals aws:sourceVpce has opposite semantics ("deny this specific VPCE")
+	// and is not modeled — builder must warn and skip it.
+	policyJSON := `{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Principal":"*","Action":"s3:*","Resource":"*","Condition":{"StringEquals":{"aws:sourceVpce":"vpce-0abc1234"}}}]}`
+
+	_, warnings := buildWithWarnings(t,
+		bucket("my_bucket", "prod"),
+		func() (string, *resolver.ResolvedResource) {
+			return "aws_s3_bucket_policy.my_bucket", &resolver.ResolvedResource{
+				Type: "aws_s3_bucket_policy",
+				Name: "my_bucket_policy",
+				Attributes: map[string]interface{}{
+					"bucket": "aws_s3_bucket.my_bucket.id",
+					"policy": policyJSON,
+				},
+				References: []string{"aws_s3_bucket.my_bucket"},
+			}
+		},
+	)
+
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w, "StringEquals") && strings.Contains(w, "sourceVpce") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected unsupported-operator warning for StringEquals aws:sourceVpce, got %v", warnings)
+	}
+}
+
+func TestBuilder_BucketPolicy_ABACCondition_UnsupportedOperator(t *testing.T) {
+	// StringNotEquals aws:PrincipalTag/environment is not modeled — builder must warn and skip.
+	policyJSON := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::123456789012:role/my-role"},"Action":"s3:GetObject","Resource":"*","Condition":{"StringNotEquals":{"aws:PrincipalTag/environment":"prod"}}}]}`
+
+	_, warnings := buildWithWarnings(t,
+		bucket("my_bucket", "prod"),
+		func() (string, *resolver.ResolvedResource) {
+			return "aws_s3_bucket_policy.my_bucket", &resolver.ResolvedResource{
+				Type: "aws_s3_bucket_policy",
+				Name: "my_bucket_policy",
+				Attributes: map[string]interface{}{
+					"bucket": "aws_s3_bucket.my_bucket.id",
+					"policy": policyJSON,
+				},
+				References: []string{"aws_s3_bucket.my_bucket"},
+			}
+		},
+	)
+
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w, "StringNotEquals") && strings.Contains(w, "PrincipalTag") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected unsupported-operator warning for StringNotEquals aws:PrincipalTag/*, got %v", warnings)
+	}
+}
+
 func TestBuilder_BucketPolicy_ExplicitDeny(t *testing.T) {
 	policyJSON := `{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Principal":"*","Action":["s3:DeleteObject"],"Resource":"*"}]}`
 

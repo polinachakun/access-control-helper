@@ -290,6 +290,46 @@ func TestStatement_NoABACCondition(t *testing.T) {
 	}
 }
 
+func TestStatement_GetVPCEOperator(t *testing.T) {
+	cases := []struct {
+		name   string
+		cond   ir.Condition
+		wantOp string
+	}{
+		{"StringNotEquals", ir.Condition{Operator: "StringNotEquals", Key: "aws:sourceVpce", Values: []string{"vpce-abc"}}, "StringNotEquals"},
+		{"StringEquals", ir.Condition{Operator: "StringEquals", Key: "aws:SourceVpce", Values: []string{"vpce-abc"}}, "StringEquals"},
+		{"no VPCE key", ir.Condition{Operator: "StringEquals", Key: "aws:PrincipalTag/env", Values: []string{"prod"}}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &ir.Statement{Conditions: []ir.Condition{tc.cond}}
+			if got := s.GetVPCEOperator(); got != tc.wantOp {
+				t.Errorf("GetVPCEOperator() = %q, want %q", got, tc.wantOp)
+			}
+		})
+	}
+}
+
+func TestStatement_GetABACOperator(t *testing.T) {
+	cases := []struct {
+		name   string
+		cond   ir.Condition
+		wantOp string
+	}{
+		{"StringEquals", ir.Condition{Operator: "StringEquals", Key: "aws:PrincipalTag/environment", Values: []string{"prod"}}, "StringEquals"},
+		{"StringNotEquals", ir.Condition{Operator: "StringNotEquals", Key: "aws:principalTag/env", Values: []string{"prod"}}, "StringNotEquals"},
+		{"no ABAC key", ir.Condition{Operator: "StringEquals", Key: "aws:sourceVpce", Values: []string{"vpce-abc"}}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &ir.Statement{Conditions: []ir.Condition{tc.cond}}
+			if got := s.GetABACOperator(); got != tc.wantOp {
+				t.Errorf("GetABACOperator() = %q, want %q", got, tc.wantOp)
+			}
+		})
+	}
+}
+
 func TestStatement_HasWildcardPrincipal(t *testing.T) {
 	s := &ir.Statement{Principals: []ir.Principal{{Type: "*", Value: "*"}}}
 	if !s.HasWildcardPrincipal() {

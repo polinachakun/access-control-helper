@@ -159,7 +159,13 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.HasABACCondition() {
-			p.HasABAC = true
+			if op := stmt.GetABACOperator(); op == "StringEquals" {
+				p.HasABAC = true
+			} else {
+				b.warnings = append(b.warnings, fmt.Sprintf(
+					"bucket policy %s statement %d: unsupported ABAC condition operator %q (only StringEquals aws:PrincipalTag/* is modeled) — ABAC condition skipped",
+					baseName, stmtIdx, op))
+			}
 		}
 
 		if stmt.IsAllow() {
@@ -179,7 +185,13 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		}
 
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
-			p.DenyVpceID = stmt.GetVPCEID()
+			if op := stmt.GetVPCEOperator(); op == "StringNotEquals" {
+				p.DenyVpceID = stmt.GetVPCEID()
+			} else {
+				b.warnings = append(b.warnings, fmt.Sprintf(
+					"bucket policy %s statement %d: unsupported VPCE condition operator %q (only StringNotEquals aws:sourceVpce is modeled) — statement skipped",
+					baseName, stmtIdx, op))
+			}
 		}
 
 		if stmt.IsDeny() && !stmt.HasVPCECondition() {
@@ -206,9 +218,15 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 }
 
 func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocument) {
-	for _, stmt := range doc.Statements {
+	for i, stmt := range doc.Statements {
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
-			policy.DenyVpceID = stmt.GetVPCEID()
+			if op := stmt.GetVPCEOperator(); op == "StringNotEquals" {
+				policy.DenyVpceID = stmt.GetVPCEID()
+			} else {
+				b.warnings = append(b.warnings, fmt.Sprintf(
+					"bucket policy %s statement %d: unsupported VPCE condition operator %q (only StringNotEquals aws:sourceVpce is modeled) — statement skipped",
+					policy.TFName, i, op))
+			}
 		}
 
 		if stmt.IsAllow() {
@@ -218,7 +236,13 @@ func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocume
 			policy.AllowActions = append(policy.AllowActions, stmt.Actions...)
 
 			if stmt.HasABACCondition() {
-				policy.HasABAC = true
+				if op := stmt.GetABACOperator(); op == "StringEquals" {
+					policy.HasABAC = true
+				} else {
+					b.warnings = append(b.warnings, fmt.Sprintf(
+						"bucket policy %s statement %d: unsupported ABAC condition operator %q (only StringEquals aws:PrincipalTag/* is modeled) — ABAC condition skipped",
+						policy.TFName, i, op))
+				}
 			}
 		}
 

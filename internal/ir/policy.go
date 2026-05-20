@@ -247,6 +247,16 @@ func (s *Statement) HasVPCECondition() bool {
 	return s.HasConditionKey("aws:sourceVpce") || s.HasConditionKey("aws:SourceVpce")
 }
 
+// GetVPCEOperator returns the condition operator for the aws:sourceVpce key, or "" if not found.
+func (s *Statement) GetVPCEOperator() string {
+	for _, c := range s.Conditions {
+		if strings.EqualFold(c.Key, "aws:sourceVpce") {
+			return c.Operator
+		}
+	}
+	return ""
+}
+
 // GetVPCEID returns the VPCE ID from the condition, if present.
 func (s *Statement) GetVPCEID() string {
 	values := s.GetConditionValues("aws:sourceVpce")
@@ -268,6 +278,16 @@ func (s *Statement) HasABACCondition() bool {
 		}
 	}
 	return false
+}
+
+// GetABACOperator returns the condition operator for the first aws:PrincipalTag/ key found, or "" if none.
+func (s *Statement) GetABACOperator() string {
+	for _, c := range s.Conditions {
+		if strings.HasPrefix(strings.ToLower(c.Key), "aws:principaltag/") {
+			return c.Operator
+		}
+	}
+	return ""
 }
 
 // GetPrincipalARNs returns AWS principal ARNs from the statement.
