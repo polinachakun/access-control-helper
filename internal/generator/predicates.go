@@ -196,7 +196,7 @@ type PrincipalEntry struct {
 
 // TripleKey maps a base assertion name back to its human-readable components.
 type TripleKey struct {
-	Role              string
+	Principal         string
 	Bucket            string
 	Action            string
 	AssertionBaseName string
@@ -220,7 +220,7 @@ func BuildTripleKeysFromPrincipals(principals []PrincipalEntry, bucketNames, act
 			for _, action := range actionNames {
 				name := tripleBaseName(p.Name, bucket, action)
 				keys = append(keys, TripleKey{
-					Role:              p.Name,
+					Principal:         p.Name,
 					Bucket:            bucket,
 					Action:            action,
 					AssertionBaseName: name,

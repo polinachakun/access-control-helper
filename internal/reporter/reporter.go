@@ -60,7 +60,7 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		}
 
 		tr := &TripleResult{
-			Principal: key.Role,
+			Principal: key.Principal,
 			Bucket:    key.Bucket,
 			Action:    key.Action,
 		}

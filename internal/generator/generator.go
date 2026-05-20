@@ -320,16 +320,16 @@ func (g *Generator) buildConfigFacts() string {
 
 		allowPrincipal := "none"
 		for _, prin := range p.AllowPrincipals {
-			if ref := extractRoleFromPrincipal(prin, g.config); ref != "" {
-				allowPrincipal = "role_" + AlloyID(ref)
+			if sig := resolvePrincipalSig(prin, g.config); sig != "" {
+				allowPrincipal = sig
 				break
 			}
 		}
 
 		denyPrincipal := "none"
 		for _, prin := range p.DenyPrincipals {
-			if ref := extractRoleFromPrincipal(prin, g.config); ref != "" {
-				denyPrincipal = "role_" + AlloyID(ref)
+			if sig := resolvePrincipalSig(prin, g.config); sig != "" {
+				denyPrincipal = sig
 				break
 			}
 		}
@@ -505,26 +505,43 @@ func tagOrDefault(tag, defaultTag string) string {
 	return TagToAlloyID(tag)
 }
 
-// extractRoleFromPrincipal resolves a principal ARN/reference to an IAM role TFName.
-func extractRoleFromPrincipal(principal string, config *ir.Config) string {
-	// Direct Terraform reference: "aws_iam_role.name"
+func resolvePrincipalSig(principal string, config *ir.Config) string {
+	// Direct Terraform reference: "aws_iam_role.name" or "aws_iam_user.name"
 	if strings.HasPrefix(principal, "aws_iam_role.") {
 		parts := strings.Split(principal, ".")
 		if len(parts) >= 2 {
-			return parts[1]
+			return "role_" + AlloyID(parts[1])
+		}
+	}
+	if strings.HasPrefix(principal, "aws_iam_user.") {
+		parts := strings.Split(principal, ".")
+		if len(parts) >= 2 {
+			return "user_" + AlloyID(parts[1])
 		}
 	}
 
-	if strings.Contains(principal, "${aws_iam_role.") {
-		start := strings.Index(principal, "${aws_iam_role.") + len("${aws_iam_role.")
-		end := strings.Index(principal[start:], ".")
-		if end > 0 {
-			return principal[start : start+end]
+	for _, prefix := range []string{"${aws_iam_role.", "${aws_iam_user."} {
+		if strings.Contains(principal, prefix) {
+			start := strings.Index(principal, prefix) + len(prefix)
+			end := strings.Index(principal[start:], ".")
+			if end > 0 {
+				name := principal[start : start+end]
+				if strings.Contains(prefix, "role") {
+					return "role_" + AlloyID(name)
+				}
+				return "user_" + AlloyID(name)
+			}
 		}
 	}
+
 	for _, r := range config.Roles {
 		if strings.Contains(principal, r.Name) || strings.Contains(principal, r.TFName) {
-			return r.TFName
+			return "role_" + AlloyID(r.TFName)
+		}
+	}
+	for _, u := range config.Users {
+		if strings.Contains(principal, u.Name) || strings.Contains(principal, u.TFName) {
+			return "user_" + AlloyID(u.TFName)
 		}
 	}
 	return ""

@@ -17,8 +17,8 @@ func TestBuildTripleKeys_SingleTriple(t *testing.T) {
 		t.Fatalf("expected 1 key, got %d", len(keys))
 	}
 	k := keys[0]
-	if k.Role != "app_role" {
-		t.Errorf("Role = %q, want app_role", k.Role)
+	if k.Principal != "app_role" {
+		t.Errorf("Principal = %q, want app_role", k.Principal)
 	}
 	if k.Bucket != "my_bucket" {
 		t.Errorf("Bucket = %q, want my_bucket", k.Bucket)
