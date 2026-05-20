@@ -140,6 +140,23 @@ type Reporter struct {
 
 func New(w io.Writer) *Reporter { return &Reporter{w: w} }
 
+// IncompleteWarning prints a prominent warning when security-relevant resource
+// types were skipped during parsing. Results should be treated as a lower bound
+// only — additional resources may grant or restrict access.
+func (r *Reporter) IncompleteWarning(skippedTypes []string) {
+	fmt.Fprintln(r.w)
+	fmt.Fprintln(r.w, "⚠  INCOMPLETE ANALYSIS")
+	fmt.Fprintln(r.w, strings.Repeat("=", sectionWidth))
+	fmt.Fprintln(r.w, "  The following security-relevant resource types were found in the")
+	fmt.Fprintln(r.w, "  configuration but are not yet supported by this tool. Results below")
+	fmt.Fprintln(r.w, "  may not reflect the full effective access policy.")
+	fmt.Fprintln(r.w)
+	for _, t := range skippedTypes {
+		fmt.Fprintf(r.w, "  - %s\n", t)
+	}
+	fmt.Fprintln(r.w)
+}
+
 func (r *Reporter) Report(results []*TripleResult) {
 	r.header("Access Analysis Report")
 

@@ -81,6 +81,21 @@ func run(inputPath, outputPath string, out io.Writer) error {
 		return fmt.Errorf("parse: %w", err)
 	}
 
+	// Collect resource types that were silently skipped.
+	var skippedSecurityTypes []string
+	for rType, names := range parseResult.SkippedResources {
+		if parser.IsSecurityRelevantResourceType(rType) {
+			skippedSecurityTypes = append(skippedSecurityTypes,
+				fmt.Sprintf("%s (%d instance(s))", rType, len(names)))
+		}
+	}
+	if len(skippedSecurityTypes) > 0 {
+		fmt.Fprintln(os.Stderr, "warning: skipped security-relevant resource types not yet supported:")
+		for _, t := range skippedSecurityTypes {
+			fmt.Fprintf(os.Stderr, "  - %s\n", t)
+		}
+	}
+
 	// ── Step 2: Resolve cross-references ─────────────────────────────────
 	res := resolver.NewResolver()
 	resources, err := res.Resolve(parseResult)
@@ -151,6 +166,9 @@ func run(inputPath, outputPath string, out io.Writer) error {
 		return fmt.Errorf("report: %w", err)
 	}
 	rep := reporter.New(out)
+	if len(skippedSecurityTypes) > 0 {
+		rep.IncompleteWarning(skippedSecurityTypes)
+	}
 	rep.Summary(tripleResults)
 	rep.Report(tripleResults)
 

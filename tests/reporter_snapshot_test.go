@@ -128,6 +128,16 @@ func render(results []*reporter.TripleResult) string {
 	return sb.String()
 }
 
+// renderWithWarning produces IncompleteWarning + Summary + Report as a string.
+func renderWithWarning(skipped []string, results []*reporter.TripleResult) string {
+	var sb strings.Builder
+	rep := reporter.New(&sb)
+	rep.IncompleteWarning(skipped)
+	rep.Summary(results)
+	rep.Report(results)
+	return sb.String()
+}
+
 // ── Snapshot tests ────────────────────────────────────────────────────────────
 
 func TestReportSnapshot_Allow(t *testing.T) {
@@ -152,4 +162,16 @@ func TestReportSnapshot_DenyAtLayer6(t *testing.T) {
 	result := denyLayer6Result("restricted_role", "secure_bucket", "S3_PutObject")
 	got := render([]*reporter.TripleResult{result})
 	checkSnapshot(t, "deny_layer6", got)
+}
+
+func TestReportSnapshot_IncompleteAnalysisWarning(t *testing.T) {
+	skipped := []string{
+		"aws_iam_group (2 instance(s))",
+		"aws_ssoadmin_permission_set (1 instance(s))",
+	}
+	results := []*reporter.TripleResult{
+		allowResult("app_role", "my_bucket", "S3_GetObject"),
+	}
+	got := renderWithWarning(skipped, results)
+	checkSnapshot(t, "incomplete_warning", got)
 }

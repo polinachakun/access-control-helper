@@ -13,11 +13,12 @@ import (
 
 // ParseResult holds the results of parsing Terraform files.
 type ParseResult struct {
-	Resources []RawResource
-	Locals    map[string]hcl.Expression
-	Variables map[string]hcl.Expression
-	Files     map[string]*hcl.File
-	Diags     hcl.Diagnostics
+	Resources        []RawResource
+	Locals           map[string]hcl.Expression
+	Variables        map[string]hcl.Expression
+	Files            map[string]*hcl.File
+	Diags            hcl.Diagnostics
+	SkippedResources map[string][]string // resource type → resource names skipped during parsing
 }
 
 // RawResource represents a parsed but unresolved Terraform resource.
@@ -78,9 +79,10 @@ func (p *Parser) ParseDirectory(dir string) (*ParseResult, error) {
 // ParseFiles parses multiple Terraform files and merges the results.
 func (p *Parser) ParseFiles(paths []string) (*ParseResult, error) {
 	result := &ParseResult{
-		Locals:    make(map[string]hcl.Expression),
-		Variables: make(map[string]hcl.Expression),
-		Files:     make(map[string]*hcl.File),
+		Locals:           make(map[string]hcl.Expression),
+		Variables:        make(map[string]hcl.Expression),
+		Files:            make(map[string]*hcl.File),
+		SkippedResources: make(map[string][]string),
 	}
 
 	for _, path := range paths {
@@ -118,6 +120,8 @@ func (p *Parser) extractFromFile(file *hcl.File, result *ParseResult) error {
 			resourceName := block.Labels[1]
 
 			if !IsSupportedResourceType(resourceType) {
+				result.SkippedResources[resourceType] = append(
+					result.SkippedResources[resourceType], resourceName)
 				continue
 			}
 

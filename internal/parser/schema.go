@@ -1,6 +1,10 @@
 package parser
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"strings"
+
+	"github.com/hashicorp/hcl/v2"
+)
 
 // HCL schemas for AWS Terraform resource types.
 // These define which attributes and blocks are expected to find in each resource type.
@@ -200,6 +204,28 @@ var SupportedResourceTypes = map[string]bool{
 // IsSupportedResourceType returns true if the resource type is supported.
 func IsSupportedResourceType(resourceType string) bool {
 	return SupportedResourceTypes[resourceType]
+}
+
+// securityRelevantPrefixes lists AWS resource type prefixes that could affect
+// access control decisions if present in the configuration.
+var securityRelevantPrefixes = []string{
+	"aws_iam_",
+	"aws_s3_",
+	"aws_organizations_",
+	"aws_ssoadmin_",
+	"aws_identitystore_",
+}
+
+// IsSecurityRelevantResourceType returns true for resource types whose presence
+// could affect access control decisions but are not currently analysed.
+// A skipped resource of this kind means the analysis may be incomplete.
+func IsSecurityRelevantResourceType(resourceType string) bool {
+	for _, prefix := range securityRelevantPrefixes {
+		if strings.HasPrefix(resourceType, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func BlockChildSchema(blockType string) *hcl.BodySchema {
