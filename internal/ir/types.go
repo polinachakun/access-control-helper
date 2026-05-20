@@ -18,10 +18,11 @@ type Config struct {
 
 // S3Bucket represents an aws_s3_bucket resource.
 type S3Bucket struct {
-	TFName string            // Terraform resource name
-	Tags   map[string]string // Resource tags
-	EnvTag string            // Environment tag value (extracted from tags)
-	HasBPA bool              // Has aws_s3_bucket_public_access_block
+	TFName     string            // Terraform resource name (e.g. "my_bucket")
+	BucketName string            // Actual S3 bucket name
+	Tags       map[string]string // Resource tags
+	EnvTag     string            // Environment tag value (extracted from tags)
+	HasBPA     bool              // Has aws_s3_bucket_public_access_block
 }
 
 // BucketPolicy represents an aws_s3_bucket_policy resource.
@@ -57,16 +58,19 @@ type IAMRole struct {
 	EnvTag            string // Environment tag value
 	Tags              map[string]string
 	HasRolePolicy     bool     // Has attached role policy
-	RolePolicyActions []string // Actions explicitly allowed by role policies
-	RoleDenyActions   []string // Actions explicitly denied by role policies (Bug 2 fix)
-	RoleNotActions    []string // Actions excluded from Allow via NotAction (Bug 4 fix)
-	HasRoleNotAction  bool     // Role policy uses NotAction in an Allow statement (Bug 4 fix)
-	HasBoundary       bool     // Has permissions boundary
-	BoundaryRef       string   // Reference to boundary policy
-	BoundaryActions   []string // Actions allowed by boundary
-	HasSessionPolicy  bool     // AssumeRole with session policy
-	AssumeRolePolicy  *IAMPolicyDocument
-	CrossAccount      bool // Principal is from a different AWS account (Bug 3 fix)
+	RolePolicyActions []string // Flat union of Allow actions (used for validation + action universe)
+	RoleDenyActions   []string // Actions explicitly denied by role policies
+	RoleNotActions    []string // Actions excluded from Allow via NotAction
+	HasRoleNotAction  bool     // Role policy uses NotAction in an Allow statement
+	// IdentityAllowActionsPerBucket maps bucket TFName → allowed actions.
+	// The special key "*" means the actions apply to all buckets (wildcard Resource).
+	IdentityAllowActionsPerBucket map[string][]string
+	HasBoundary                   bool // Has permissions boundary
+	BoundaryRef                   string
+	BoundaryActions               []string
+	HasSessionPolicy              bool // AssumeRole with session policy
+	AssumeRolePolicy              *IAMPolicyDocument
+	CrossAccount                  bool // Principal is from a different AWS account
 }
 
 // RolePolicy represents an aws_iam_role_policy resource.
@@ -83,13 +87,16 @@ type IAMUser struct {
 	EnvTag            string
 	Tags              map[string]string
 	HasUserPolicy     bool
-	UserPolicyActions []string
+	UserPolicyActions []string // Flat union of Allow actions (used for validation + action universe)
 	UserDenyActions   []string
 	UserNotActions    []string
 	HasUserNotAction  bool
-	HasBoundary       bool
-	BoundaryRef       string
-	BoundaryActions   []string
+	// IdentityAllowActionsPerBucket maps bucket TFName → allowed actions.
+	// The special key "*" means the actions apply to all buckets (wildcard Resource).
+	IdentityAllowActionsPerBucket map[string][]string
+	HasBoundary                   bool
+	BoundaryRef                   string
+	BoundaryActions               []string
 }
 
 // UserPolicy represents an aws_iam_user_policy resource.

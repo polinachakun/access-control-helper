@@ -83,7 +83,7 @@ abstract sig Principal extends Resource {
   envTag:                 one TagValue,
   crossAccount:           one Bool,
   hasIdentityPolicy:      one Bool,
-  identityAllowActions:   set Action,
+  identityAllowedOn:      S3Bucket -> set Action,
   identityDenyActions:    set Action,
   identityNotActions:     set Action,
   hasNotAction:           one Bool,

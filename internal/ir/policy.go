@@ -360,6 +360,72 @@ func (d *IAMPolicyDocument) GetAllActions() []string {
 	return actions
 }
 
+// extractS3BucketFromResource extracts the S3 bucket name from a resource ARN.
+// Returns "*" for wildcard resources, "" for non-S3 resources.
+func extractS3BucketFromResource(resource string) string {
+	resource = strings.TrimSpace(resource)
+	if resource == "" {
+		return ""
+	}
+	if resource == "*" {
+		return "*"
+	}
+
+	base := strings.TrimSuffix(resource, "/*")
+	if strings.HasPrefix(base, "arn:aws") {
+		parts := strings.Split(base, ":::")
+		if len(parts) == 2 && (strings.HasPrefix(parts[0], "arn:aws") && strings.Contains(parts[0], ":s3")) {
+			name := parts[1]
+			if name == "" || name == "*" {
+				return "*"
+			}
+			return name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (d *IAMPolicyDocument) GetAllowActionsPerBucket() map[string][]string {
+	result := make(map[string][]string)
+	seen := make(map[string]map[string]bool)
+
+	for _, stmt := range d.Statements {
+		if !stmt.IsAllow() || len(stmt.Actions) == 0 {
+			continue
+		}
+
+		buckets := make(map[string]bool)
+		for _, r := range stmt.Resources {
+			if name := extractS3BucketFromResource(r); name != "" {
+				buckets[name] = true
+			}
+		}
+
+		if len(stmt.Resources) == 0 {
+			buckets["*"] = true
+		}
+
+		if buckets["*"] {
+			buckets = map[string]bool{"*": true}
+		}
+
+		for bucket := range buckets {
+			if seen[bucket] == nil {
+				seen[bucket] = make(map[string]bool)
+			}
+			for _, a := range stmt.Actions {
+				if !seen[bucket][a] {
+					seen[bucket][a] = true
+					result[bucket] = append(result[bucket], a)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 // GetDeniedActions returns all actions from Deny statements.
 func (d *IAMPolicyDocument) GetDeniedActions() []string {
 	seen := make(map[string]bool)

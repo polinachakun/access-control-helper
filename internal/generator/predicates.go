@@ -102,9 +102,9 @@ func GeneratePredicates() []Predicate {
 		{
 			Name:    "identityPolicyAllows",
 			Params:  []string{"req: Request"},
-			Comment: "Layer 5: Identity-based policy — allows via Action list OR NotAction exclusion.",
+			Comment: "Layer 5: Identity-based policy — action must be allowed on the specific target bucket, OR NotAction exclusion covers it.",
 			Body: `req.principal.hasIdentityPolicy = True and
-  (req.action in req.principal.identityAllowActions or
+  (req.action in req.principal.identityAllowedOn[req.target] or
    (req.principal.hasNotAction = True and req.action not in req.principal.identityNotActions))`,
 		},
 

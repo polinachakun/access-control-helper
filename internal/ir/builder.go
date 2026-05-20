@@ -75,6 +75,10 @@ func (b *Builder) buildS3Bucket(ref string, res *resolver.ResolvedResource) {
 		Tags:   make(map[string]string),
 	}
 
+	if name := b.getAttrAsString(res, "bucket"); name != "" {
+		bucket.BucketName = name
+	}
+
 	if tags := b.getAttrAsMap(res, "tags"); tags != nil {
 		bucket.Tags = tags
 		if env, ok := tags["environment"]; ok {
@@ -230,8 +234,9 @@ func (b *Builder) analyzeBucketPolicy(policy *BucketPolicy, doc *IAMPolicyDocume
 
 func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 	role := &IAMRole{
-		TFName: res.Name,
-		Tags:   make(map[string]string),
+		TFName:                        res.Name,
+		Tags:                          make(map[string]string),
+		IdentityAllowActionsPerBucket: make(map[string][]string),
 	}
 
 	if name := b.getAttrAsString(res, "name"); name != "" {
@@ -284,6 +289,7 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 		role.HasRolePolicy = true
 		role.RolePolicyActions = append(role.RolePolicyActions, doc.GetAllActions()...)
 		role.RoleDenyActions = append(role.RoleDenyActions, doc.GetDeniedActions()...)
+		mergePerBucketActions(role.IdentityAllowActionsPerBucket, doc.GetAllowActionsPerBucket())
 		for _, stmt := range doc.Statements {
 			if stmt.IsAllow() && len(stmt.NotActions) > 0 {
 				role.HasRoleNotAction = true
@@ -327,8 +333,9 @@ func (b *Builder) buildRolePolicy(ref string, res *resolver.ResolvedResource) {
 
 func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 	user := &IAMUser{
-		TFName: res.Name,
-		Tags:   make(map[string]string),
+		TFName:                        res.Name,
+		Tags:                          make(map[string]string),
+		IdentityAllowActionsPerBucket: make(map[string][]string),
 	}
 
 	if name := b.getAttrAsString(res, "name"); name != "" {
@@ -519,9 +526,8 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 				policyName := strings.TrimPrefix(policyRef, "aws_iam_policy.")
 				if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
 					role.RolePolicyActions = append(role.RolePolicyActions, p.Policy.GetAllActions()...)
-					// Bug 2 fix: collect explicit deny actions from attached policies
 					role.RoleDenyActions = append(role.RoleDenyActions, p.Policy.GetDeniedActions()...)
-					// Bug 4 fix: collect NotAction exclusions from Allow statements
+					mergePerBucketActions(role.IdentityAllowActionsPerBucket, p.Policy.GetAllowActionsPerBucket())
 					for _, stmt := range p.Policy.Statements {
 						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
 							role.HasRoleNotAction = true
@@ -547,9 +553,8 @@ func (b *Builder) linkResources() {
 				role.HasRolePolicy = true
 				if rp.Policy != nil {
 					role.RolePolicyActions = append(role.RolePolicyActions, rp.Policy.GetAllActions()...)
-					// Bug 2 fix: collect explicit deny actions from inline role policies
 					role.RoleDenyActions = append(role.RoleDenyActions, rp.Policy.GetDeniedActions()...)
-					// Bug 4 fix: collect NotAction exclusions from Allow statements
+					mergePerBucketActions(role.IdentityAllowActionsPerBucket, rp.Policy.GetAllowActionsPerBucket())
 					for _, stmt := range rp.Policy.Statements {
 						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
 							role.HasRoleNotAction = true
@@ -573,6 +578,7 @@ func (b *Builder) linkResources() {
 				if up.Policy != nil {
 					user.UserPolicyActions = append(user.UserPolicyActions, up.Policy.GetAllActions()...)
 					user.UserDenyActions = append(user.UserDenyActions, up.Policy.GetDeniedActions()...)
+					mergePerBucketActions(user.IdentityAllowActionsPerBucket, up.Policy.GetAllowActionsPerBucket())
 					for _, stmt := range up.Policy.Statements {
 						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
 							user.HasUserNotAction = true
@@ -698,6 +704,22 @@ func extractResourceRef(s string) string {
 		return matches[1] + "." + matches[2]
 	}
 	return ""
+}
+
+// mergePerBucketActions merges src into dst, deduplicating actions per bucket key.
+func mergePerBucketActions(dst, src map[string][]string) {
+	for bucket, actions := range src {
+		seen := make(map[string]bool, len(dst[bucket]))
+		for _, a := range dst[bucket] {
+			seen[a] = true
+		}
+		for _, a := range actions {
+			if !seen[a] {
+				seen[a] = true
+				dst[bucket] = append(dst[bucket], a)
+			}
+		}
+	}
 }
 
 func BuildFromResources(resources map[string]*resolver.ResolvedResource, graph *resolver.DependencyGraph) (*Config, []string, error) {

@@ -414,18 +414,16 @@ func (g *Generator) buildConfigFacts() string {
 	for _, r := range g.config.Roles {
 		sig := "role_" + AlloyID(r.TFName)
 		envTag := tagOrDefault(r.EnvTag, "TAG_DEV")
-		roleActions := toAlloyActionSet(r.RolePolicyActions)
 		roleDenyActions := toAlloyActionSet(r.RoleDenyActions)
 		roleNotActions := toAlloyActionSet(r.RoleNotActions)
 		boundaryActions := toAlloyActionSet(r.BoundaryActions)
 		// Session policies are sts:AssumeRole runtime parameters — not in Terraform source.
-		// HasSessionPolicy stays false; L7 is always NOT APPLICABLE for static analysis.
 		sessionActions := toAlloyActionSet(nil)
 
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(r.CrossAccount)))
 		sb.WriteString(fmt.Sprintf("  %s.hasIdentityPolicy    = %s\n", sig, BoolToAlloy(r.HasRolePolicy)))
-		sb.WriteString(fmt.Sprintf("  %s.identityAllowActions = %s\n", sig, roleActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityAllowedOn    = %s\n", sig, g.buildIdentityAllowedOnRelation(r.IdentityAllowActionsPerBucket)))
 		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = %s\n", sig, roleDenyActions))
 		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, roleNotActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(r.HasRoleNotAction)))
@@ -440,7 +438,6 @@ func (g *Generator) buildConfigFacts() string {
 	for _, u := range g.config.Users {
 		sig := "user_" + AlloyID(u.TFName)
 		envTag := tagOrDefault(u.EnvTag, "TAG_DEV")
-		userActions := toAlloyActionSet(u.UserPolicyActions)
 		userDenyActions := toAlloyActionSet(u.UserDenyActions)
 		userNotActions := toAlloyActionSet(u.UserNotActions)
 		boundaryActions := toAlloyActionSet(u.BoundaryActions)
@@ -448,7 +445,7 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.envTag               = %s\n", sig, envTag))
 		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = %s\n", sig, BoolToAlloy(false)))
 		sb.WriteString(fmt.Sprintf("  %s.hasIdentityPolicy    = %s\n", sig, BoolToAlloy(u.HasUserPolicy)))
-		sb.WriteString(fmt.Sprintf("  %s.identityAllowActions = %s\n", sig, userActions))
+		sb.WriteString(fmt.Sprintf("  %s.identityAllowedOn    = %s\n", sig, g.buildIdentityAllowedOnRelation(u.IdentityAllowActionsPerBucket)))
 		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = %s\n", sig, userDenyActions))
 		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = %s\n", sig, userNotActions))
 		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = %s\n", sig, BoolToAlloy(u.HasUserNotAction)))
@@ -545,6 +542,64 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 // Must be called after GenerateToFile or GenerateToWriter.
 func (g *Generator) TripleMetadata() []TripleKey {
 	return BuildTripleKeysFromPrincipals(g.principals, g.bucketNames, g.actionNames)
+}
+
+// buildIdentityAllowedOnRelation converts the per-bucket action map from IR into an
+// Alloy relation expression for the identityAllowedOn field.
+// perBucketActions keys are actual S3 bucket names (from ARNs) or bucket TFNames;
+// the special key "*" means actions apply to all buckets.
+func (g *Generator) buildIdentityAllowedOnRelation(perBucketActions map[string][]string) string {
+	if len(perBucketActions) == 0 {
+		return "none -> none"
+	}
+
+	wildcardActions := perBucketActions["*"]
+
+	type entry struct {
+		bucketSig string
+		actions   []string
+	}
+
+	var entries []entry
+	for _, b := range g.config.Buckets {
+		bucketSig := "bucket_" + AlloyID(b.TFName)
+
+		actionSet := make(map[string]bool)
+		for _, a := range ExpandAnalyzableActions(wildcardActions) {
+			actionSet[ActionToAlloyID(a)] = true
+		}
+		// Match by actual bucket name (from ARN) or by TFName as fallback.
+		for _, key := range []string{b.BucketName, b.TFName} {
+			if key == "" || key == "*" {
+				continue
+			}
+			if specific, ok := perBucketActions[key]; ok {
+				for _, a := range ExpandAnalyzableActions(specific) {
+					actionSet[ActionToAlloyID(a)] = true
+				}
+			}
+		}
+
+		var actionIDs []string
+		for id := range actionSet {
+			actionIDs = append(actionIDs, id)
+		}
+		sort.Strings(actionIDs)
+
+		if len(actionIDs) > 0 {
+			entries = append(entries, entry{bucketSig: bucketSig, actions: actionIDs})
+		}
+	}
+
+	if len(entries) == 0 {
+		return "none -> none"
+	}
+
+	parts := make([]string, len(entries))
+	for i, e := range entries {
+		parts[i] = fmt.Sprintf("%s -> (%s)", e.bucketSig, FormatAlloySet(e.actions))
+	}
+	return strings.Join(parts, " +\n    ")
 }
 
 func Generate(config *ir.Config, sourceFile, outputFile string) error {
