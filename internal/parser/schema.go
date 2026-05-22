@@ -217,10 +217,7 @@ var securityRelevantPrefixes = []string{
 }
 
 var knownNonSecurityRelevant = map[string]bool{
-	"aws_s3_bucket_acl":                                  true,
-	"aws_s3_bucket_versioning":                           true,
 	"aws_s3_bucket_server_side_encryption_configuration": true,
-	"aws_s3_bucket_ownership_controls":                   true,
 	"aws_s3_bucket_lifecycle_configuration":              true,
 	"aws_s3_bucket_logging":                              true,
 	"aws_s3_bucket_notification":                         true,
