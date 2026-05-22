@@ -14,6 +14,7 @@ import (
 // ParseResult holds the results of parsing Terraform files.
 type ParseResult struct {
 	Resources        []RawResource
+	DataSources      []RawResource // data source blocks (e.g. aws_iam_policy_document)
 	Locals           map[string]hcl.Expression
 	Variables        map[string]hcl.Expression
 	Files            map[string]*hcl.File
@@ -131,6 +132,20 @@ func (p *Parser) extractFromFile(file *hcl.File, result *ParseResult) error {
 			}
 			result.Resources = append(result.Resources, raw)
 
+		case "data":
+			if len(block.Labels) != 2 {
+				continue
+			}
+			dsType := block.Labels[0]
+			dsName := block.Labels[1]
+			if dsType == "aws_iam_policy_document" {
+				raw, err := p.extractDataSource(dsType, dsName, block.Body, block.DefRange)
+				if err != nil {
+					return err
+				}
+				result.DataSources = append(result.DataSources, raw)
+			}
+
 		case "locals":
 			p.extractLocals(block.Body, result)
 
@@ -173,6 +188,38 @@ func (p *Parser) extractResource(resourceType, name string, body hcl.Body, defRa
 	}
 
 	// Extract nested blocks
+	for _, block := range content.Blocks {
+		rawBlock := p.extractBlock(block)
+		raw.Blocks[block.Type] = append(raw.Blocks[block.Type], rawBlock)
+	}
+
+	return raw, nil
+}
+
+// extractDataSource extracts a data source block (e.g. data "aws_iam_policy_document").
+func (p *Parser) extractDataSource(dsType, name string, body hcl.Body, defRange hcl.Range) (RawResource, error) {
+	schema := DataSourceSchema(dsType)
+
+	content, remain, diags := body.PartialContent(schema)
+	if diags.HasErrors() {
+		return RawResource{}, fmt.Errorf("schema error for data.%s.%s: %s", dsType, name, diags.Error())
+	}
+
+	raw := RawResource{
+		Type:       dsType,
+		Name:       name,
+		Attributes: make(map[string]hcl.Expression),
+		Blocks:     make(map[string][]RawBlock),
+		Range:      defRange,
+	}
+
+	for attrName, attr := range content.Attributes {
+		raw.Attributes[attrName] = attr.Expr
+	}
+	remainAttrs, _ := remain.JustAttributes()
+	for attrName, attr := range remainAttrs {
+		raw.Attributes[attrName] = attr.Expr
+	}
 	for _, block := range content.Blocks {
 		rawBlock := p.extractBlock(block)
 		raw.Blocks[block.Type] = append(raw.Blocks[block.Type], rawBlock)

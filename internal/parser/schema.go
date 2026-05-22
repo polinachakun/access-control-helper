@@ -217,6 +217,7 @@ var securityRelevantPrefixes = []string{
 }
 
 var knownNonSecurityRelevant = map[string]bool{
+	"aws_s3_bucket_versioning":                           true,
 	"aws_s3_bucket_server_side_encryption_configuration": true,
 	"aws_s3_bucket_lifecycle_configuration":              true,
 	"aws_s3_bucket_logging":                              true,
@@ -253,8 +254,62 @@ func IsSecurityRelevantResourceType(resourceType string) bool {
 	return false
 }
 
+func DataSourceSchema(dsType string) *hcl.BodySchema {
+	switch dsType {
+	case "aws_iam_policy_document":
+		return iamPolicyDocumentDataSourceSchema
+	default:
+		return genericResourceSchema
+	}
+}
+
+var iamPolicyDocumentDataSourceSchema = &hcl.BodySchema{
+	Attributes: []hcl.AttributeSchema{
+		{Name: "policy_id", Required: false},
+		{Name: "version", Required: false},
+		{Name: "source_json", Required: false},
+		{Name: "override_json", Required: false},
+		{Name: "source_policy_documents", Required: false},
+		{Name: "override_policy_documents", Required: false},
+	},
+	Blocks: []hcl.BlockHeaderSchema{
+		{Type: "statement"},
+	},
+}
+
 func BlockChildSchema(blockType string) *hcl.BodySchema {
 	switch blockType {
+	case "statement":
+		return &hcl.BodySchema{
+			Attributes: []hcl.AttributeSchema{
+				{Name: "sid", Required: false},
+				{Name: "effect", Required: false},
+				{Name: "actions", Required: false},
+				{Name: "not_actions", Required: false},
+				{Name: "resources", Required: false},
+				{Name: "not_resources", Required: false},
+			},
+			Blocks: []hcl.BlockHeaderSchema{
+				{Type: "principals"},
+				{Type: "not_principals"},
+				{Type: "condition"},
+			},
+		}
+	case "principals", "not_principals":
+		return &hcl.BodySchema{
+			Attributes: []hcl.AttributeSchema{
+				{Name: "type", Required: true},
+				{Name: "identifiers", Required: true},
+			},
+		}
+	case "condition":
+		return &hcl.BodySchema{
+			Attributes: []hcl.AttributeSchema{
+				{Name: "test", Required: true},
+				{Name: "variable", Required: true},
+				{Name: "values", Required: true},
+			},
+		}
 	case "inline_policy":
 		return &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
 			{Name: "name"},
