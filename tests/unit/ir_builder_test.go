@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"access-control-helper/internal/generator"
 	"access-control-helper/internal/ir"
 	"access-control-helper/internal/resolver"
 )
@@ -790,5 +791,30 @@ func TestBuilder_MalformedRolePolicy_RoleStillBuilt(t *testing.T) {
 
 	if config.GetRoleByTFName("app_role") == nil {
 		t.Error("role should still be present even when its inline policy fails to parse")
+	}
+}
+
+func TestBuilder_NonS3PolicyProducesNoTriples(t *testing.T) {
+	codebuildPolicy := `{
+		"Version": "2012-10-17",
+		"Statement": [{
+			"Effect": "Allow",
+			"Action": ["codebuild:BatchGetBuilds", "codebuild:StartBuild"],
+			"Resource": "*"
+		}]
+	}`
+
+	config := build(t,
+		bucket("data_bucket", "prod"),
+		role("ci_role", "ci-role", "prod"),
+		iamPolicy("ci_policy", "ci-policy", codebuildPolicy),
+		policyAttachment("ci_attach", "ci_role", "ci_policy"),
+	)
+
+	gen := generator.NewGenerator(config, "test.tf")
+	triples := gen.TripleMetadata()
+
+	if len(triples) != 0 {
+		t.Errorf("expected 0 triples for a non-S3 policy, got %d: %v", len(triples), triples)
 	}
 }
