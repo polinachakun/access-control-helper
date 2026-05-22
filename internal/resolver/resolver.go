@@ -173,7 +173,7 @@ func (r *Resolver) updateResourceInContext(res *ResolvedResource) {
 		attrs["id"] = cty.StringVal(res.Name)
 	}
 	if _, ok := attrs["arn"]; !ok {
-		attrs["arn"] = cty.StringVal(fmt.Sprintf("arn:aws::::%s", res.Name))
+		attrs["arn"] = cty.StringVal(arnPlaceholder(res.Type, res.Name))
 	}
 
 	resourceVal := cty.ObjectVal(attrs)
@@ -558,6 +558,18 @@ func createToMapFunc() function.Function {
 
 // ExtractResourceRefFromString extracts a resource reference from a string.
 // E.g., "${aws_s3_bucket.my_bucket.id}" -> "aws_s3_bucket.my_bucket"
+// arnPlaceholder generates a synthetic ARN for resources that don't declare one.
+// It uses the correct service segment so that downstream ARN parsers (e.g. for S3)
+// can identify the resource type from the placeholder value.
+func arnPlaceholder(resType, resName string) string {
+	switch resType {
+	case "aws_s3_bucket":
+		return fmt.Sprintf("arn:aws:s3:::%s", resName)
+	default:
+		return fmt.Sprintf("arn:aws::::%s", resName)
+	}
+}
+
 func ExtractResourceRefFromString(s string) string {
 	// Match Terraform interpolation syntax
 	re := regexp.MustCompile(`\$\{(aws_[a-z0-9_]+)\.([a-z0-9_]+)`)

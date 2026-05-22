@@ -446,6 +446,42 @@ func TestStatement_GetConditionValues(t *testing.T) {
 	}
 }
 
+func TestGetAllowActionsPerBucket_S3ArnPlaceholder(t *testing.T) {
+	doc := &ir.IAMPolicyDocument{
+		Statements: []*ir.Statement{
+			{Effect: "Allow", Actions: []string{"s3:GetObject", "s3:PutObject"},
+				Resources: []string{"arn:aws:s3:::test_bucket/*"}},
+			{Effect: "Allow", Actions: []string{"codebuild:BatchGetBuilds"},
+				Resources: []string{"*"}},
+		},
+	}
+
+	perBucket := doc.GetAllowActionsPerBucket()
+
+	s3Actions, ok := perBucket["test_bucket"]
+	if !ok {
+		t.Fatalf("expected actions under key \"test_bucket\", got keys: %v", keysOf(perBucket))
+	}
+	if len(s3Actions) != 2 {
+		t.Errorf("expected 2 S3 actions under test_bucket, got %v", s3Actions)
+	}
+
+	wildcard := perBucket["*"]
+	for _, a := range wildcard {
+		if strings.HasPrefix(strings.ToLower(a), "s3:") {
+			t.Errorf("S3 action %q leaked into wildcard bucket", a)
+		}
+	}
+}
+
+func keysOf(m map[string][]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
 func TestStatement_HasConditionKey_CaseInsensitive(t *testing.T) {
 	s := &ir.Statement{
 		Conditions: []ir.Condition{

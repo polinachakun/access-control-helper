@@ -54,6 +54,13 @@ func TestExpandAnalyzableActions_Empty(t *testing.T) {
 	}
 }
 
+func TestExpandAnalyzableActions_FiltersUnsupportedServices(t *testing.T) {
+	got := generator.ExpandAnalyzableActions([]string{"codebuild:BatchGetBuilds", "ec2:DescribeInstances", "s3:GetObject"})
+	if len(got) != 1 || got[0] != "s3:GetObject" {
+		t.Errorf("expected only [s3:GetObject], got %v", got)
+	}
+}
+
 func TestHumanAction(t *testing.T) {
 	cases := []struct {
 		input string

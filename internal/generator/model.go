@@ -106,6 +106,12 @@ func ExpandAnalyzableActions(actions []string) []string {
 			continue
 		}
 
+		if len(parts) == 2 {
+			if _, ok := SupportedActionsByService[strings.ToLower(parts[0])]; !ok {
+				continue
+			}
+		}
+
 		if !seen[a] {
 			seen[a] = true
 			result = append(result, a)
