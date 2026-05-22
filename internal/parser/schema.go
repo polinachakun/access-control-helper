@@ -216,10 +216,38 @@ var securityRelevantPrefixes = []string{
 	"aws_identitystore_",
 }
 
-// IsSecurityRelevantResourceType returns true for resource types whose presence
-// could affect access control decisions but are not currently analysed.
-// A skipped resource of this kind means the analysis may be incomplete.
+var knownNonSecurityRelevant = map[string]bool{
+	"aws_s3_bucket_acl":                                  true,
+	"aws_s3_bucket_versioning":                           true,
+	"aws_s3_bucket_server_side_encryption_configuration": true,
+	"aws_s3_bucket_ownership_controls":                   true,
+	"aws_s3_bucket_lifecycle_configuration":              true,
+	"aws_s3_bucket_logging":                              true,
+	"aws_s3_bucket_notification":                         true,
+	"aws_s3_bucket_cors_configuration":                   true,
+	"aws_s3_bucket_website_configuration":                true,
+	"aws_s3_bucket_metric":                               true,
+	"aws_s3_bucket_replication_configuration":            true,
+	"aws_s3_bucket_accelerate_configuration":             true,
+	"aws_s3_bucket_request_payment_configuration":        true,
+	"aws_s3_bucket_intelligent_tiering_configuration":    true,
+	"aws_s3_object":                                      true,
+	"aws_s3_bucket_object":                               true,
+	"aws_iam_instance_profile":                           true,
+	"aws_iam_access_key":                                 true,
+	"aws_iam_virtual_mfa_device":                         true,
+	"aws_iam_service_linked_role":                        true,
+	"aws_iam_account_alias":                              true,
+	"aws_iam_account_password_policy":                    true,
+	"aws_iam_server_certificate":                         true,
+	"aws_iam_saml_provider":                              true,
+	"aws_iam_openid_connect_provider":                    true,
+}
+
 func IsSecurityRelevantResourceType(resourceType string) bool {
+	if knownNonSecurityRelevant[resourceType] {
+		return false
+	}
 	for _, prefix := range securityRelevantPrefixes {
 		if strings.HasPrefix(resourceType, prefix) {
 			return true

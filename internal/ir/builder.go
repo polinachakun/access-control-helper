@@ -49,9 +49,7 @@ func (b *Builder) Build() (*Config, error) {
 	for ref, res := range b.resources {
 		switch res.Type {
 		case "aws_s3_bucket_policy":
-			if err := b.buildBucketPolicy(ref, res); err != nil {
-				return nil, err
-			}
+			b.buildBucketPolicy(ref, res)
 		case "aws_iam_role_policy":
 			b.buildRolePolicy(ref, res)
 		case "aws_iam_user_policy":
@@ -92,10 +90,11 @@ func (b *Builder) buildS3Bucket(ref string, res *resolver.ResolvedResource) {
 }
 
 // buildBucketPolicy builds a BucketPolicy from a resolved resource.
-// Returns an error when the policy document is present but unparseable — AWS
-// rejects such a policy at put-bucket-policy time, so the Terraform config
-// is invalid and analysis cannot be trusted.
-func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) error {
+// Emits a warning when the policy document cannot be parsed (e.g. because it
+// contains unresolved Terraform variable references) and skips the policy so
+// that the rest of the analysis can continue. The caller should treat results
+// as a lower bound when any policy is skipped.
+func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) {
 	bucketRef := ""
 
 	if bucket := b.getAttrAsString(res, "bucket"); bucket != "" {
@@ -112,13 +111,23 @@ func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) 
 
 	policyDoc := b.getAttrAsString(res, "policy")
 	if policyDoc == "" {
-		return nil
+		return
 	}
 
 	doc, err := ParsePolicyDocument(policyDoc)
 	if err != nil || doc == nil {
-		return fmt.Errorf("bucket policy %q has an unparseable policy document: %w\n"+
-			"  AWS rejects this at put-bucket-policy time — the Terraform config is invalid", res.Name, err)
+		if looksLikeUnresolvedRef(policyDoc) {
+			// Terraform variable/reference in the policy — valid Terraform but
+			// not statically evaluable. Skip this policy and continue analysis.
+			b.warnings = append(b.warnings, fmt.Sprintf(
+				"bucket policy %q: skipped — policy document contains unresolved "+
+					"Terraform references (analysis is a lower bound)", res.Name))
+			return
+		}
+		// Statically invalid JSON — AWS would reject this at deploy time.
+		b.warnings = append(b.warnings, fmt.Sprintf(
+			"bucket policy %q: skipped — policy document is not valid JSON: %v", res.Name, err))
+		return
 	}
 
 	stmtIdx := 0
@@ -127,7 +136,6 @@ func (b *Builder) buildBucketPolicy(ref string, res *resolver.ResolvedResource) 
 		entries := b.expandBucketPolicyStatement(res.Name, bucketRef, stmtIdx, stmt)
 		b.config.BucketPolicies = append(b.config.BucketPolicies, entries...)
 	}
-	return nil
 }
 
 func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtIdx int, stmt *Statement) []*BucketPolicy {
@@ -742,6 +750,23 @@ func (b *Builder) getAttrAsMap(res *resolver.ResolvedResource, name string) map[
 		}
 	}
 	return nil
+}
+
+// looksLikeUnresolvedRef returns true when s is not valid JSON because it
+// contains Terraform variable/resource references that were not evaluated.
+// Examples: `data.aws_iam_policy_document.x.json`, `aws_iam_role.x.arn`,
+// or any JSON-like string containing `${...}` template expressions.
+func looksLikeUnresolvedRef(s string) bool {
+	if strings.Contains(s, "${") {
+		return true
+	}
+	if strings.HasPrefix(s, "data.") || strings.HasPrefix(s, "var.") || strings.HasPrefix(s, "local.") {
+		return true
+	}
+	if strings.HasPrefix(s, "aws_") {
+		return true
+	}
+	return false
 }
 
 // extractResourceRef extracts a resource reference from various formats.
