@@ -134,8 +134,9 @@ func run(inputPath, outputPath string, out io.Writer) error {
 
 	tripleKeys := gen.TripleMetadata()
 	if len(tripleKeys) == 0 {
-		return fmt.Errorf("no (principal, bucket, action) triples to analyse — " +
-			"check that the input contains both IAM roles with S3 actions and S3 buckets")
+		fmt.Fprintln(os.Stderr, "info: no S3-relevant triples found — attached policies contain no supported S3 actions")
+		fmt.Fprintln(out, "STATUS: no_supported_s3_statements")
+		return nil
 	}
 
 	// ── Step 5: Alloy formal verification ────────────────────────────────

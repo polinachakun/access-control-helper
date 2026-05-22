@@ -293,8 +293,11 @@ def run_tool_alloy(input_path, output_path, timeout=120):
     """
     Run the full pipeline including Alloy.
     Returns (outcome, report_or_error_text, elapsed_s).
-    outcome: 'success' | 'no_triples' | 'fmt_fail' | 'hcl_error'
-             | 'ir_error' | 'alloy_error' | 'timeout'
+    outcome: 'success' | 'no_triples' | 'no_supported_s3_statements'
+             | 'fmt_fail' | 'hcl_error' | 'ir_error' | 'alloy_error' | 'timeout'
+
+    no_supported_s3_statements: config has S3 buckets and IAM principals but attached
+        policies contain only non-S3 actions (e.g. EC2, CloudWatch). Not an error.
     """
     start = time.monotonic()
     try:
@@ -320,8 +323,8 @@ def run_tool_alloy(input_path, output_path, timeout=120):
             return "ir_error", stderr, elapsed
         return "alloy_error", stderr, elapsed
 
-    if "No (principal, bucket, action) triples" in stdout:
-        return "no_triples", stdout, elapsed
+    if "STATUS: no_supported_s3_statements" in stdout:
+        return "no_supported_s3_statements", stdout, elapsed
 
     return "success", stdout, elapsed
 
