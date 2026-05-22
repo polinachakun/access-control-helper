@@ -40,6 +40,9 @@ func runToStdout(inputPath string) error {
 	if err != nil {
 		return fmt.Errorf("resolve: %w", err)
 	}
+	for _, w := range res.Warnings() {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
+	}
 
 	config, warnings, err := ir.BuildFromResources(resources, res.GetGraph())
 	if err != nil {
@@ -101,6 +104,9 @@ func run(inputPath, outputPath string, out io.Writer) error {
 	resources, err := res.Resolve(parseResult)
 	if err != nil {
 		return fmt.Errorf("resolve: %w", err)
+	}
+	for _, w := range res.Warnings() {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", w)
 	}
 
 	// ── Step 3: Build intermediate representation ─────────────────────────

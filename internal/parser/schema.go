@@ -274,11 +274,25 @@ var iamPolicyDocumentDataSourceSchema = &hcl.BodySchema{
 	},
 	Blocks: []hcl.BlockHeaderSchema{
 		{Type: "statement"},
+		{Type: "dynamic", LabelNames: []string{"block_type"}},
 	},
 }
 
 func BlockChildSchema(blockType string) *hcl.BodySchema {
 	switch blockType {
+	case "dynamic":
+		return &hcl.BodySchema{
+			Attributes: []hcl.AttributeSchema{
+				{Name: "for_each", Required: true},
+				{Name: "iterator", Required: false},
+				{Name: "labels", Required: false},
+			},
+			Blocks: []hcl.BlockHeaderSchema{
+				{Type: "content"},
+			},
+		}
+	case "content":
+		return &hcl.BodySchema{}
 	case "statement":
 		return &hcl.BodySchema{
 			Attributes: []hcl.AttributeSchema{

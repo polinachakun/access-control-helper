@@ -37,6 +37,7 @@ type Resolver struct {
 	resources map[string]*ResolvedResource
 	locals    map[string]cty.Value
 	evalCtx   *hcl.EvalContext
+	warnings  []string
 }
 
 // NewResolver creates a new Resolver.
@@ -47,6 +48,9 @@ func NewResolver() *Resolver {
 		locals:    make(map[string]cty.Value),
 	}
 }
+
+// Warnings returns non-fatal warnings collected during resolution.
+func (r *Resolver) Warnings() []string { return r.warnings }
 
 // Resolve processes parsed resources and resolves references.
 func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*ResolvedResource, error) {
@@ -607,6 +611,16 @@ func (r *Resolver) synthesizeDataSources(parseResult *parser.ParseResult) {
 // synthesizePolicyDocJSON converts a data "aws_iam_policy_document" RawResource
 // into a valid IAM policy JSON string by evaluating its statement blocks.
 func (r *Resolver) synthesizePolicyDocJSON(ds *parser.RawResource) string {
+	for _, dynBlock := range ds.Blocks["dynamic"] {
+		blockType := "statement"
+		if len(dynBlock.Labels) > 0 {
+			blockType = dynBlock.Labels[0]
+		}
+		r.warnings = append(r.warnings, fmt.Sprintf(
+			"data.aws_iam_policy_document.%s: dynamic %q block cannot be statically evaluated; affected statements skipped (analysis is a lower bound)",
+			ds.Name, blockType))
+	}
+
 	var stmts []map[string]interface{}
 
 	for _, stmtBlock := range ds.Blocks["statement"] {
