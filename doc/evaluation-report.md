@@ -232,6 +232,16 @@ Create a grid of synthetic Terraform configurations at the following size points
 
 Each config: IAM roles with a simple inline S3 policy (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket`), no SCP/RCP/boundary — to isolate scope growth from semantic complexity.
 
+### Note on triples count
+
+Each `(principal, bucket, action)` triple generates one Alloy analysis. With 4 actions in scope (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket`), the triple count is:
+
+> **triples = principals × buckets × 4**
+
+For the scaling experiment the number of actions is held fixed at 4 (the tool's defined scope). Only principals and buckets vary, so the experiment measures how Alloy scales with the number of principals and buckets, which is what matters for real-world usage.
+
+If the tool's action scope were later expanded (e.g. to 8 or 16 actions), triples would scale proportionally and the experiment would need to be re-run. For the thesis, 4 actions is the correct baseline.
+
 ### What to measure
 
 - Alloy wall-clock time per config (3 runs, take median)
@@ -301,32 +311,89 @@ Together, these two parts constitute a strong evaluation for a 30-credit Master'
 
 ## Evaluation Results Files
 
-| File | Description |
-|------|-------------|
-| `eval/results/phase2_results.json` | Phase 2 per-module outcomes (n=100) |
-| `eval/results/phase3_results.json` | Phase 3 per-module outcomes + decisions (n=30) |
+These are the files used in this report. All are committed to the repository.
 
-Both files contain `per_module` arrays with `module_id`, `repo_id`, `path`, `outcome`, and `elapsed_s` fields. Phase 3 additionally contains `decisions` per module.
+| File | n | Description |
+|------|---|-------------|
+| `eval/results/phase2_results.json` | 100 | **Final** — parse/spec-generation outcomes |
+| `eval/results/phase3_final.json` | 100 | **Final** — full Alloy analysis outcomes + decisions (after fixes) |
+| `eval/results/phase2_pilot.json` | 20 | Early pilot run, kept for reference |
+| `eval/results/phase3_results.json` | 30 | Earlier run before fixes, kept for reference |
+
+All files contain a `per_module` array with `module_id`, `repo_id`, `path`, `outcome`, `elapsed_s` fields. Phase 3 files additionally contain `decisions` per module (list of `{principal, bucket, action, decision, denied_at}`).
+
+The `.als` files generated during Phase 3 (`eval/results/module_*.als`) are gitignored — they are intermediate artifacts and not needed after the run.
 
 ---
 
 ## Reproduction Steps
 
+### Prerequisites
+
 ```bash
-# 1. Extract dataset files
+# Extract dataset files (one-time setup)
 unzip ~/Downloads/14217386.zip TerraDS.sqlite -d /tmp/
 unzip ~/Downloads/14217386.zip TerraDS.tar.gz -d /tmp/
 
-# 2. Build the tool
+# Build the tool
 make build
+```
 
-# 3. Run all phases
+### Running individual phases
+
+```bash
+# Phase 1 — dataset characterisation (SQLite only, ~5 seconds, no extraction needed)
 python3 eval/evaluate.py phase1
+
+# Phase 2 — parse/spec-generation success
+#   --sample N   how many modules to test (default: 20)
+#   --out FILE   where to write the JSON results
 python3 eval/evaluate.py phase2 --sample 100 --out eval/results/phase2_results.json
-python3 eval/evaluate.py phase3 --sample 30  --out eval/results/phase3_results.json
+
+# Phase 3 — full Alloy analysis (slow: ~13s/module × N modules)
+#   --sample N   how many modules to test (default: 20)
+python3 eval/evaluate.py phase3 --sample 100 --out eval/results/phase3_results.json
+
+# All phases in sequence (uses --sample for phase2, --sample3 for phase3)
+python3 eval/evaluate.py all --sample 100 --sample3 100
 ```
 
 Results are deterministic: all phases use `random.seed(42)`.
+
+### Recommended sample sizes
+
+| Purpose | Phase 2 `--sample` | Phase 3 `--sample` | Est. time |
+|---------|-------------------|--------------------|-----------|
+| Quick smoke test | 20 | 10 | ~2 min |
+| Development check | 50 | 30 | ~10 min |
+| **Thesis report** | **100** | **100** | **~25 min** |
+| Larger study | 200 | 100 | ~45 min |
+
+Phase 3 time estimate: ~13s mean × N modules. With n=100, expect 20–30 min depending on machine.
+
+### What gets generated
+
+| File/Location | Keep? | Description |
+|---------------|-------|-------------|
+| `eval/results/phase2_results.json` | **Yes — commit** | Per-module parse outcomes |
+| `eval/results/phase3_results.json` | **Yes — commit** | Per-module Alloy outcomes + decisions |
+| `eval/results/module_*.als` | No — throwaway | Alloy specs generated during Phase 3, not needed after the run |
+
+The `.als` files are gitignored automatically. Commit only the final JSON files once you have the runs you want for the thesis.
+
+### Naming convention for saved runs
+
+Use descriptive names so old runs are not overwritten:
+
+```bash
+# Initial run
+python3 eval/evaluate.py phase3 --sample 30 --out eval/results/phase3_n30.json
+
+# Larger run for thesis
+python3 eval/evaluate.py phase3 --sample 100 --out eval/results/phase3_n100_final.json
+```
+
+The files `phase2_results.json` and `phase3_final.json` in `eval/results/` are the runs used in this report.
 
 ---
 
