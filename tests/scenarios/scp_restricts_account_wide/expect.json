@@ -3,8 +3,8 @@
   "name": "scp_restricts_account_wide",
   "queries": [
     {
-      "principal": "admin_role",
-      "bucket": "data_bucket",
+      "principal": "admin-role",
+      "bucket": "data-bucket",
       "action": "S3_DeleteObject",
       "decision": "DENY",
       "denied_at": "Layer 3",
@@ -19,8 +19,8 @@
       }
     },
     {
-      "principal": "admin_role",
-      "bucket": "data_bucket",
+      "principal": "admin-role",
+      "bucket": "data-bucket",
       "action": "S3_GetObject",
       "decision": "ALLOW",
       "denied_at": null,
@@ -35,8 +35,8 @@
       }
     },
     {
-      "principal": "admin_role",
-      "bucket": "data_bucket",
+      "principal": "admin-role",
+      "bucket": "data-bucket",
       "action": "S3_ListBucket",
       "decision": "ALLOW",
       "denied_at": null,
@@ -51,8 +51,8 @@
       }
     },
     {
-      "principal": "admin_role",
-      "bucket": "data_bucket",
+      "principal": "admin-role",
+      "bucket": "data-bucket",
       "action": "S3_PutObject",
       "decision": "ALLOW",
       "denied_at": null,
@@ -67,8 +67,8 @@
       }
     },
     {
-      "principal": "developer_role",
-      "bucket": "data_bucket",
+      "principal": "developer-role",
+      "bucket": "data-bucket",
       "action": "S3_DeleteObject",
       "decision": "DENY",
       "denied_at": "Layer 3",
@@ -83,8 +83,8 @@
       }
     },
     {
-      "principal": "developer_role",
-      "bucket": "data_bucket",
+      "principal": "developer-role",
+      "bucket": "data-bucket",
       "action": "S3_GetObject",
       "decision": "ALLOW",
       "denied_at": null,
@@ -99,8 +99,8 @@
       }
     },
     {
-      "principal": "developer_role",
-      "bucket": "data_bucket",
+      "principal": "developer-role",
+      "bucket": "data-bucket",
       "action": "S3_ListBucket",
       "decision": "ALLOW",
       "denied_at": null,
@@ -115,8 +115,8 @@
       }
     },
     {
-      "principal": "developer_role",
-      "bucket": "data_bucket",
+      "principal": "developer-role",
+      "bucket": "data-bucket",
       "action": "S3_PutObject",
       "decision": "ALLOW",
       "denied_at": null,

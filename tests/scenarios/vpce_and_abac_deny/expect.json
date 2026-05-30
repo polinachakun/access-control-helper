@@ -4,7 +4,7 @@
   "queries": [
     {
       "principal": "developer",
-      "bucket": "data",
+      "bucket": "my-data-bucket-9d6ce7da",
       "action": "S3_DeleteObject",
       "decision": "DENY",
       "denied_at": "Layer 1",
@@ -20,7 +20,7 @@
     },
     {
       "principal": "developer",
-      "bucket": "data",
+      "bucket": "my-data-bucket-9d6ce7da",
       "action": "S3_GetObject",
       "decision": "DENY",
       "denied_at": "Layer 1",
@@ -36,7 +36,7 @@
     },
     {
       "principal": "developer",
-      "bucket": "data",
+      "bucket": "my-data-bucket-9d6ce7da",
       "action": "S3_ListBucket",
       "decision": "DENY",
       "denied_at": "Layer 1",
@@ -52,7 +52,7 @@
     },
     {
       "principal": "developer",
-      "bucket": "data",
+      "bucket": "my-data-bucket-9d6ce7da",
       "action": "S3_PutObject",
       "decision": "DENY",
       "denied_at": "Layer 1",

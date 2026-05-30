@@ -3,8 +3,8 @@
   "name": "permission_boundary_blocks",
   "queries": [
     {
-      "principal": "restricted_role",
-      "bucket": "secure_bucket",
+      "principal": "restricted-role",
+      "bucket": "secure-bucket",
       "action": "S3_DeleteObject",
       "decision": "DENY",
       "denied_at": "Layer 6",
@@ -19,8 +19,8 @@
       }
     },
     {
-      "principal": "restricted_role",
-      "bucket": "secure_bucket",
+      "principal": "restricted-role",
+      "bucket": "secure-bucket",
       "action": "S3_GetObject",
       "decision": "ALLOW",
       "denied_at": null,
@@ -35,8 +35,8 @@
       }
     },
     {
-      "principal": "restricted_role",
-      "bucket": "secure_bucket",
+      "principal": "restricted-role",
+      "bucket": "secure-bucket",
       "action": "S3_ListBucket",
       "decision": "DENY",
       "denied_at": "Layer 6",
@@ -51,8 +51,8 @@
       }
     },
     {
-      "principal": "restricted_role",
-      "bucket": "secure_bucket",
+      "principal": "restricted-role",
+      "bucket": "secure-bucket",
       "action": "S3_PutObject",
       "decision": "DENY",
       "denied_at": "Layer 6",
