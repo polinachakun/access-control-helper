@@ -51,6 +51,8 @@ This order is intentional. New features should not be prioritized ahead of corre
 
 ## Phase 1 — Stabilize the Core Engine
 
+**Status: DONE**
+
 ### Goal
 
 Make the existing end-to-end pipeline fully trustworthy within the current supported subset.
@@ -79,6 +81,8 @@ This is a **mandatory phase**.
 ---
 
 ## Phase 2 — Freeze the Supported Semantic Subset
+
+**Status: DONE**
 
 ### Goal
 
@@ -119,6 +123,8 @@ This is also a **mandatory phase**.
 
 ## Phase 3 — Build the Real Testing Infrastructure
 
+**Status: IN PROGRESS** — 8 scenarios with `input.tf` + `expect.json`, e2e runner and snapshot tests implemented, unit tests for parser and IR started. Remaining: expand scenario coverage to all required categories, complete package-level tests.
+
 ### Goal
 
 Move from a few manually managed scenario tests to a scalable and rigorous test system.
@@ -146,6 +152,8 @@ This phase is **mandatory**.
 
 ## Phase 4 — Build a Strong Evaluation Suite
 
+**Status: PARTIALLY DONE** — TerraDS dataset evaluation completed (82% success, 752 triples, 3-phase evaluation). Performance scaling experiment planned (next task).
+
 ### Goal
 
 Create a representative and defensible evaluation that demonstrates the correctness and value of the supported subset.
@@ -172,15 +180,29 @@ At least **8–12 canonical scenarios**, covering categories such as:
 - correctness of the layer explanation,
 - and coverage of the main semantic categories in scope.
 
+### Additional task: Performance Scaling Experiment
+
+To characterise the tool's complexity behaviour for the thesis, run a systematic performance measurement:
+
+- Create synthetic Terraform configurations at a grid of sizes: (1, 2, 5, 10 principals) × (1, 3, 5 buckets).
+- Each config uses simple inline S3 policies with no SCP/RCP/boundary, to isolate scope growth from semantic complexity.
+- Measure Alloy wall-clock time per config (3 runs, take median).
+- Output: `eval/results/scaling_results.csv` and a log-log plot of time vs. triples.
+- Thesis framing: "empirically super-linear, consistent with SAT worst-case complexity."
+
+See `doc/evaluation-report.md` Phase 4 for the full method.
+
 ### Deliverable of this phase
 
-A strong and structured evaluation chapter for the thesis.
+A strong and structured evaluation chapter for the thesis, including controlled scenario results, TerraDS dataset results, and performance scaling characterisation.
 
 This phase is **mandatory**.
 
 ---
 
 ## Phase 5 — Add a Small Live AWS Parity Validation
+
+**Status: NOT STARTED**
 
 ### Goal
 
@@ -213,6 +235,8 @@ This phase is **highly desirable**, but not strictly mandatory if time is limite
 ---
 
 ## Phase 6 — Write the Thesis Around the Validated System
+
+**Status: NOT STARTED**
 
 ### Goal
 
@@ -287,7 +311,8 @@ The following should **not** be prioritized unless all core phases are already c
 - ACL / Object Ownership / Access Point support,
 - full S3 action coverage,
 - full Terraform language support,
-- or a large-scale live AWS benchmarking setup.
+- a large-scale live AWS benchmarking setup,
+- or a query mode (targeted "does principal X have access to action Y on bucket Z?" interface) — a valid future direction but not required for the current thesis contribution.
 
 These are valid research directions, but they are not necessary for a strong 30-credit thesis.
 

@@ -206,6 +206,50 @@ This phase runs the full pipeline including Alloy verification. The evaluation s
 
 ---
 
+## Phase 4 — Performance Scaling Experiment (Planned)
+
+### Goal
+
+Measure how Alloy analysis time scales with configuration size to characterise the tool's complexity behaviour for the thesis. The central question is whether growth is linear or super-linear (as expected from SAT-based model checking theory).
+
+### Method
+
+Create a grid of synthetic Terraform configurations at the following size points:
+
+| Principals | Buckets | Triples (× 4 actions) |
+|---|---|---|
+| 1 | 1 | 4 |
+| 2 | 1 | 8 |
+| 5 | 1 | 20 |
+| 10 | 1 | 40 |
+| 1 | 3 | 12 |
+| 2 | 3 | 24 |
+| 5 | 3 | 60 |
+| 1 | 5 | 20 |
+| 2 | 5 | 40 |
+| 5 | 5 | 100 |
+| 10 | 5 | 200 |
+
+Each config: IAM roles with a simple inline S3 policy (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket`), no SCP/RCP/boundary — to isolate scope growth from semantic complexity.
+
+### What to measure
+
+- Alloy wall-clock time per config (3 runs, take median)
+- Total triples count per config
+
+### Expected output
+
+- `eval/results/scaling_results.csv` — columns: `principals`, `buckets`, `triples`, `time_s`
+- Plot: time (y-axis) vs triples (x-axis) on log-log scale to characterise growth order
+
+### Thesis use
+
+- Report growth as "empirically super-linear, consistent with SAT worst-case complexity"
+- Cite the 3% timeout rate from Phase 3 as real-world evidence of the practical bound
+- Note: simple configs (1–2 principals × 1 bucket → 4–8 triples) resolve in ~3s, which is practical for pre-deployment use
+
+---
+
 ## Key Findings for the Thesis
 
 ### Finding 1 — Scope coverage is 19.1%
@@ -295,3 +339,5 @@ Results are deterministic: all phases use `random.seed(42)`.
 3. **Sample size.** Phase 3 n=30 is small. Increasing to n=100+ would give a more stable distribution.
 
 4. **In-scope bias.** The evaluation only samples from the 19.1% in-scope population. The remaining 80.9% would need additional supported types to be evaluated.
+
+5. **No performance characterisation.** Phases 1–3 report observed Alloy times but do not systematically measure how time scales with configuration size. Phase 4 (planned) will add synthetic scaling experiments to fill this gap.

@@ -218,7 +218,7 @@ access-control-helper/
 ├── go.mod
 ├── internal/
 │   ├── parser/
-│   │   ├── parser.go              # HCL Terraform parser (9 resource types)
+│   │   ├── parser.go              # HCL Terraform parser (10 resource types)
 │   │   └── schema.go              # HCL body schemas per resource type
 │   ├── resolver/
 │   │   ├── resolver.go            # Cross-reference resolution (ARN interpolations)
@@ -229,6 +229,7 @@ access-control-helper/
 │   │   └── builder.go             # Builds Config IR from resolved resources
 │   ├── generator/
 │   │   ├── generator.go           # Alloy spec generation orchestrator
+│   │   ├── query.go               # Per-triple query construction
 │   │   ├── template.go            # Alloy template strings and boilerplate
 │   │   ├── predicates.go          # Alloy predicate & per-layer assertion generation
 │   │   └── model.go               # Alloy signature and fact generation
@@ -236,10 +237,20 @@ access-control-helper/
 │   │   └── analyzer.go            # Alloy CLI runner & output parser
 │   └── reporter/
 │       └── reporter.go            # Human-readable output formatter (from Alloy results)
-├── testdata/                      # Terraform fixtures and generated .als files
+├── tests/
+│   ├── scenarios/                 # End-to-end scenario tests (input.tf + expect.json)
+│   ├── unit/                      # Package-level unit tests (parser, IR, generator)
+│   ├── e2e_scenarios_test.go      # Auto-discovery scenario runner
+│   └── reporter_snapshot_test.go  # Golden snapshot tests for report formatting
+├── eval/
+│   ├── evaluate.py                # Dataset evaluation script (TerraDS, phases 1–3)
+│   └── results/                   # Generated evaluation outputs (gitignored)
 └── doc/
     ├── project-description.md     # This file
-    └── architecture-and-tests.md  # Architecture decisions & test scenarios
+    ├── roadmap.md                 # Phase roadmap with current status
+    ├── thesis-scope-and-limits.md # Supported scope, partial coverage, future work
+    ├── tests-strategy.md          # Testing architecture and scenario format
+    └── evaluation-report.md       # TerraDS dataset evaluation results
 ```
 
 ---

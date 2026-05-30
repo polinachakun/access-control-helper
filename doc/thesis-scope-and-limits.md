@@ -114,14 +114,28 @@ This is important because the project does not only compute `ALLOW` / `DENY`, bu
 
 ### Testing Direction
 
-A testing strategy is already being defined around:
+A testing strategy is implemented around:
 
-- scenario-based end-to-end tests,
-- structured semantic expectations,
+- scenario-based end-to-end tests (8 scenarios across all major semantic categories),
+- structured `expect.json` semantic expectations per scenario,
 - reporter snapshot tests,
-- and Terraform fixture validation.
+- Terraform fixture validation,
+- and package-level unit tests for the parser schema and policy document datasource handling (started).
 
-This is already the right direction for thesis-quality validation.
+This constitutes a solid foundation for thesis-quality validation.
+
+### Dataset Evaluation
+
+A dataset-based evaluation has been conducted against **TerraDS** — a corpus of 62,406 real-world Terraform repositories from GitHub.
+
+Key results (as of 2026-05-22):
+
+- **19.1%** of 5,514 modules with S3 + IAM principal are fully within the tool's supported scope.
+- **82% end-to-end success rate** on in-scope formatted files.
+- **752 (principal, bucket, action) triples** analysed: 10.2% ALLOW, 85.1% DENY at L5, 4.7% DENY at L6.
+- Mean Alloy analysis time: 13.1 s per module (range 2.6 s–120 s).
+
+Full results are in `doc/evaluation-report.md`. A performance scaling experiment (synthetic configs of varying size) is planned as Phase 4 of the evaluation.
 
 ---
 
