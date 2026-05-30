@@ -562,6 +562,8 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 		}
 	}
 
+	managedPolicyARN := b.getAttrAsString(res, "policy_arn")
+
 	roleName := strings.TrimPrefix(roleRef, "aws_iam_role.")
 	for _, role := range b.config.Roles {
 		if role.TFName == roleName {
@@ -580,6 +582,9 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 						}
 					}
 				}
+			} else if actions := ManagedPolicyS3Actions(managedPolicyARN); len(actions) > 0 {
+				role.RolePolicyActions = append(role.RolePolicyActions, actions...)
+				mergePerBucketActions(role.IdentityAllowActionsPerBucket, map[string][]string{"*": actions})
 			}
 			break
 		}

@@ -95,12 +95,16 @@ func ExpandAnalyzableActions(actions []string) []string {
 		}
 
 		parts := strings.SplitN(a, ":", 2)
-		if len(parts) == 2 && parts[1] == "*" {
+		if len(parts) == 2 && strings.HasSuffix(parts[1], "*") {
 			service := strings.ToLower(parts[0])
+			prefix := parts[1][:len(parts[1])-1]
 			for _, concrete := range SupportedActionsByService[service] {
-				if !seen[concrete] {
-					seen[concrete] = true
-					result = append(result, concrete)
+				actionSuffix := strings.SplitN(concrete, ":", 2)[1]
+				if strings.HasPrefix(strings.ToLower(actionSuffix), strings.ToLower(prefix)) {
+					if !seen[concrete] {
+						seen[concrete] = true
+						result = append(result, concrete)
+					}
 				}
 			}
 			continue
