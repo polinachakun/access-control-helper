@@ -229,7 +229,6 @@ access-control-helper/
 │   │   └── builder.go             # Builds Config IR from resolved resources
 │   ├── generator/
 │   │   ├── generator.go           # Alloy spec generation orchestrator
-│   │   ├── query.go               # Per-triple query construction
 │   │   ├── template.go            # Alloy template strings and boilerplate
 │   │   ├── predicates.go          # Alloy predicate & per-layer assertion generation
 │   │   └── model.go               # Alloy signature and fact generation
