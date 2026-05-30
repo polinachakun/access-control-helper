@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Pick 10 random successful modules from phase3_final.json,
+Pick 10 random successful modules from a phase3 results JSON,
 extract their .tf files + copy the .als report + write a decisions summary.
+
+Usage:
+  python3 sample_for_review.py [phase3_results.json]
 
 Output: eval/manual_review/<module_id>/
   *.tf              — original Terraform files
@@ -17,7 +20,8 @@ import sys
 import tarfile
 from pathlib import Path
 
-RESULTS_JSON = Path(__file__).parent / "results" / "phase3_final.json"
+_default = Path(__file__).parent / "results" / "phase3_clean.json"
+RESULTS_JSON = Path(sys.argv[1]) if len(sys.argv) > 1 else _default
 ALS_DIR      = Path(__file__).parent / "results"
 TERRADS_TAR  = Path("/tmp/TerraDS.tar.gz")
 OUT_DIR      = Path(__file__).parent / "manual_review"

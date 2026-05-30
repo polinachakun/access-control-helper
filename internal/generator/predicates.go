@@ -201,6 +201,8 @@ type TripleKey struct {
 	Action            string
 	AssertionBaseName string
 	HasSessionPolicy  bool
+	PrincipalDisplay  string
+	BucketDisplay     string
 }
 
 // BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.

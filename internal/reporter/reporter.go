@@ -59,9 +59,17 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 			return nil, fmt.Errorf("missing Alloy result for assertion %q: Alloy did not return a result for this check", key.AssertionBaseName)
 		}
 
+		principal := key.PrincipalDisplay
+		if principal == "" {
+			principal = key.Principal
+		}
+		bucket := key.BucketDisplay
+		if bucket == "" {
+			bucket = key.Bucket
+		}
 		tr := &TripleResult{
-			Principal: key.Principal,
-			Bucket:    key.Bucket,
+			Principal: principal,
+			Bucket:    bucket,
 			Action:    key.Action,
 		}
 

@@ -20,19 +20,23 @@ type Generator struct {
 	vpces   map[string]bool
 	actions map[string]bool
 
-	principals  []PrincipalEntry
-	bucketNames []string
-	actionNames []string
+	principals       []PrincipalEntry
+	bucketNames      []string
+	actionNames      []string
+	principalDisplay map[string]string
+	bucketDisplay    map[string]string
 }
 
 // NewGenerator creates a new Generator.
 func NewGenerator(config *ir.Config, sourceFile string) *Generator {
 	return &Generator{
-		config:     config,
-		sourceFile: sourceFile,
-		tags:       make(map[string]bool),
-		vpces:      make(map[string]bool),
-		actions:    make(map[string]bool),
+		config:           config,
+		sourceFile:       sourceFile,
+		tags:             make(map[string]bool),
+		vpces:            make(map[string]bool),
+		actions:          make(map[string]bool),
+		principalDisplay: make(map[string]string),
+		bucketDisplay:    make(map[string]string),
 	}
 }
 
@@ -172,7 +176,13 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	// ── S3 Buckets ────────────────────────────────────────────────────────
 	bucketNames := make([]string, len(g.config.Buckets))
 	for i, b := range g.config.Buckets {
-		bucketNames[i] = AlloyID(b.TFName)
+		id := AlloyID(b.TFName)
+		bucketNames[i] = id
+		if b.BucketName != "" {
+			g.bucketDisplay[id] = b.BucketName
+		} else {
+			g.bucketDisplay[id] = "aws_s3_bucket." + b.TFName
+		}
 	}
 	data.Buckets = bucketNames
 	data.BucketUnion = g.buildUnion(bucketNames, "bucket_")
@@ -206,7 +216,13 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	// ── IAM Roles ─────────────────────────────────────────────────────────
 	roleNames := make([]string, len(g.config.Roles))
 	for i, r := range g.config.Roles {
-		roleNames[i] = AlloyID(r.TFName)
+		id := AlloyID(r.TFName)
+		roleNames[i] = id
+		if r.Name != "" {
+			g.principalDisplay[id] = r.Name
+		} else {
+			g.principalDisplay[id] = "aws_iam_role." + r.TFName
+		}
 	}
 	data.Roles = roleNames
 	data.RoleUnion = g.buildUnion(roleNames, "role_")
@@ -214,7 +230,13 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	// ── IAM Users ─────────────────────────────────────────────────────────
 	userNames := make([]string, len(g.config.Users))
 	for i, u := range g.config.Users {
-		userNames[i] = AlloyID(u.TFName)
+		id := AlloyID(u.TFName)
+		userNames[i] = id
+		if u.Name != "" {
+			g.principalDisplay[id] = u.Name
+		} else {
+			g.principalDisplay[id] = "aws_iam_user." + u.TFName
+		}
 	}
 	data.Users = userNames
 	data.UserUnion = g.buildUnion(userNames, "user_")
@@ -559,7 +581,16 @@ func (g *Generator) sortedKeys(m map[string]bool) []string {
 // TripleMetadata returns a TripleKey for every (principal, bucket, action) triple.
 // Must be called after GenerateToFile or GenerateToWriter.
 func (g *Generator) TripleMetadata() []TripleKey {
-	return BuildTripleKeysFromPrincipals(g.principals, g.bucketNames, g.actionNames)
+	keys := BuildTripleKeysFromPrincipals(g.principals, g.bucketNames, g.actionNames)
+	for i := range keys {
+		if d, ok := g.principalDisplay[keys[i].Principal]; ok {
+			keys[i].PrincipalDisplay = d
+		}
+		if d, ok := g.bucketDisplay[keys[i].Bucket]; ok {
+			keys[i].BucketDisplay = d
+		}
+	}
+	return keys
 }
 
 // buildIdentityAllowedOnRelation converts the per-bucket action map from IR into an
