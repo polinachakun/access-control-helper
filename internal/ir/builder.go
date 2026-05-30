@@ -304,17 +304,18 @@ func (b *Builder) buildIAMRole(ref string, res *resolver.ResolvedResource) {
 	// Check for permissions boundary.
 	// The HCL resolver evaluates `aws_iam_policy.name.arn` to a placeholder ARN string,
 	// so extractResourceRef may return "" on the attribute value. We fall back to
-	// res.References which always contains the raw resource ref.
+	// res.References which always contains the raw resource ref  but only when
+	// permissions_boundary is actually set, to avoid picking up aws_iam_policy.*
+	// references from unrelated attributes like managed_policy_arns.
 	if boundary := b.getAttrAsString(res, "permissions_boundary"); boundary != "" {
 		role.HasBoundary = true
 		role.BoundaryRef = extractResourceRef(boundary)
-	}
-	if role.BoundaryRef == "" {
-		for _, ref := range res.References {
-			if strings.HasPrefix(ref, "aws_iam_policy.") {
-				role.HasBoundary = true
-				role.BoundaryRef = ref
-				break
+		if role.BoundaryRef == "" {
+			for _, ref := range res.References {
+				if strings.HasPrefix(ref, "aws_iam_policy.") {
+					role.BoundaryRef = ref
+					break
+				}
 			}
 		}
 	}
@@ -405,13 +406,12 @@ func (b *Builder) buildIAMUser(ref string, res *resolver.ResolvedResource) {
 	if boundary := b.getAttrAsString(res, "permissions_boundary"); boundary != "" {
 		user.HasBoundary = true
 		user.BoundaryRef = extractResourceRef(boundary)
-	}
-	if user.BoundaryRef == "" {
-		for _, r := range res.References {
-			if strings.HasPrefix(r, "aws_iam_policy.") {
-				user.HasBoundary = true
-				user.BoundaryRef = r
-				break
+		if user.BoundaryRef == "" {
+			for _, r := range res.References {
+				if strings.HasPrefix(r, "aws_iam_policy.") {
+					user.BoundaryRef = r
+					break
+				}
 			}
 		}
 	}
