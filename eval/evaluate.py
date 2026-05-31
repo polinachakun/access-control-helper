@@ -408,6 +408,7 @@ def phase2(conn, sample_size=100, output_file=None):
                 per_module.append({"module_id": mid, "repo_id": repo_id, "path": module_path, "outcome": "no_tf_files"})
                 continue
 
+            autoformat_dir(tmpdir)
             outcome, stderr, elapsed = run_tool_parse(tmpdir)
             timings.append(elapsed)
 
