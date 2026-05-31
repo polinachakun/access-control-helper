@@ -26,6 +26,9 @@ tests/unit/*/
 # .als files are intermediate and throwaway — gitignored.
 eval/results/*.als
 eval/__pycache__/
+eval/module_*/
+eval/tmp*/
+eval/output/
 
 # ── Go build output ───────────────────────────────────────────────────────────
 access-control-helper
@@ -46,6 +49,7 @@ access-control-helper
 /tmp*/
 /test*/
 /svc_test/
+/main/
 
 # ── Evaluation results (intermediate, not thesis evidence) ───────────────────
 eval/manual_review/
