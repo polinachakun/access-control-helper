@@ -113,7 +113,61 @@ func (r *Resolver) Resolve(parseResult *parser.ParseResult) (map[string]*Resolve
 		r.updateResourceInContext(resolved)
 	}
 
+	r.synthesizeDataSources(parseResult)
+	for _, ref := range order {
+		raw := rawMap[ref]
+		if raw == nil || !usesDataSource(raw) {
+			continue
+		}
+		resolved, err := r.resolveResource(raw)
+		if err != nil {
+			continue
+		}
+		r.resources[ref] = resolved
+		r.updateResourceInContext(resolved)
+	}
+
 	return r.resources, nil
+}
+
+func usesDataSource(raw *parser.RawResource) bool {
+	for _, expr := range raw.Attributes {
+		for _, traversal := range expr.Variables() {
+			if len(traversal) >= 1 {
+				if root, ok := traversal[0].(hcl.TraverseRoot); ok && root.Name == "data" {
+					return true
+				}
+			}
+		}
+	}
+	for _, blocks := range raw.Blocks {
+		for _, block := range blocks {
+			if blockUsesDataSource(block) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func blockUsesDataSource(block parser.RawBlock) bool {
+	for _, expr := range block.Attributes {
+		for _, traversal := range expr.Variables() {
+			if len(traversal) >= 1 {
+				if root, ok := traversal[0].(hcl.TraverseRoot); ok && root.Name == "data" {
+					return true
+				}
+			}
+		}
+	}
+	for _, children := range block.Blocks {
+		for _, child := range children {
+			if blockUsesDataSource(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // GetGraph returns the dependency graph.
@@ -134,7 +188,7 @@ func (r *Resolver) buildEvalContext(parseResult *parser.ParseResult) *hcl.EvalCo
 	ctx.Functions["upper"] = stdlib.UpperFunc
 	ctx.Functions["replace"] = stdlib.ReplaceFunc
 	ctx.Functions["format"] = stdlib.FormatFunc
-	ctx.Functions["join"] = stdlib.JoinFunc
+	ctx.Functions["join"] = createJoinFunc()
 	ctx.Functions["split"] = stdlib.SplitFunc
 	ctx.Functions["length"] = stdlib.LengthFunc
 	ctx.Functions["coalesce"] = stdlib.CoalesceFunc
@@ -528,6 +582,49 @@ func interfaceToCty(val interface{}) cty.Value {
 func ctyToJSON(val cty.Value) ([]byte, error) {
 	goVal := ctyToInterface(val)
 	return json.Marshal(goVal)
+}
+
+func createJoinFunc() function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{Name: "separator", Type: cty.String},
+		},
+		VarParam: &function.Parameter{
+			Name: "lists",
+			Type: cty.DynamicPseudoType,
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) == 0 {
+				return cty.StringVal(""), nil
+			}
+			sep := args[0].AsString()
+			var items []string
+			for _, listVal := range args[1:] {
+				if listVal.IsNull() || !listVal.IsKnown() {
+					continue
+				}
+				t := listVal.Type()
+				switch {
+				case t.IsListType() || t.IsTupleType() || t.IsSetType():
+					for it := listVal.ElementIterator(); it.Next(); {
+						_, v := it.Element()
+						if v.IsNull() || !v.IsKnown() {
+							continue
+						}
+						if v.Type() == cty.String {
+							items = append(items, v.AsString())
+						} else {
+							items = append(items, fmt.Sprintf("%v", ctyToInterface(v)))
+						}
+					}
+				case t == cty.String:
+					items = append(items, listVal.AsString())
+				}
+			}
+			return cty.StringVal(strings.Join(items, sep)), nil
+		},
+	})
 }
 
 func createLookupFunc() function.Function {
