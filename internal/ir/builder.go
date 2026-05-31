@@ -174,7 +174,10 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 		effect := strings.ToLower(stmt.Effect)
 		approximation := "statement modeled as unconditional allow (may over-grant access in analysis)"
 		if strings.EqualFold(stmt.Effect, "Deny") {
-			approximation = "statement modeled as unconditional deny (may over-restrict access in analysis)"
+			// Conditional denies are skipped entirely rather than approximated as
+			// unconditional: skipping may under-restrict, but unconditional deny
+			// would block all access even for requests that satisfy the condition.
+			approximation = "conditional deny not modeled (may under-restrict; runtime condition unknown)"
 		}
 		b.warnings = append(b.warnings, fmt.Sprintf(
 			"bucket policy %s statement %s: unrecognized %s conditions [%s] are ignored; %s",
@@ -200,12 +203,13 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 	var out []*BucketPolicy
 	for i, principal := range principals {
 		p := &BucketPolicy{
-			TFName:              fmt.Sprintf("%s_stmt_%d_pr_%d", baseName, stmtIdx, i+1),
-			BucketRef:           bucketRef,
-			AllowBucketResource: stmt.HasBucketLevelResource(),
-			AllowObjectResource: stmt.HasObjectLevelResource(),
-			DenyBucketResource:  stmt.HasBucketLevelResource(),
-			DenyObjectResource:  stmt.HasObjectLevelResource(),
+			TFName:               fmt.Sprintf("%s_stmt_%d_pr_%d", baseName, stmtIdx, i+1),
+			OriginalPolicyTFName: baseName,
+			BucketRef:            bucketRef,
+			AllowBucketResource:  stmt.HasBucketLevelResource(),
+			AllowObjectResource:  stmt.HasObjectLevelResource(),
+			DenyBucketResource:   stmt.HasBucketLevelResource(),
+			DenyObjectResource:   stmt.HasObjectLevelResource(),
 		}
 
 		if stmt.HasABACCondition() {
@@ -226,14 +230,22 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 			default:
 				p.AllowPrincipals = []string{principal}
 			}
+			// Store unrecognized conditions so the reporter can mark grants as
+			// CONDITIONAL_ALLOW instead of ALLOW.
+			if len(stmt.UnrecognizedConditions) > 0 {
+				p.AllowUnrecognizedConditions = stmt.UnrecognizedConditions
+			}
 		}
 
 		if stmt.IsDeny() && stmt.HasVPCECondition() {
 			p.DenyVpceID = stmt.GetVPCEID()
 		}
 
-		if stmt.IsDeny() && !stmt.HasVPCECondition() {
-			// Bug 4 fix: a statement uses either Action or NotAction, never both.
+		// Deny with only unrecognized conditions: skip the deny rather than
+		// approximating as unconditional deny. The warning above already notifies
+		// the user. This avoids blocking all access for what is effectively a
+		// conditional deny (e.g. aws:SecureTransport = false).
+		if stmt.IsDeny() && !stmt.HasVPCECondition() && len(stmt.UnrecognizedConditions) == 0 {
 			if len(stmt.NotActions) > 0 {
 				p.HasDenyNotAction = true
 				p.DenyNotActions = append(p.DenyNotActions, stmt.NotActions...)

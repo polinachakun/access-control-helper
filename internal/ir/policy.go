@@ -362,7 +362,7 @@ func (s *Statement) GetPrincipalARNs() []string {
 
 func (s *Statement) HasWildcardPrincipal() bool {
 	for _, p := range s.Principals {
-		if p.Type == "*" && p.Value == "*" {
+		if p.Value == "*" {
 			return true
 		}
 	}

@@ -3,6 +3,8 @@ package generator
 import (
 	"fmt"
 	"strings"
+
+	"access-control-helper/internal/ir"
 )
 
 // GeneratePredicates returns all AWS policy evaluation predicates for all 7 layers.
@@ -215,6 +217,11 @@ type TripleKey struct {
 	HasSessionPolicy  bool
 	PrincipalDisplay  string
 	BucketDisplay     string
+
+	// Set when a bucket policy grants this triple conditionally
+	HasConditionalAllow        bool
+	ConditionalAllowConditions []ir.Condition
+	ConditionalAllowedBy       string
 }
 
 // BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.

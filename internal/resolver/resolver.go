@@ -156,11 +156,60 @@ func (r *Resolver) buildEvalContext(parseResult *parser.ParseResult) *hcl.EvalCo
 			varVals[name] = val
 		}
 	}
+
+	for name := range collectVarRefs(parseResult.Resources, parseResult.DataSources) {
+		if _, ok := varVals[name]; !ok {
+			varVals[name] = cty.StringVal("")
+		}
+	}
+
 	if len(varVals) > 0 {
 		ctx.Variables["var"] = cty.ObjectVal(varVals)
 	}
 
 	return ctx
+}
+
+// collectVarRefs returns the set of all var.<name> references found in the
+func collectVarRefs(resources []parser.RawResource, dataSources []parser.RawResource) map[string]bool {
+	names := make(map[string]bool)
+	for _, raw := range append(resources, dataSources...) {
+		for _, expr := range raw.Attributes {
+			addVarRefsFromExpr(expr, names)
+		}
+		for _, blocks := range raw.Blocks {
+			for _, block := range blocks {
+				addVarRefsFromBlock(block, names)
+			}
+		}
+	}
+	return names
+}
+
+func addVarRefsFromExpr(expr hcl.Expression, names map[string]bool) {
+	for _, traversal := range expr.Variables() {
+		if len(traversal) < 2 {
+			continue
+		}
+		root, ok := traversal[0].(hcl.TraverseRoot)
+		if !ok || root.Name != "var" {
+			continue
+		}
+		if attr, ok := traversal[1].(hcl.TraverseAttr); ok {
+			names[attr.Name] = true
+		}
+	}
+}
+
+func addVarRefsFromBlock(block parser.RawBlock, names map[string]bool) {
+	for _, expr := range block.Attributes {
+		addVarRefsFromExpr(expr, names)
+	}
+	for _, children := range block.Blocks {
+		for _, child := range children {
+			addVarRefsFromBlock(child, names)
+		}
+	}
 }
 
 // updateLocalsInContext updates the eval context with resolved locals.

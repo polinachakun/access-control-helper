@@ -61,6 +61,10 @@ type BucketPolicy struct {
 	DenyObjectResource bool
 
 	HasABAC bool
+
+	OriginalPolicyTFName string
+
+	AllowUnrecognizedConditions []Condition
 }
 
 // IAMRole represents an aws_iam_role resource.

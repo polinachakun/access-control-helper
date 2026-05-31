@@ -9,6 +9,7 @@ import (
 
 	"access-control-helper/internal/analyzer"
 	"access-control-helper/internal/generator"
+	"access-control-helper/internal/ir"
 )
 
 const (
@@ -27,10 +28,14 @@ type TripleResult struct {
 	Principal          string
 	Bucket             string
 	Action             string
-	Decision           string
+	Decision           string // "ALLOW", "DENY", or "CONDITIONAL_ALLOW"
 	DeniedAtDesc       string
 	AdditionalFindings []string
 	Layers             [7]LayerInfo
+
+	// Set for CONDITIONAL_ALLOW: the policy granting access and its conditions.
+	AllowedBy  string
+	Conditions []ir.Condition
 }
 
 var layerNames = [7]string{
@@ -73,9 +78,15 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 			Action:    key.Action,
 		}
 
-		// Combined assertion: UNSAT → ALLOW, SAT → DENY.
+		// Combined assertion: UNSAT → ALLOW (or CONDITIONAL_ALLOW), SAT → DENY.
 		if combined.Valid {
-			tr.Decision = "ALLOW"
+			if key.HasConditionalAllow {
+				tr.Decision = "CONDITIONAL_ALLOW"
+				tr.AllowedBy = key.ConditionalAllowedBy
+				tr.Conditions = key.ConditionalAllowConditions
+			} else {
+				tr.Decision = "ALLOW"
+			}
 		} else {
 			tr.Decision = "DENY"
 		}
@@ -199,9 +210,19 @@ func (r *Reporter) reportTriple(res *TripleResult) {
 	}
 
 	fmt.Fprintln(r.w)
-	if res.Decision == "ALLOW" {
+	switch res.Decision {
+	case "ALLOW":
 		fmt.Fprintln(r.w, "  Result: ALLOW")
-	} else {
+	case "CONDITIONAL_ALLOW":
+		fmt.Fprintln(r.w, "  Result: CONDITIONAL_ALLOW")
+		if res.AllowedBy != "" {
+			fmt.Fprintf(r.w, "  Granted by:  %s\n", res.AllowedBy)
+		}
+		for _, c := range res.Conditions {
+			fmt.Fprintf(r.w, "  Condition:   %s %s = [%s]\n", c.Operator, c.Key, strings.Join(c.Values, ", "))
+		}
+		fmt.Fprintln(r.w, "  Note: access depends on runtime conditions not verifiable from Terraform source.")
+	default: // DENY
 		fmt.Fprintf(r.w, "  Result: DENY at %s\n", res.DeniedAtDesc)
 		for _, finding := range res.AdditionalFindings {
 			fmt.Fprintf(r.w, "  Additional finding: %s\n", finding)
@@ -223,8 +244,11 @@ func (r *Reporter) Summary(results []*TripleResult) {
 
 	for _, res := range results {
 		decision := res.Decision
-		if res.Decision == "DENY" {
+		switch res.Decision {
+		case "DENY":
 			decision = "DENY at " + res.DeniedAtDesc
+		case "CONDITIONAL_ALLOW":
+			decision = "CONDITIONAL_ALLOW"
 		}
 		fmt.Fprintf(r.w, "  %-25s %-20s %-22s %s\n",
 			truncate(res.Principal, 24),

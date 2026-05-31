@@ -560,6 +560,13 @@ func tagOrDefault(tag, defaultTag string) string {
 }
 
 func resolvePrincipalSig(principal string, config *ir.Config) string {
+
+	for _, sp := range config.ServicePrincipals {
+		if principal == sp.Name {
+			return "svc_" + AlloyID(sp.TFName)
+		}
+	}
+
 	// Direct Terraform reference: "aws_iam_role.name" or "aws_iam_user.name"
 	if strings.HasPrefix(principal, "aws_iam_role.") {
 		parts := strings.Split(principal, ".")
@@ -598,11 +605,6 @@ func resolvePrincipalSig(principal string, config *ir.Config) string {
 			return "user_" + AlloyID(u.TFName)
 		}
 	}
-	for _, sp := range config.ServicePrincipals {
-		if principal == sp.Name {
-			return "svc_" + AlloyID(sp.TFName)
-		}
-	}
 	return ""
 }
 
@@ -626,8 +628,78 @@ func (g *Generator) TripleMetadata() []TripleKey {
 		if d, ok := g.bucketDisplay[keys[i].Bucket]; ok {
 			keys[i].BucketDisplay = d
 		}
+		if hasCA, conds, policyName := g.findConditionalAllow(keys[i].Principal, keys[i].Bucket, keys[i].Action); hasCA {
+			keys[i].HasConditionalAllow = true
+			keys[i].ConditionalAllowConditions = conds
+			keys[i].ConditionalAllowedBy = policyName
+		}
 	}
 	return keys
+}
+
+// findConditionalAllow returns true (plus the conditions and originating policy name)
+// when a bucket policy grants the given triple but carries unrecognized conditions —
+// meaning the grant is conditional at runtime and cannot be statically verified.
+func (g *Generator) findConditionalAllow(principalAlloyID, bucketAlloyID, actionAlloyID string) (bool, []ir.Condition, string) {
+	bucketRef := ""
+	for _, b := range g.config.Buckets {
+		if AlloyID(b.TFName) == bucketAlloyID {
+			bucketRef = "aws_s3_bucket." + b.TFName
+			break
+		}
+	}
+	if bucketRef == "" {
+		return false, nil, ""
+	}
+
+	for _, bp := range g.config.BucketPolicies {
+		if len(bp.AllowUnrecognizedConditions) == 0 {
+			continue
+		}
+		if bp.BucketRef != bucketRef {
+			continue
+		}
+
+		actionAllowed := false
+		if bp.HasAllowNotAction {
+			actionAllowed = true
+			for _, a := range ExpandAnalyzableActions(bp.AllowNotActions) {
+				if ActionToAlloyID(a) == actionAlloyID {
+					actionAllowed = false
+					break
+				}
+			}
+		} else {
+			for _, a := range ExpandAnalyzableActions(bp.AllowActions) {
+				if ActionToAlloyID(a) == actionAlloyID {
+					actionAllowed = true
+					break
+				}
+			}
+		}
+		if !actionAllowed {
+			continue
+		}
+
+		principalCovered := bp.AllowAnyPrincipal
+		if !principalCovered {
+			for _, prin := range bp.AllowPrincipals {
+				sig := resolvePrincipalSig(prin, g.config)
+				if sig == "role_"+principalAlloyID ||
+					sig == "user_"+principalAlloyID ||
+					sig == "svc_"+principalAlloyID {
+					principalCovered = true
+					break
+				}
+			}
+		}
+		if !principalCovered {
+			continue
+		}
+
+		return true, bp.AllowUnrecognizedConditions, bp.OriginalPolicyTFName
+	}
+	return false, nil, ""
 }
 
 // buildIdentityAllowedOnRelation converts the per-bucket action map from IR into an
