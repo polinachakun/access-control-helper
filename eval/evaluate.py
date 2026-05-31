@@ -6,11 +6,13 @@ Phases:
   phase1   Dataset characterisation (SQLite only, fast)
   phase2   Parse/IR success on extracted in-scope sample
   phase3   Full Alloy analysis on a subset of phase2 successes
+  phase4   Manual review package: extract .tf files, spec.als, decisions.json
 
 Usage:
   python3 evaluate.py phase1
   python3 evaluate.py phase2 [--sample N] [--out results.json]
   python3 evaluate.py phase3 [--sample N] [--out results.json]
+  python3 evaluate.py phase4 [--sample4 N] [--phase3-out results.json]
   python3 evaluate.py all
 
 Paths are configured at the top of this file.
@@ -543,21 +545,159 @@ def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
     return results
 
 
+# ── Phase 4 ───────────────────────────────────────────────────────────────────
+
+MANUAL_REVIEW_DIR = Path(__file__).parent / "manual_review"
+
+
+def _run_tool_decisions(tf_dir, timeout=120):
+    """Run the full pipeline on tf_dir and return parsed decisions list."""
+    with tempfile.NamedTemporaryFile(suffix=".als", delete=False) as tmp:
+        tmp_als = tmp.name
+    try:
+        result = subprocess.run(
+            [TOOL_BINARY, str(tf_dir), tmp_als],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        Path(tmp_als).unlink(missing_ok=True)
+        return None, "timeout"
+    finally:
+        Path(tmp_als).unlink(missing_ok=True)
+
+    if result.returncode != 0:
+        return None, result.stderr.strip().splitlines()[0] if result.stderr else "error"
+
+    decisions = []
+    current = {}
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("Query: can "):
+            current = {}
+            try:
+                parts = line[len("Query: can "):].rstrip("?")
+                principal, rest = parts.split('" perform ', 1)
+                current["principal"] = principal.strip('"')
+                action, rest = rest.split(' on "', 1)
+                current["action"] = action.strip()
+                current["bucket"] = rest.rstrip('"')
+            except ValueError:
+                pass
+        elif line.startswith("Result: ALLOW"):
+            current["decision"] = "ALLOW"
+            decisions.append(dict(current))
+        elif line.startswith("Result: DENY"):
+            current["decision"] = "DENY"
+            if "at " in line:
+                current["denied_at"] = line.split("at ", 1)[1]
+            decisions.append(dict(current))
+
+    return decisions, None
+
+
+def phase4(sample_size=20, phase3_results_file=None):
+    print("=" * 70)
+    print("PHASE 4 — Manual Review Package")
+    print("=" * 70)
+
+    results_file = Path(phase3_results_file) if phase3_results_file else (RESULTS_DIR / "phase3_results.json")
+    if not results_file.exists():
+        sys.exit(f"Phase 3 results not found at {results_file}.\nRun phase3 first.")
+
+    data = json.loads(results_file.read_text())
+    successes = [m for m in data["per_module"] if m["outcome"] == "success"]
+    print(f"\nPhase 3 successes available: {len(successes)}")
+
+    rng = random.Random(RANDOM_SEED)
+    sample = rng.sample(successes, min(sample_size, len(successes)))
+    print(f"Sampling {len(sample)} modules for manual review (seed={RANDOM_SEED})")
+
+    MANUAL_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
+
+    tf_bin = shutil.which("terraform")
+    succeeded = 0
+
+    for i, mod in enumerate(sample, 1):
+        mid     = mod["module_id"]
+        repo_id = mod["repo_id"]
+        path    = mod["path"]
+        out_dir = MANUAL_REVIEW_DIR / f"module_{mid}"
+        out_dir.mkdir(exist_ok=True)
+
+        print(f"  [{i:2}/{len(sample)}] module={mid} ...", end=" ", flush=True)
+
+        # Extract .tf files
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ok = extract_module(repo_id, path, tmpdir)
+            if not ok:
+                print("SKIP (archive missing)")
+                shutil.rmtree(out_dir)
+                continue
+
+            if tf_bin:
+                subprocess.run([tf_bin, "fmt", "-recursive", tmpdir],
+                               capture_output=True, timeout=15)
+
+            # Copy .tf files to out_dir
+            for tf in Path(tmpdir).glob("*.tf"):
+                shutil.copy(tf, out_dir / tf.name)
+
+            # Run tool to get decisions
+            decisions, err = _run_tool_decisions(tmpdir)
+
+        # Copy .als spec if it exists
+        als_src = RESULTS_DIR / f"module_{mid}.als"
+        if als_src.exists():
+            shutil.copy(als_src, out_dir / "spec.als")
+
+        # Write decisions.json
+        if decisions is not None:
+            (out_dir / "decisions.json").write_text(json.dumps(decisions, indent=2))
+            allow = sum(1 for d in decisions if d.get("decision") == "ALLOW")
+            deny  = sum(1 for d in decisions if d.get("decision") == "DENY")
+            decisions_note = f"{len(decisions)} decisions ({allow} ALLOW, {deny} DENY)"
+            succeeded += 1
+        else:
+            decisions_note = f"tool error: {err}"
+
+        # Write meta.txt
+        tf_count = len(list(out_dir.glob("*.tf")))
+        meta = (
+            f"module_id : {mid}\n"
+            f"repo_id   : {repo_id}\n"
+            f"path      : {path}\n"
+            f"elapsed_s : {mod['elapsed_s']}\n"
+            f"decisions : {decisions_note}\n"
+        )
+        (out_dir / "meta.txt").write_text(meta)
+
+        print(f"OK  ({tf_count} .tf files, {decisions_note})")
+
+    print(f"\n--- Phase 4 Results ---")
+    print(f"  Packages created: {succeeded}/{len(sample)}")
+    print(f"  Output: {MANUAL_REVIEW_DIR}/")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("phase", choices=["phase1", "phase2", "phase3", "all"])
+    parser.add_argument("phase", choices=["phase1", "phase2", "phase3", "phase4", "all"])
     parser.add_argument("--sample", type=int, default=20,
                         help="Sample size for phase2/phase3 (default: 20; use 100+ for thesis report)")
     parser.add_argument("--sample3", type=int, default=20,
                         help="Sample size for phase3 when running 'all' (default: 20)")
+    parser.add_argument("--sample4", type=int, default=20,
+                        help="Sample size for phase4 manual review (default: 20)")
     parser.add_argument("--out", help="Output JSON file for results")
+    parser.add_argument("--phase3-out", help="Phase 3 results JSON to use as input for phase4")
     args = parser.parse_args()
 
-    conn = open_db()
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    if args.phase in ("phase1", "phase2", "phase3", "all"):
+        conn = open_db()
 
     if args.phase in ("phase1", "all"):
         in_scope, has_gap = phase1(conn)
@@ -572,7 +712,13 @@ def main():
         sample3 = args.sample3 if args.phase == "all" else args.sample
         phase3(conn, sample_size=sample3, phase2_results=phase2_modules, output_file=out)
 
-    conn.close()
+    if args.phase in ("phase1", "phase2", "phase3", "all"):
+        conn.close()
+
+    if args.phase in ("phase4", "all"):
+        p3_out = getattr(args, "phase3_out", None) or str(RESULTS_DIR / "phase3_results.json")
+        sample4 = args.sample4 if args.phase in ("phase4", "all") else args.sample
+        phase4(sample_size=sample4, phase3_results_file=p3_out)
 
 
 if __name__ == "__main__":

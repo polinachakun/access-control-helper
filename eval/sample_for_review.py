@@ -16,17 +16,20 @@ Output: eval/manual_review/<module_id>/
 import json
 import random
 import shutil
+import subprocess
 import sys
 import tarfile
+import tempfile
 from pathlib import Path
 
-_default = Path(__file__).parent / "results" / "phase3_clean.json"
+_default     = Path(__file__).parent / "results" / "phase3_results.json"
 RESULTS_JSON = Path(sys.argv[1]) if len(sys.argv) > 1 else _default
 ALS_DIR      = Path(__file__).parent / "results"
 TERRADS_TAR  = Path("/tmp/TerraDS.tar.gz")
 OUT_DIR      = Path(__file__).parent / "manual_review"
-SEED         = 99   # change to get a different sample
-N            = 10
+TOOL_BINARY  = str(Path(__file__).parent.parent / "access-control-helper")
+SEED         = 99
+N            = 20
 
 
 def extract_module_tf(repo_id, module_path, dest_dir):
@@ -65,6 +68,46 @@ def extract_module_tf(repo_id, module_path, dest_dir):
     return extracted
 
 
+def run_tool_and_parse(tf_dir, als_path, timeout=120):
+    """Run the full pipeline and return parsed decisions as a list of dicts."""
+    try:
+        result = subprocess.run(
+            [TOOL_BINARY, str(tf_dir), str(als_path)],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+
+    if result.returncode != 0:
+        return None, result.stderr.strip()
+
+    decisions = []
+    current = {}
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("Query: can "):
+            current = {}
+            try:
+                parts = line[len("Query: can "):].rstrip("?")
+                principal, rest = parts.split('" perform ', 1)
+                current["principal"] = principal.strip('"')
+                action, rest = rest.split(' on "', 1)
+                current["action"] = action.strip()
+                current["bucket"] = rest.rstrip('"')
+            except ValueError:
+                pass
+        elif line.startswith("Result: ALLOW"):
+            current["decision"] = "ALLOW"
+            decisions.append(dict(current))
+        elif line.startswith("Result: DENY"):
+            current["decision"] = "DENY"
+            if "at " in line:
+                current["denied_at"] = line.split("at ", 1)[1]
+            decisions.append(dict(current))
+
+    return decisions, None
+
+
 def main():
     if not TERRADS_TAR.exists():
         sys.exit(f"TerraDS tar not found at {TERRADS_TAR}")
@@ -93,30 +136,44 @@ def main():
             shutil.rmtree(out_path)
             continue
 
-        # Copy .als report if it exists
+        # Copy .als spec if it exists
         als_src = ALS_DIR / f"module_{mid}.als"
         if als_src.exists():
-            shutil.copy(als_src, out_path / "report.als")
+            shutil.copy(als_src, out_path / "spec.als")
 
-        # Write decisions summary
-        (out_path / "decisions.json").write_text(
-            json.dumps(mod["decisions"], indent=2)
-        )
+        # Format before running tool (same as evaluate.py phase3)
+        import shutil as _shutil
+        tf_bin = _shutil.which("terraform")
+        if tf_bin:
+            subprocess.run([tf_bin, "fmt", "-recursive", str(out_path)],
+                           capture_output=True, timeout=15)
+
+        # Run tool to get decisions JSON
+        with tempfile.NamedTemporaryFile(suffix=".als", delete=False) as tmp:
+            tmp_als = tmp.name
+        decisions, err = run_tool_and_parse(out_path, tmp_als)
+        Path(tmp_als).unlink(missing_ok=True)
+
+        if decisions is not None:
+            (out_path / "decisions.json").write_text(json.dumps(decisions, indent=2))
+            allow = sum(1 for d in decisions if d.get("decision") == "ALLOW")
+            deny  = sum(1 for d in decisions if d.get("decision") == "DENY")
+            decisions_note = f"{len(decisions)} decisions ({allow} ALLOW, {deny} DENY)"
+        else:
+            decisions_note = f"tool error: {err}"
 
         # Write meta info
-        allow = sum(1 for d in mod["decisions"] if d.get("decision") == "ALLOW")
-        deny  = sum(1 for d in mod["decisions"] if d.get("decision") == "DENY")
         meta = (
             f"module_id : {mid}\n"
             f"repo_id   : {repo_id}\n"
             f"path      : {path}\n"
             f"elapsed_s : {mod['elapsed_s']}\n"
-            f"decisions : {len(mod['decisions'])} total  ({allow} ALLOW  {deny} DENY)\n"
+            f"decisions : {decisions_note}\n"
         )
         (out_path / "meta.txt").write_text(meta)
 
         tf_files = list(out_path.glob("*.tf"))
-        print(f"OK  ({len(tf_files)} .tf files,  {len(mod['decisions'])} decisions)")
+        print(f"OK  ({len(tf_files)} .tf files, {decisions_note})")
 
     print(f"\nDone. Review folders in:\n  {OUT_DIR}/")
 
