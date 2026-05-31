@@ -485,7 +485,6 @@ def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
         print(f"\nFresh sample of {len(sample_ids)} in-scope modules")
 
     outcomes = defaultdict(int)
-    all_decisions = []
     timings = []
     per_module = []
 
@@ -507,20 +506,14 @@ def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
             outcome, report, elapsed = run_tool_alloy(tmpdir, als_path)
             timings.append(elapsed)
 
-            decisions = []
-            if outcome == "success":
-                decisions = parse_decisions(report)
-
-            print(f"{outcome.upper()}  {len(decisions)} decisions  ({elapsed:.1f}s)")
+            print(f"{outcome.upper()}  ({elapsed:.1f}s)")
 
             outcomes[outcome] += 1
-            all_decisions.extend(decisions)
             per_module.append({
                 "module_id": mid,
                 "repo_id": repo_id,
                 "path": module_path,
                 "outcome": outcome,
-                "decisions": decisions,
                 "elapsed_s": round(elapsed, 1),
                 "error_snippet": report[:200] if outcome != "success" else "",
             })
@@ -530,22 +523,6 @@ def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
     for k, v in sorted(outcomes.items(), key=lambda x: -x[1]):
         print(f"  {k:<20} {v:>3}  ({100*v/total:.1f}%)")
 
-    if all_decisions:
-        allow = sum(1 for d in all_decisions if d.get("decision") == "ALLOW")
-        deny  = sum(1 for d in all_decisions if d.get("decision") == "DENY")
-        total_d = len(all_decisions)
-        print(f"\n  Total (principal,action,bucket) triples analysed: {total_d}")
-        print(f"  ALLOW: {allow} ({100*allow/total_d:.1f}%)   DENY: {deny} ({100*deny/total_d:.1f}%)")
-
-        denied_at = defaultdict(int)
-        for d in all_decisions:
-            if d.get("decision") == "DENY" and "denied_at" in d:
-                denied_at[d["denied_at"]] += 1
-        if denied_at:
-            print("\n  DENY breakdown by layer:")
-            for layer, cnt in sorted(denied_at.items(), key=lambda x: -x[1]):
-                print(f"    {layer}: {cnt}")
-
     if timings:
         print(f"\n  Mean Alloy analysis time: {sum(timings)/len(timings):.1f}s")
         print(f"  Max  Alloy analysis time: {max(timings):.1f}s")
@@ -554,9 +531,6 @@ def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
         "phase": 3,
         "sample_size": total,
         "outcomes": dict(outcomes),
-        "total_decisions": len(all_decisions),
-        "allow_count": sum(1 for d in all_decisions if d.get("decision") == "ALLOW"),
-        "deny_count": sum(1 for d in all_decisions if d.get("decision") == "DENY"),
         "mean_alloy_time_s": round(sum(timings) / len(timings), 1) if timings else None,
         "per_module": per_module,
     }
