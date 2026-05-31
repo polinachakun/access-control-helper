@@ -241,12 +241,22 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	data.Users = userNames
 	data.UserUnion = g.buildUnion(userNames, "user_")
 
+	// ── Service Principals ────────────────────────────────────────────────
+	svcNames := make([]string, len(g.config.ServicePrincipals))
+	for i, sp := range g.config.ServicePrincipals {
+		id := AlloyID(sp.TFName)
+		svcNames[i] = id
+		g.principalDisplay[id] = sp.Name
+	}
+	data.ServicePrincipals = svcNames
+	data.ServicePrincipalUnion = g.buildUnion(svcNames, "svc_")
+
 	// ── Config facts ──────────────────────────────────────────────────────
 	data.ConfigFacts = g.buildConfigFacts()
 
 	// ── Build principals list for TripleMetadata() and assertions ─────────
 	sortedActions := g.sortedKeys(g.actions)
-	principals := make([]PrincipalEntry, 0, len(roleNames)+len(userNames))
+	principals := make([]PrincipalEntry, 0, len(roleNames)+len(userNames)+len(svcNames))
 	for _, r := range g.config.Roles {
 		n := AlloyID(r.TFName)
 		principals = append(principals, PrincipalEntry{
@@ -258,6 +268,10 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	for _, n := range userNames {
 		// IAM users never have session policies in static Terraform analysis.
 		principals = append(principals, PrincipalEntry{Name: n, SigName: "user_" + n})
+	}
+	for _, n := range svcNames {
+		// Service principals have no session policies, boundaries, or identity policies.
+		principals = append(principals, PrincipalEntry{Name: n, SigName: "svc_" + n})
 	}
 	g.principals = principals
 	g.bucketNames = bucketNames
@@ -274,7 +288,8 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	vpceCount := len(g.sortedKeys(g.vpces))
 
 	// Request count: need at least one atom per (principal, bucket, action) triple.
-	requestCount := (len(g.config.Roles) + len(g.config.Users)) * len(g.config.Buckets) * actionCount
+	principalCount := len(g.config.Roles) + len(g.config.Users) + len(g.config.ServicePrincipals)
+	requestCount := principalCount * len(g.config.Buckets) * actionCount
 	if requestCount < 1 {
 		requestCount = 1
 	}
@@ -282,12 +297,12 @@ func (g *Generator) buildTemplateData() *TemplateData {
 	scope := fmt.Sprintf(
 		"for exactly %d S3Bucket, exactly %d BucketPolicy,\n"+
 			"      exactly %d OrgRCP, exactly %d OrgSCP,\n"+
-			"      exactly %d IAMRole, exactly %d IAMUser, exactly %d Request,\n"+
+			"      exactly %d IAMRole, exactly %d IAMUser, exactly %d ServicePrincipal, exactly %d Request,\n"+
 			"      exactly %d VpceId, exactly %d TagValue,\n"+
 			"      exactly %d Action, exactly 2 Bool",
 		len(g.config.Buckets), len(g.config.BucketPolicies),
 		len(rcps), len(scps),
-		len(g.config.Roles), len(g.config.Users), requestCount,
+		len(g.config.Roles), len(g.config.Users), len(g.config.ServicePrincipals), requestCount,
 		vpceCount, tagCount,
 		actionCount,
 	)
@@ -480,6 +495,23 @@ func (g *Generator) buildConfigFacts() string {
 		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
 	}
 
+	// ── Service Principals ────────────────────────────────────────────────
+	for _, sp := range g.config.ServicePrincipals {
+		sig := "svc_" + AlloyID(sp.TFName)
+		sb.WriteString(fmt.Sprintf("  %s.envTag               = TAG_DEV\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.crossAccount         = False\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.hasIdentityPolicy    = False\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.identityAllowedOn    = none -> none\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.identityDenyActions  = none\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.identityNotActions   = none\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.hasNotAction         = False\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.hasBoundary          = False\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.boundaryAllowedOn    = none -> none\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.hasSessionPolicy     = False\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.sessionPolicyActions = none\n", sig))
+		sb.WriteString(fmt.Sprintf("  %s.dependsOn            = none\n\n", sig))
+	}
+
 	// ── Actions ───────────────────────────────────────────────────────────
 	for _, action := range g.sortedKeys(g.actions) {
 		bucketLevel, objectLevel := actionLevelFacts(action)
@@ -564,6 +596,11 @@ func resolvePrincipalSig(principal string, config *ir.Config) string {
 	for _, u := range config.Users {
 		if strings.Contains(principal, u.Name) || strings.Contains(principal, u.TFName) {
 			return "user_" + AlloyID(u.TFName)
+		}
+	}
+	for _, sp := range config.ServicePrincipals {
+		if principal == sp.Name {
+			return "svc_" + AlloyID(sp.TFName)
 		}
 	}
 	return ""

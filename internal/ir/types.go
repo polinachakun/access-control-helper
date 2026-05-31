@@ -6,14 +6,22 @@ import "fmt"
 
 // Config holds the complete parsed AWS configuration.
 type Config struct {
-	Buckets        []*S3Bucket
-	BucketPolicies []*BucketPolicy
-	Roles          []*IAMRole
-	RolePolicies   []*RolePolicy
-	Users          []*IAMUser
-	UserPolicies   []*UserPolicy
-	Policies       []*IAMPolicy
-	OrgPolicies    []*OrgPolicy
+	Buckets           []*S3Bucket
+	BucketPolicies    []*BucketPolicy
+	Roles             []*IAMRole
+	RolePolicies      []*RolePolicy
+	Users             []*IAMUser
+	UserPolicies      []*UserPolicy
+	Policies          []*IAMPolicy
+	OrgPolicies       []*OrgPolicy
+	ServicePrincipals []*ServicePrincipal
+}
+
+// ServicePrincipal represents an AWS service principal (e.g. "lambda.amazonaws.com")
+// that appears in a resource-based (bucket) policy.
+type ServicePrincipal struct {
+	TFName string // synthetic Alloy-safe name, e.g. "lambda_amazonaws_com"
+	Name   string // original service name, e.g. "lambda.amazonaws.com"
 }
 
 // S3Bucket represents an aws_s3_bucket resource.

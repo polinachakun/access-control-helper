@@ -187,6 +187,10 @@ func (b *Builder) expandBucketPolicyStatement(baseName, bucketRef string, stmtId
 	if anyPrincipal {
 		principals = append([]string{"*"}, principals...)
 	}
+	for _, svc := range stmt.GetServicePrincipals() {
+		principals = append(principals, svc)
+		b.registerServicePrincipal(svc)
+	}
 	if len(principals) == 0 {
 		b.warnings = append(b.warnings, fmt.Sprintf(
 			"bucket policy %s statement %d has no principals; statement skipped", baseName, stmtIdx))
@@ -804,4 +808,20 @@ func BuildFromResources(resources map[string]*resolver.ResolvedResource, graph *
 	b := NewBuilder(resources, graph)
 	config, err := b.Build()
 	return config, b.Warnings(), err
+}
+
+// registerServicePrincipal adds a service principal to the config (deduplicated).
+func (b *Builder) registerServicePrincipal(name string) {
+	for _, sp := range b.config.ServicePrincipals {
+		if sp.Name == name {
+			return
+		}
+	}
+	// Build an Alloy-safe TFName: replace dots and hyphens with underscores.
+	tfName := strings.ReplaceAll(name, ".", "_")
+	tfName = strings.ReplaceAll(tfName, "-", "_")
+	b.config.ServicePrincipals = append(b.config.ServicePrincipals, &ServicePrincipal{
+		TFName: tfName,
+		Name:   name,
+	})
 }

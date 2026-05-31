@@ -124,17 +124,29 @@ func GeneratePredicates() []Predicate {
   req.action in req.principal.sessionPolicyActions`,
 		},
 
+		// ── Service Principal Access Decision ────────────────────────────────
+		{
+			Name:    "servicePrincipalAccessAllowed",
+			Params:  []string{"req: Request"},
+			Comment: "Service principals: only L1 (explicit deny), L2 (RCP), and L4 (bucket policy) apply. No SCP, identity policy, boundary, or session policy.",
+			Body: `not explicitDeny[req] and
+  rcpAllows[req] and
+  resourcePolicyAllows[req]`,
+		},
+
 		// ── Combined Access Decision ─────────────────────────────────────────
 		{
 			Name:    "accessAllowed",
 			Params:  []string{"req: Request"},
-			Comment: "Final: no explicit deny, limiting layers pass, and at least one grant path allows.",
-			Body: `not explicitDeny[req] and
-  rcpAllows[req] and
-  scpAllows[req] and
-  grantPathAllows[req] and
-  permBoundaryAllows[req] and
-  sessionPolicyAllows[req]`,
+			Comment: "Final: routes to service-principal or IAM evaluation path based on principal type.",
+			Body: `(req.principal in ServicePrincipal implies servicePrincipalAccessAllowed[req]) and
+  (req.principal not in ServicePrincipal implies (
+    not explicitDeny[req] and
+    rcpAllows[req] and
+    scpAllows[req] and
+    grantPathAllows[req] and
+    permBoundaryAllows[req] and
+    sessionPolicyAllows[req]))`,
 		},
 		{
 			Name:    "grantPathAllows",

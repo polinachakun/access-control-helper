@@ -338,6 +338,17 @@ func (s *Statement) HasABACCondition() bool {
 	return false
 }
 
+// GetServicePrincipals returns AWS service principal names from the statement (e.g. "lambda.amazonaws.com").
+func (s *Statement) GetServicePrincipals() []string {
+	var svcs []string
+	for _, p := range s.Principals {
+		if p.Type == "Service" {
+			svcs = append(svcs, p.Value)
+		}
+	}
+	return svcs
+}
+
 // GetPrincipalARNs returns AWS principal ARNs from the statement.
 func (s *Statement) GetPrincipalARNs() []string {
 	var arns []string

@@ -98,6 +98,7 @@ abstract sig Principal extends Resource {
 
 sig IAMRole extends Principal {}
 sig IAMUser extends Principal {}
+sig ServicePrincipal extends Principal {}
 
 // ── Concrete resources ──────────────────────────────────────────────────────
 {{range .Buckets}}one sig bucket_{{.}} extends S3Bucket {}
@@ -106,16 +107,18 @@ sig IAMUser extends Principal {}
 {{end}}{{range .SCPs}}one sig scp_{{.}} extends OrgSCP {}
 {{end}}{{range .Roles}}one sig role_{{.}} extends IAMRole {}
 {{end}}{{range .Users}}one sig user_{{.}} extends IAMUser {}
+{{end}}{{range .ServicePrincipals}}one sig svc_{{.}} extends ServicePrincipal {}
 {{end}}
 fact ExactUniverse {
-  S3Bucket     = {{.BucketUnion}}
-  BucketPolicy = {{.BucketPolicyUnion}}
-  OrgRCP       = {{.RCPUnion}}
-  OrgSCP       = {{.SCPUnion}}
-  IAMRole      = {{.RoleUnion}}
-  IAMUser      = {{.UserUnion}}
-  Principal    = IAMRole + IAMUser
-  Resource     = S3Bucket + BucketPolicy + OrgRCP + OrgSCP + Principal
+  S3Bucket         = {{.BucketUnion}}
+  BucketPolicy     = {{.BucketPolicyUnion}}
+  OrgRCP           = {{.RCPUnion}}
+  OrgSCP           = {{.SCPUnion}}
+  IAMRole          = {{.RoleUnion}}
+  IAMUser          = {{.UserUnion}}
+  ServicePrincipal = {{.ServicePrincipalUnion}}
+  Principal        = IAMRole + IAMUser + ServicePrincipal
+  Resource         = S3Bucket + BucketPolicy + OrgRCP + OrgSCP + Principal
 }
 
 // ── Configuration facts ─────────────────────────────────────────────────────
@@ -164,26 +167,28 @@ check {{.AssertionName}}
 
 // TemplateData holds all values injected into the Alloy template.
 type TemplateData struct {
-	SourceFile        string
-	TagValues         string
-	VpceIds           []string
-	ActionValues      string
-	Buckets           []string
-	BucketPolicies    []string
-	Roles             []string
-	Users             []string
-	RCPs              []string
-	SCPs              []string
-	BucketUnion       string
-	BucketPolicyUnion string
-	RCPUnion          string
-	SCPUnion          string
-	RoleUnion         string
-	UserUnion         string
-	ConfigFacts       string
-	Predicates        []Predicate
-	AccessAssertions  []Assertion
-	Checks            []Check
+	SourceFile            string
+	TagValues             string
+	VpceIds               []string
+	ActionValues          string
+	Buckets               []string
+	BucketPolicies        []string
+	Roles                 []string
+	Users                 []string
+	RCPs                  []string
+	SCPs                  []string
+	ServicePrincipals     []string
+	BucketUnion           string
+	BucketPolicyUnion     string
+	RCPUnion              string
+	SCPUnion              string
+	RoleUnion             string
+	UserUnion             string
+	ServicePrincipalUnion string
+	ConfigFacts           string
+	Predicates            []Predicate
+	AccessAssertions      []Assertion
+	Checks                []Check
 }
 
 // RenderTemplate renders the Alloy template to w.

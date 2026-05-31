@@ -40,3 +40,12 @@ access-control-helper
 
 # ── Claude Code internal ──────────────────────────────────────────────────────
 .claude/worktrees/
+.claude/plans/
+
+# ── Temp directories (created by eval script and manual testing) ──────────────
+/tmp*/
+/test*/
+/svc_test/
+
+# ── Evaluation results (intermediate, not thesis evidence) ───────────────────
+eval/manual_review/
