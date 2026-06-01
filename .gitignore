@@ -46,6 +46,7 @@ access-control-helper
 .claude/plans/
 
 # ── Temp directories (created by eval script and manual testing) ──────────────
+/tmp/
 /tmp*/
 /test*/
 /svc_test/

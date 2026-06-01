@@ -256,15 +256,20 @@ def extract_module(repo_id, module_path, dest_dir):
 # ── Tool runner ───────────────────────────────────────────────────────────────
 
 
-def run_tool_parse(input_path, timeout=30):
+def run_tool_parse(input_path, timeout=15):
     """
-    Run the tool in stdout mode (no Alloy). Returns (outcome, stderr, elapsed_s).
+    Run the tool in spec-to-stdout mode (no Alloy, no output files).
+    Passes '-' as the output argument so the binary writes the generated
+    Alloy spec to stdout and skips Alloy verification entirely — no
+    output/ directory is created.
+
+    Returns (outcome, stderr, elapsed_s).
     outcome: 'success' | 'no_triples' | 'hcl_error' | 'ir_error' | 'resolve_error' | 'timeout'
     """
     start = time.monotonic()
     try:
         result = subprocess.run(
-            [TOOL_BINARY, input_path],
+            [TOOL_BINARY, input_path, "-"],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -284,6 +289,9 @@ def run_tool_parse(input_path, timeout=30):
             return "ir_error", stderr, elapsed
         return "ir_error", stderr, elapsed
 
+    # With '-' mode stdout is the Alloy spec text. Non-empty = spec generated
+    # (parse + resolve + IR + codegen all succeeded). Empty means the generator
+    # produced nothing — treat as no_triples.
     stdout = result.stdout.strip()
     if not stdout:
         return "no_triples", stderr, elapsed

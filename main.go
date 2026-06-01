@@ -26,13 +26,20 @@ func main() {
 	if len(os.Args) >= 3 {
 		outputPath = os.Args[2]
 	} else {
-		// Auto-derive output path: output/<inputbasename>.als
-		base := filepath.Base(filepath.Clean(inputPath))
-		base = strings.TrimSuffix(base, filepath.Ext(base))
-		if err := os.MkdirAll("output", 0o755); err != nil {
+		// Auto-derive output path: <binary-dir>/output/<inputbasename>.als
+		// Using the binary's directory (not CWD) avoids polluting whatever
+		// directory the caller happens to be in.
+		exe, err := os.Executable()
+		if err != nil {
+			fatalf("error resolving binary path: %v\n", err)
+		}
+		outDir := filepath.Join(filepath.Dir(exe), "output")
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
 			fatalf("error creating output dir: %v\n", err)
 		}
-		outputPath = filepath.Join("output", base+".als")
+		base := filepath.Base(filepath.Clean(inputPath))
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+		outputPath = filepath.Join(outDir, base+".als")
 	}
 
 	if err := run(inputPath, outputPath, os.Stdout); err != nil {
