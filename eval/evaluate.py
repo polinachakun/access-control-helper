@@ -134,7 +134,7 @@ def classify_modules(conn, candidates):
 # ── Phase 1 ───────────────────────────────────────────────────────────────────
 
 
-def phase1(conn):
+def phase1(conn, output_file=None):
     print("=" * 70)
     print("PHASE 1 — Dataset Characterisation")
     print("=" * 70)
@@ -142,25 +142,31 @@ def phase1(conn):
     cur = conn.cursor()
 
     cur.execute("SELECT COUNT(*) FROM Repositories")
-    print(f"\nTotal repositories in TerraDS:  {cur.fetchone()[0]:,}")
+    total_repos = cur.fetchone()[0]
+    print(f"\nTotal repositories in TerraDS:  {total_repos:,}")
 
     cur.execute("SELECT COUNT(*) FROM Modules")
-    print(f"Total Terraform modules:         {cur.fetchone()[0]:,}")
+    total_modules = cur.fetchone()[0]
+    print(f"Total Terraform modules:         {total_modules:,}")
 
     cur.execute("SELECT COUNT(*) FROM Resources")
-    print(f"Total resource declarations:     {cur.fetchone()[0]:,}")
+    total_resources = cur.fetchone()[0]
+    print(f"Total resource declarations:     {total_resources:,}")
 
     cur.execute("SELECT COUNT(DISTINCT ModuleId) FROM Resources WHERE Type = 'aws_s3_bucket'")
     s3_mod_count = cur.fetchone()[0]
     print(f"\nModules with aws_s3_bucket:      {s3_mod_count:,}")
 
     candidates = get_candidate_modules(conn)
-    print(f"Modules with S3 + IAM principal: {len(candidates):,}  ← evaluation population")
+    candidate_count = len(candidates)
+    print(f"Modules with S3 + IAM principal: {candidate_count:,}  ← evaluation population")
 
     in_scope, has_gap = classify_modules(conn, candidates)
-    total = len(candidates)
-    print(f"\n  Fully within supported scope:  {len(in_scope):,}  ({100*len(in_scope)/total:.1f}%)")
-    print(f"  Have unsupported sec. types:   {len(has_gap):,}  ({100*len(has_gap)/total:.1f}%)")
+    total = candidate_count
+    in_scope_count = len(in_scope)
+    has_gap_count = len(has_gap)
+    print(f"\n  Fully within supported scope:  {in_scope_count:,}  ({100*in_scope_count/total:.1f}%)")
+    print(f"  Have unsupported sec. types:   {has_gap_count:,}  ({100*has_gap_count/total:.1f}%)")
 
     # Gap breakdown
     gap_type_counts = defaultdict(int)
@@ -171,19 +177,42 @@ def phase1(conn):
     print("\nTop unsupported managed resource types causing coverage gaps:")
     print(f"  {'Resource type':<50} {'Modules':>8}  {'%':>6}")
     print(f"  {'-'*50} {'-'*8}  {'-'*6}")
-    for t, cnt in sorted(gap_type_counts.items(), key=lambda x: -x[1])[:15]:
+    top_gaps = sorted(gap_type_counts.items(), key=lambda x: -x[1])[:15]
+    for t, cnt in top_gaps:
         print(f"  {t:<50} {cnt:>8,}  {100*cnt/total:>5.1f}%")
 
     # Distribution of supported types in in-scope modules
-    print(f"\nResource type distribution within in-scope modules ({len(in_scope):,}):")
+    print(f"\nResource type distribution within in-scope modules ({in_scope_count:,}):")
     type_in_scope = defaultdict(int)
     for _, _, types in in_scope.values():
         for t in types:
             type_in_scope[t] += 1
     for t, cnt in sorted(type_in_scope.items(), key=lambda x: -x[1]):
-        print(f"  {t:<50} {cnt:>6,}  ({100*cnt/len(in_scope):.0f}% of modules)")
+        print(f"  {t:<50} {cnt:>6,}  ({100*cnt/in_scope_count:.0f}% of modules)")
 
     print()
+
+    results = {
+        "phase": 1,
+        "total_repositories": total_repos,
+        "total_modules": total_modules,
+        "total_resources": total_resources,
+        "modules_with_s3": s3_mod_count,
+        "candidate_modules": candidate_count,
+        "in_scope_count": in_scope_count,
+        "in_scope_pct": round(100 * in_scope_count / total, 1),
+        "has_gap_count": has_gap_count,
+        "has_gap_pct": round(100 * has_gap_count / total, 1),
+        "top_gap_types": [
+            {"type": t, "module_count": cnt, "pct_of_candidates": round(100 * cnt / total, 1)}
+            for t, cnt in top_gaps
+        ],
+    }
+
+    if output_file:
+        Path(output_file).write_text(json.dumps(results, indent=2))
+        print(f"Results written to {output_file}")
+
     return in_scope, has_gap
 
 
@@ -686,12 +715,76 @@ def phase4(sample_size=20, phase3_results_file=None):
     print(f"  Output: {MANUAL_REVIEW_DIR}/")
 
 
+# ── Summary ───────────────────────────────────────────────────────────────────
+
+
+def generate_summary(output_file=None):
+    """Aggregate key metrics and percentages from phase1/2/3 result files."""
+
+    def load(name):
+        p = RESULTS_DIR / name
+        if p.exists():
+            return json.loads(p.read_text())
+        return None
+
+    p1 = load("phase1_results.json")
+    p2 = load("phase2_results.json")
+    p3 = load("phase3_final.json") or load("phase3_results.json")
+
+    summary = {}
+
+    if p1:
+        n = p1["candidate_modules"]
+        summary["phase1_coverage"] = {
+            "description": "Modules with S3+IAM that contain only supported resource types",
+            "candidate_modules": n,
+            "in_scope_count": p1["in_scope_count"],
+            "in_scope_pct": p1["in_scope_pct"],
+            "has_gap_count": p1["has_gap_count"],
+            "has_gap_pct": p1["has_gap_pct"],
+        }
+
+    if p2:
+        n2 = p2["sample_size"]
+        outcomes2 = p2["outcomes"]
+        summary["phase2_parse"] = {
+            "description": "Parse + IR success on in-scope sample (no Alloy)",
+            "sample_size": n2,
+            "random_seed": p2.get("random_seed"),
+            "outcomes_pct": {k: round(100 * v / n2, 1) for k, v in outcomes2.items()},
+            "outcomes_count": outcomes2,
+            "mean_parse_time_s": p2.get("mean_parse_time_s"),
+        }
+
+    if p3:
+        n3 = p3["sample_size"]
+        outcomes3 = p3["outcomes"]
+        summary["phase3_alloy"] = {
+            "description": "Full Alloy analysis on in-scope sample",
+            "sample_size": n3,
+            "outcomes_pct": {k: round(100 * v / n3, 1) for k, v in outcomes3.items()},
+            "outcomes_count": outcomes3,
+            "total_triples_analyzed": p3.get("total_decisions"),
+            "allow_count": p3.get("allow_count"),
+            "deny_count": p3.get("deny_count"),
+            "allow_pct": round(100 * p3["allow_count"] / p3["total_decisions"], 1) if p3.get("total_decisions") else None,
+            "deny_pct": round(100 * p3["deny_count"] / p3["total_decisions"], 1) if p3.get("total_decisions") else None,
+            "mean_alloy_time_s": p3.get("mean_alloy_time_s"),
+        }
+
+    out_path = output_file or str(RESULTS_DIR / "eval_summary.json")
+    Path(out_path).write_text(json.dumps(summary, indent=2))
+    print(f"Summary written to {out_path}")
+    print(json.dumps(summary, indent=2))
+    return summary
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("phase", choices=["phase1", "phase2", "phase3", "phase4", "all"])
+    parser.add_argument("phase", choices=["phase1", "phase2", "phase3", "phase4", "summary", "all"])
     parser.add_argument("--sample", type=int, default=20,
                         help="Sample size for phase2/phase3 (default: 20; use 100+ for thesis report)")
     parser.add_argument("--sample3", type=int, default=20,
@@ -708,7 +801,8 @@ def main():
         conn = open_db()
 
     if args.phase in ("phase1", "all"):
-        in_scope, has_gap = phase1(conn)
+        p1_out = args.out if args.phase == "phase1" else str(RESULTS_DIR / "phase1_results.json")
+        in_scope, has_gap = phase1(conn, output_file=p1_out)
 
     if args.phase in ("phase2", "all"):
         out = args.out or str(RESULTS_DIR / "phase2_results.json")
@@ -727,6 +821,9 @@ def main():
         p3_out = getattr(args, "phase3_out", None) or str(RESULTS_DIR / "phase3_results.json")
         sample4 = args.sample4 if args.phase in ("phase4", "all") else args.sample
         phase4(sample_size=sample4, phase3_results_file=p3_out)
+
+    if args.phase in ("summary", "all"):
+        generate_summary(output_file=args.out if args.phase == "summary" else None)
 
 
 if __name__ == "__main__":
