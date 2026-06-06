@@ -72,15 +72,21 @@ func (g *Generator) collectValues() {
 	g.tags["PROD"] = true
 	g.vpces["VPCE_OTHER"] = true
 
-	for _, actions := range SupportedActionsByService {
-		for _, a := range actions {
-			g.actions[ActionToAlloyID(a)] = true
-		}
-	}
-
 	for _, b := range g.config.Buckets {
 		if b.EnvTag != "" {
 			g.tags[strings.ToUpper(b.EnvTag)] = true
+		}
+	}
+
+	addAction := func(a string) {
+		g.actions[ActionToAlloyID(a)] = true
+	}
+
+	addAllSupportedActions := func() {
+		for _, serviceActions := range SupportedActionsByService {
+			for _, a := range serviceActions {
+				addAction(a)
+			}
 		}
 	}
 
@@ -89,16 +95,16 @@ func (g *Generator) collectValues() {
 			g.tags[strings.ToUpper(r.EnvTag)] = true
 		}
 		for _, a := range ExpandAnalyzableActions(r.RolePolicyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
 		for _, a := range ExpandAnalyzableActions(r.RoleDenyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
-		for _, a := range ExpandAnalyzableActions(r.RoleNotActions) {
-			g.actions[ActionToAlloyID(a)] = true
+		if len(ExpandAnalyzableActions(r.RoleNotActions)) > 0 {
+			addAllSupportedActions()
 		}
 		for _, a := range ExpandAnalyzableActions(r.BoundaryActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
 	}
 
@@ -107,16 +113,16 @@ func (g *Generator) collectValues() {
 			g.tags[strings.ToUpper(u.EnvTag)] = true
 		}
 		for _, a := range ExpandAnalyzableActions(u.UserPolicyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
 		for _, a := range ExpandAnalyzableActions(u.UserDenyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
-		for _, a := range ExpandAnalyzableActions(u.UserNotActions) {
-			g.actions[ActionToAlloyID(a)] = true
+		if len(ExpandAnalyzableActions(u.UserNotActions)) > 0 {
+			addAllSupportedActions()
 		}
 		for _, a := range ExpandAnalyzableActions(u.BoundaryActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
 	}
 
@@ -126,28 +132,28 @@ func (g *Generator) collectValues() {
 		}
 
 		for _, a := range ExpandAnalyzableActions(p.AllowActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
-		for _, a := range ExpandAnalyzableActions(p.AllowNotActions) {
-			g.actions[ActionToAlloyID(a)] = true
+		if len(ExpandAnalyzableActions(p.AllowNotActions)) > 0 {
+			addAllSupportedActions()
 		}
 		for _, a := range ExpandAnalyzableActions(p.DenyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
-		for _, a := range ExpandAnalyzableActions(p.DenyNotActions) {
-			g.actions[ActionToAlloyID(a)] = true
+		if len(ExpandAnalyzableActions(p.DenyNotActions)) > 0 {
+			addAllSupportedActions()
 		}
 	}
 
 	for _, op := range g.config.OrgPolicies {
 		for _, a := range ExpandAnalyzableActions(op.AllowActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
-		for _, a := range ExpandAnalyzableActions(op.AllowNotActions) {
-			g.actions[ActionToAlloyID(a)] = true
+		if len(ExpandAnalyzableActions(op.AllowNotActions)) > 0 {
+			addAllSupportedActions()
 		}
 		for _, a := range ExpandAnalyzableActions(op.DenyActions) {
-			g.actions[ActionToAlloyID(a)] = true
+			addAction(a)
 		}
 	}
 }
