@@ -189,3 +189,22 @@ Phase results are saved to `eval/results/`:
 **`phase3_alloy.outcomes_pct.success`** — share of in-scope modules where the tool completed full Alloy analysis without error.
 
 The random sample (n=100, seed=42) is drawn at phase2 from the in-scope population. Phase3 uses the same seed and therefore the same 100 modules.
+
+
+
+
+
+
+
+# Policy Simulator сценарии (L1/L4/L5/L6):
+./deploy/validate_all.sh 01 mysuffix
+# → terraform apply + печатает готовые aws iam simulate-principal-policy команды
+
+# SCP/RCP сценарии (L2/L3) — нужен AWS Organizations:
+./deploy/validate_all.sh 04 mysuffix <account-id-or-ou-id>
+# → terraform apply + прикрепляет SCP + печатает aws sts assume-role команды
+
+
+
+go test ./eval/scalability/ -v -timeout 2h -run TestScalabilityTriples смотреть прогрусс
+cd eval/scalability && python3 plot.py --latest  рисовтаь графики
