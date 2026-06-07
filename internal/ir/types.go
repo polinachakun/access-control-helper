@@ -264,9 +264,9 @@ func (c *Config) Validate() []ValidationError {
 		errs = append(errs, ValidationError{Fatal: true,
 			Message: "no S3 buckets found in configuration; nothing to analyse"})
 	}
-	if len(c.Roles) == 0 {
+	if len(c.Roles) == 0 && len(c.Users) == 0 {
 		errs = append(errs, ValidationError{Fatal: true,
-			Message: "no IAM roles found in configuration; nothing to analyse"})
+			Message: "no IAM principals found in configuration; nothing to analyse"})
 	}
 
 	for _, role := range c.Roles {
