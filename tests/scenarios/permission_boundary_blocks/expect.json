@@ -5,22 +5,6 @@
     {
       "principal": "restricted-role",
       "bucket": "secure-bucket",
-      "action": "S3_DeleteObject",
-      "decision": "DENY",
-      "denied_at": "Layer 6",
-      "layers": {
-        "L1": "PASS",
-        "L2": "PASS",
-        "L3": "PASS",
-        "L4": "PASS",
-        "L5": "PASS",
-        "L6": "DENY",
-        "L7": "NOT APPLICABLE"
-      }
-    },
-    {
-      "principal": "restricted-role",
-      "bucket": "secure-bucket",
       "action": "S3_GetObject",
       "decision": "ALLOW",
       "denied_at": null,
@@ -31,38 +15,6 @@
         "L4": "PASS",
         "L5": "PASS",
         "L6": "PASS",
-        "L7": "NOT APPLICABLE"
-      }
-    },
-    {
-      "principal": "restricted-role",
-      "bucket": "secure-bucket",
-      "action": "S3_ListBucket",
-      "decision": "DENY",
-      "denied_at": "Layer 6",
-      "layers": {
-        "L1": "PASS",
-        "L2": "PASS",
-        "L3": "PASS",
-        "L4": "PASS",
-        "L5": "PASS",
-        "L6": "DENY",
-        "L7": "NOT APPLICABLE"
-      }
-    },
-    {
-      "principal": "restricted-role",
-      "bucket": "secure-bucket",
-      "action": "S3_PutObject",
-      "decision": "DENY",
-      "denied_at": "Layer 6",
-      "layers": {
-        "L1": "PASS",
-        "L2": "PASS",
-        "L3": "PASS",
-        "L4": "PASS",
-        "L5": "PASS",
-        "L6": "DENY",
         "L7": "NOT APPLICABLE"
       }
     }
