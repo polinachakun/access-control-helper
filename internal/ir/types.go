@@ -266,7 +266,7 @@ func (c *Config) Validate() []ValidationError {
 	}
 	if len(c.Roles) == 0 && len(c.Users) == 0 {
 		errs = append(errs, ValidationError{Fatal: true,
-			Message: "no IAM principals found in configuration; nothing to analyse"})
+			Message: "no IAM roles or users found in configuration; nothing to analyse"})
 	}
 
 	for _, role := range c.Roles {

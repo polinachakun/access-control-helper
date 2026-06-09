@@ -154,10 +154,14 @@ func deniedAtDescription(layers [7]LayerInfo) (string, []string) {
 }
 
 type Reporter struct {
-	w io.Writer
+	w    io.Writer
+	fate generator.WildcardFate
 }
 
 func New(w io.Writer) *Reporter { return &Reporter{w: w} }
+
+// SetWildcardFate records the fate of unlisted S3 actions for the summary note.
+func (r *Reporter) SetWildcardFate(fate generator.WildcardFate) { r.fate = fate }
 
 // IncompleteWarning prints a prominent warning when security-relevant resource
 // types were skipped during parsing. Results should be treated as a lower bound
@@ -256,6 +260,16 @@ func (r *Reporter) Summary(results []*TripleResult) {
 			truncate(res.Bucket, 21),
 			decision,
 		)
+	}
+	fmt.Fprintln(r.w)
+	switch {
+	case !r.fate.HasWildcard:
+		fmt.Fprintln(r.w, "Note: Any S3 action not listed above is implicitly denied by AWS default policy.")
+	case r.fate.BlockingLayer != "":
+		fmt.Fprintf(r.w, "Note: Unlisted S3 actions are DENY at %s\n", r.fate.BlockingLayer)
+		fmt.Fprintf(r.w, "      (%s).\n", r.fate.BlockingReason)
+	default:
+		fmt.Fprintln(r.w, "Note: Unlisted S3 actions are ALLOW (s3:* grant passes all layers unrestricted).")
 	}
 	fmt.Fprintln(r.w)
 }

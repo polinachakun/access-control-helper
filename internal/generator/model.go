@@ -71,19 +71,19 @@ type Check struct {
 	Scope         string
 }
 
-// SupportedActionsByService defines which concrete actions are analyzable.
-// Wildcards like s3:* are expanded only to this catalog.
-var SupportedActionsByService = map[string][]string{
-	"s3": {
-		"s3:GetObject",
-		"s3:PutObject",
-		"s3:ListBucket",
-		"s3:DeleteObject",
-	},
+// HasWildcardActions returns true when any action in the list contains a wildcard (*).
+func HasWildcardActions(actions []string) bool {
+	for _, a := range actions {
+		if strings.Contains(a, "*") {
+			return true
+		}
+	}
+	return false
 }
 
-// ExpandAnalyzableActions expands wildcard actions (e.g. s3:*) into
-// concrete actions that should appear in the model/report.
+// ExpandAnalyzableActions filters a list of IAM action strings to explicit S3 actions only.
+// Wildcards (e.g. s3:*) are skipped — callers should check HasWildcardActions separately
+// and treat wildcard presence as granting/denying all actions in the model universe.
 func ExpandAnalyzableActions(actions []string) []string {
 	seen := make(map[string]bool)
 	var result []string
@@ -95,23 +95,14 @@ func ExpandAnalyzableActions(actions []string) []string {
 		}
 
 		parts := strings.SplitN(a, ":", 2)
-		if len(parts) == 2 && strings.HasSuffix(parts[1], "*") {
-			service := strings.ToLower(parts[0])
-			prefix := parts[1][:len(parts[1])-1]
-			for _, concrete := range SupportedActionsByService[service] {
-				actionSuffix := strings.SplitN(concrete, ":", 2)[1]
-				if strings.HasPrefix(strings.ToLower(actionSuffix), strings.ToLower(prefix)) {
-					if !seen[concrete] {
-						seen[concrete] = true
-						result = append(result, concrete)
-					}
-				}
-			}
-			continue
-		}
-
 		if len(parts) == 2 {
-			if _, ok := SupportedActionsByService[strings.ToLower(parts[0])]; !ok {
+			service := strings.ToLower(parts[0])
+			// Skip wildcard actions — handled by HasWildcardActions at call sites.
+			if strings.Contains(parts[1], "*") {
+				continue
+			}
+			// Only S3 actions are within scope.
+			if service != "s3" {
 				continue
 			}
 		}

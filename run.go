@@ -173,6 +173,7 @@ func run(inputPath, outputPath string, out io.Writer) error {
 		return fmt.Errorf("report: %w", err)
 	}
 	rep := reporter.New(out)
+	rep.SetWildcardFate(gen.ComputeWildcardFate())
 	if len(skippedSecurityTypes) > 0 {
 		rep.IncompleteWarning(skippedSecurityTypes)
 	}

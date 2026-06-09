@@ -25,6 +25,9 @@ type Generator struct {
 	actionNames      []string
 	principalDisplay map[string]string
 	bucketDisplay    map[string]string
+
+	// wildcardLayers tracks which evaluation layers had wildcard actions (e.g. s3:*).
+	wildcardLayers []string
 }
 
 // NewGenerator creates a new Generator.
@@ -62,9 +65,143 @@ func (g *Generator) GenerateToWriter(w io.Writer) error {
 	return RenderTemplate(w, data)
 }
 
-// Important: wildcard policy actions like "s3:*" are expanded into
-// analyzable concrete actions via ExpandAnalyzableActions(...),
-// so they do not appear in reports as synthetic actions like "S3_All".
+// WildcardLayers returns the ordered list of evaluation layer labels where a
+// wildcard action (e.g. s3:*) was detected. Empty when all actions are explicit.
+func (g *Generator) WildcardLayers() []string { return g.wildcardLayers }
+
+// WildcardFate describes what happens to S3 actions not explicitly analyzed
+// when one or more policy layers grant s3:*.
+type WildcardFate struct {
+	HasWildcard      bool
+	BlockingLayer    string // first layer that blocks unlisted actions, e.g. "Layer 6 (permission boundary)"
+	BlockingReason   string // e.g. "permission boundary restricts to [s3:GetObject] only"
+	EffectivelyAllow bool   // true when wildcard is present and no blocking layer exists
+}
+
+// ComputeWildcardFate determines what happens to unlisted S3 actions by inspecting
+// each evaluation layer in AWS order. Must be called after GenerateToFile/Writer.
+func (g *Generator) ComputeWildcardFate() WildcardFate {
+	if len(g.wildcardLayers) == 0 {
+		return WildcardFate{}
+	}
+
+	fate := WildcardFate{HasWildcard: true}
+
+	// Layer 1: explicit deny for all S3 actions in identity or bucket policy.
+	for _, r := range g.config.Roles {
+		if HasWildcardActions(r.RoleDenyActions) {
+			fate.BlockingLayer = "Layer 1"
+			fate.BlockingReason = "identity policy explicitly denies all S3 actions"
+			return fate
+		}
+	}
+	for _, u := range g.config.Users {
+		if HasWildcardActions(u.UserDenyActions) {
+			fate.BlockingLayer = "Layer 1"
+			fate.BlockingReason = "identity policy explicitly denies all S3 actions"
+			return fate
+		}
+	}
+	for _, bp := range g.config.BucketPolicies {
+		if HasWildcardActions(bp.DenyActions) {
+			fate.BlockingLayer = "Layer 1"
+			fate.BlockingReason = "bucket policy explicitly denies all S3 actions"
+			return fate
+		}
+	}
+
+	// Layer 2: RCP with explicit (non-wildcard) allow list.
+	for _, op := range g.config.RCPs() {
+		if len(op.AllowActions) > 0 && !HasWildcardActions(op.AllowActions) {
+			explicit := ExpandAnalyzableActions(op.AllowActions)
+			fate.BlockingLayer = "Layer 2 (RCP)"
+			fate.BlockingReason = fmt.Sprintf("RCP restricts to [%s] only", strings.Join(explicit, ", "))
+			return fate
+		}
+	}
+
+	// Layer 3: SCP with explicit (non-wildcard) allow list.
+	for _, op := range g.config.SCPs() {
+		if len(op.AllowActions) > 0 && !HasWildcardActions(op.AllowActions) {
+			explicit := ExpandAnalyzableActions(op.AllowActions)
+			fate.BlockingLayer = "Layer 3 (SCP)"
+			fate.BlockingReason = fmt.Sprintf("SCP restricts to [%s] only", strings.Join(explicit, ", "))
+			return fate
+		}
+	}
+
+	// Layer 6: permission boundary with explicit (non-wildcard) allow list.
+	for _, r := range g.config.Roles {
+		if r.HasBoundary && len(r.BoundaryActions) > 0 && !HasWildcardActions(r.BoundaryActions) {
+			explicit := ExpandAnalyzableActions(r.BoundaryActions)
+			fate.BlockingLayer = "Layer 6 (permission boundary)"
+			fate.BlockingReason = fmt.Sprintf("permission boundary restricts to [%s] only", strings.Join(explicit, ", "))
+			return fate
+		}
+	}
+	for _, u := range g.config.Users {
+		if u.HasBoundary && len(u.BoundaryActions) > 0 && !HasWildcardActions(u.BoundaryActions) {
+			explicit := ExpandAnalyzableActions(u.BoundaryActions)
+			fate.BlockingLayer = "Layer 6 (permission boundary)"
+			fate.BlockingReason = fmt.Sprintf("permission boundary restricts to [%s] only", strings.Join(explicit, ", "))
+			return fate
+		}
+	}
+
+	fate.EffectivelyAllow = true
+	return fate
+}
+
+// addWildcardLayer appends a layer label to wildcardLayers (no duplicates).
+func (g *Generator) addWildcardLayer(label string) {
+	for _, l := range g.wildcardLayers {
+		if l == label {
+			return
+		}
+	}
+	g.wildcardLayers = append(g.wildcardLayers, label)
+}
+
+// collectAllExplicitActionIDs returns a set of Alloy action IDs for every
+// explicit (non-wildcard) S3 action mentioned anywhere in the config.
+// Used to populate the model universe for NotAction cases.
+func (g *Generator) collectAllExplicitActionIDs() map[string]bool {
+	result := make(map[string]bool)
+	add := func(actions []string) {
+		for _, a := range ExpandAnalyzableActions(actions) {
+			result[ActionToAlloyID(a)] = true
+		}
+	}
+	for _, r := range g.config.Roles {
+		add(r.RolePolicyActions)
+		add(r.RoleDenyActions)
+		add(r.RoleNotActions)
+		add(r.BoundaryActions)
+	}
+	for _, u := range g.config.Users {
+		add(u.UserPolicyActions)
+		add(u.UserDenyActions)
+		add(u.UserNotActions)
+		add(u.BoundaryActions)
+	}
+	for _, p := range g.config.BucketPolicies {
+		add(p.AllowActions)
+		add(p.AllowNotActions)
+		add(p.DenyActions)
+		add(p.DenyNotActions)
+	}
+	for _, op := range g.config.OrgPolicies {
+		add(op.AllowActions)
+		add(op.AllowNotActions)
+		add(op.DenyActions)
+	}
+	return result
+}
+
+// collectValues gathers all values (actions, tags, VPCEs) that appear in the
+// config so the Alloy model's universe contains exactly the right atoms.
+// Only explicitly named S3 actions are added — wildcards (s3:*) are detected
+// for the wildcard note but not expanded to a hardcoded catalog.
 func (g *Generator) collectValues() {
 	// Always include baseline values so the Alloy model has at least one atom
 	// of each required type, even for minimal configs.
@@ -82,17 +219,21 @@ func (g *Generator) collectValues() {
 		g.actions[ActionToAlloyID(a)] = true
 	}
 
-	addAllSupportedActions := func() {
-		for _, serviceActions := range SupportedActionsByService {
-			for _, a := range serviceActions {
-				addAction(a)
-			}
+	// For NotAction policies, add all explicit actions from the entire config
+	// so Alloy can reason about which actions the NotAction exclusion covers.
+	allExplicitIDs := g.collectAllExplicitActionIDs()
+	addAllExplicitActions := func() {
+		for id := range allExplicitIDs {
+			g.actions[id] = true
 		}
 	}
 
 	for _, r := range g.config.Roles {
 		if r.EnvTag != "" {
 			g.tags[strings.ToUpper(r.EnvTag)] = true
+		}
+		if HasWildcardActions(r.RolePolicyActions) {
+			g.addWildcardLayer("Layer 5 (identity policy)")
 		}
 		for _, a := range ExpandAnalyzableActions(r.RolePolicyActions) {
 			addAction(a)
@@ -101,7 +242,10 @@ func (g *Generator) collectValues() {
 			addAction(a)
 		}
 		if len(ExpandAnalyzableActions(r.RoleNotActions)) > 0 {
-			addAllSupportedActions()
+			addAllExplicitActions()
+		}
+		if HasWildcardActions(r.BoundaryActions) {
+			g.addWildcardLayer("Layer 6 (permission boundary)")
 		}
 		for _, a := range ExpandAnalyzableActions(r.BoundaryActions) {
 			addAction(a)
@@ -112,6 +256,9 @@ func (g *Generator) collectValues() {
 		if u.EnvTag != "" {
 			g.tags[strings.ToUpper(u.EnvTag)] = true
 		}
+		if HasWildcardActions(u.UserPolicyActions) {
+			g.addWildcardLayer("Layer 5 (identity policy)")
+		}
 		for _, a := range ExpandAnalyzableActions(u.UserPolicyActions) {
 			addAction(a)
 		}
@@ -119,7 +266,10 @@ func (g *Generator) collectValues() {
 			addAction(a)
 		}
 		if len(ExpandAnalyzableActions(u.UserNotActions)) > 0 {
-			addAllSupportedActions()
+			addAllExplicitActions()
+		}
+		if HasWildcardActions(u.BoundaryActions) {
+			g.addWildcardLayer("Layer 6 (permission boundary)")
 		}
 		for _, a := range ExpandAnalyzableActions(u.BoundaryActions) {
 			addAction(a)
@@ -130,27 +280,38 @@ func (g *Generator) collectValues() {
 		if p.DenyVpceID != "" {
 			g.vpces[VpceToAlloyID(p.DenyVpceID)] = true
 		}
-
+		if HasWildcardActions(p.AllowActions) {
+			g.addWildcardLayer("Layer 4 (resource policy)")
+		}
 		for _, a := range ExpandAnalyzableActions(p.AllowActions) {
 			addAction(a)
 		}
 		if len(ExpandAnalyzableActions(p.AllowNotActions)) > 0 {
-			addAllSupportedActions()
+			addAllExplicitActions()
 		}
 		for _, a := range ExpandAnalyzableActions(p.DenyActions) {
 			addAction(a)
 		}
 		if len(ExpandAnalyzableActions(p.DenyNotActions)) > 0 {
-			addAllSupportedActions()
+			addAllExplicitActions()
 		}
 	}
 
 	for _, op := range g.config.OrgPolicies {
+		if op.IsSCP() {
+			if HasWildcardActions(op.AllowActions) {
+				g.addWildcardLayer("Layer 3 (SCP)")
+			}
+		} else {
+			if HasWildcardActions(op.AllowActions) {
+				g.addWildcardLayer("Layer 2 (RCP)")
+			}
+		}
 		for _, a := range ExpandAnalyzableActions(op.AllowActions) {
 			addAction(a)
 		}
 		if len(ExpandAnalyzableActions(op.AllowNotActions)) > 0 {
-			addAllSupportedActions()
+			addAllExplicitActions()
 		}
 		for _, a := range ExpandAnalyzableActions(op.DenyActions) {
 			addAction(a)
@@ -542,13 +703,15 @@ func actionLevelFacts(action string) (bucketLevel string, objectLevel string) {
 }
 
 // toAlloyActionSet converts a slice of IAM action strings to an Alloy set expression.
-// If any action is a wildcard (s3:*), returns "Action" (the full universe).
+// A wildcard (e.g. s3:*) maps to the full Action universe; explicit actions are listed.
 func toAlloyActionSet(actions []string) string {
+	if HasWildcardActions(actions) {
+		return "Action"
+	}
 	expanded := ExpandAnalyzableActions(actions)
 	if len(expanded) == 0 {
 		return "none"
 	}
-
 	ids := make([]string, 0, len(expanded))
 	for _, a := range expanded {
 		ids = append(ids, ActionToAlloyID(a))
@@ -668,18 +831,26 @@ func (g *Generator) findConditionalAllow(principalAlloyID, bucketAlloyID, action
 
 		actionAllowed := false
 		if bp.HasAllowNotAction {
-			actionAllowed = true
-			for _, a := range ExpandAnalyzableActions(bp.AllowNotActions) {
-				if ActionToAlloyID(a) == actionAlloyID {
-					actionAllowed = false
-					break
+			if HasWildcardActions(bp.AllowNotActions) {
+				actionAllowed = false // NotAction: s3:* — nothing is allowed
+			} else {
+				actionAllowed = true
+				for _, a := range ExpandAnalyzableActions(bp.AllowNotActions) {
+					if ActionToAlloyID(a) == actionAlloyID {
+						actionAllowed = false
+						break
+					}
 				}
 			}
 		} else {
-			for _, a := range ExpandAnalyzableActions(bp.AllowActions) {
-				if ActionToAlloyID(a) == actionAlloyID {
-					actionAllowed = true
-					break
+			if HasWildcardActions(bp.AllowActions) {
+				actionAllowed = true // s3:* grants all actions
+			} else {
+				for _, a := range ExpandAnalyzableActions(bp.AllowActions) {
+					if ActionToAlloyID(a) == actionAlloyID {
+						actionAllowed = true
+						break
+					}
 				}
 			}
 		}
@@ -712,36 +883,57 @@ func (g *Generator) findConditionalAllow(principalAlloyID, bucketAlloyID, action
 // Alloy relation expression for the identityAllowedOn field.
 // perBucketActions keys are actual S3 bucket names (from ARNs) or bucket TFNames;
 // the special key "*" means actions apply to all buckets.
+// A wildcard action (s3:*) maps to the full Action universe in Alloy.
 func (g *Generator) buildIdentityAllowedOnRelation(perBucketActions map[string][]string) string {
 	if len(perBucketActions) == 0 {
 		return "none -> none"
 	}
 
 	wildcardActions := perBucketActions["*"]
+	wildcardCoversAll := HasWildcardActions(wildcardActions)
 
 	type entry struct {
-		bucketSig string
-		actions   []string
+		bucketSig  string
+		actionExpr string
 	}
 
 	var entries []entry
 	for _, b := range g.config.Buckets {
 		bucketSig := "bucket_" + AlloyID(b.TFName)
 
+		if wildcardCoversAll {
+			entries = append(entries, entry{bucketSig: bucketSig, actionExpr: "Action"})
+			continue
+		}
+
 		actionSet := make(map[string]bool)
 		for _, a := range ExpandAnalyzableActions(wildcardActions) {
 			actionSet[ActionToAlloyID(a)] = true
 		}
-		// Match by actual bucket name (from ARN) or by TFName as fallback.
+
+		bucketHasWildcard := false
 		for _, key := range []string{b.BucketName, b.TFName} {
 			if key == "" || key == "*" {
 				continue
 			}
 			if specific, ok := perBucketActions[key]; ok {
+				if HasWildcardActions(specific) {
+					bucketHasWildcard = true
+					break
+				}
 				for _, a := range ExpandAnalyzableActions(specific) {
 					actionSet[ActionToAlloyID(a)] = true
 				}
 			}
+		}
+
+		if bucketHasWildcard {
+			entries = append(entries, entry{bucketSig: bucketSig, actionExpr: "Action"})
+			continue
+		}
+
+		if len(actionSet) == 0 {
+			continue
 		}
 
 		var actionIDs []string
@@ -749,10 +941,10 @@ func (g *Generator) buildIdentityAllowedOnRelation(perBucketActions map[string][
 			actionIDs = append(actionIDs, id)
 		}
 		sort.Strings(actionIDs)
-
-		if len(actionIDs) > 0 {
-			entries = append(entries, entry{bucketSig: bucketSig, actions: actionIDs})
-		}
+		entries = append(entries, entry{
+			bucketSig:  bucketSig,
+			actionExpr: FormatAlloySet(actionIDs),
+		})
 	}
 
 	if len(entries) == 0 {
@@ -761,7 +953,7 @@ func (g *Generator) buildIdentityAllowedOnRelation(perBucketActions map[string][
 
 	parts := make([]string, len(entries))
 	for i, e := range entries {
-		parts[i] = fmt.Sprintf("%s -> (%s)", e.bucketSig, FormatAlloySet(e.actions))
+		parts[i] = fmt.Sprintf("%s -> (%s)", e.bucketSig, e.actionExpr)
 	}
 	return strings.Join(parts, " +\n    ")
 }

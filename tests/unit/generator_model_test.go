@@ -8,10 +8,12 @@ import (
 )
 
 func TestExpandAnalyzableActions_Wildcard(t *testing.T) {
+	// Wildcards are no longer expanded to a catalog — they are skipped so that
+	// only explicitly named actions appear in the model. Callers use
+	// HasWildcardActions to detect wildcard presence.
 	got := generator.ExpandAnalyzableActions([]string{"s3:*"})
-	want := generator.SupportedActionsByService["s3"]
-	if len(got) != len(want) {
-		t.Fatalf("s3:* expanded to %d actions, want %d: %v", len(got), len(want), got)
+	if len(got) != 0 {
+		t.Fatalf("s3:* should expand to nothing (wildcard skipped), got %v", got)
 	}
 }
 
@@ -26,10 +28,10 @@ func TestExpandAnalyzableActions_Concrete(t *testing.T) {
 }
 
 func TestExpandAnalyzableActions_Mixed(t *testing.T) {
+	// Wildcard is skipped; only the explicit action survives.
 	got := generator.ExpandAnalyzableActions([]string{"s3:*", "s3:GetObject"})
-	supported := generator.SupportedActionsByService["s3"]
-	if len(got) != len(supported) {
-		t.Fatalf("mixed expansion: expected %d (no dup), got %d: %v", len(supported), len(got), got)
+	if len(got) != 1 || got[0] != "s3:GetObject" {
+		t.Fatalf("mixed: expected [s3:GetObject], got %v", got)
 	}
 }
 
@@ -58,6 +60,21 @@ func TestExpandAnalyzableActions_FiltersUnsupportedServices(t *testing.T) {
 	got := generator.ExpandAnalyzableActions([]string{"codebuild:BatchGetBuilds", "ec2:DescribeInstances", "s3:GetObject"})
 	if len(got) != 1 || got[0] != "s3:GetObject" {
 		t.Errorf("expected only [s3:GetObject], got %v", got)
+	}
+}
+
+func TestHasWildcardActions(t *testing.T) {
+	if !generator.HasWildcardActions([]string{"s3:*"}) {
+		t.Error("HasWildcardActions([s3:*]) should be true")
+	}
+	if !generator.HasWildcardActions([]string{"s3:GetObject", "s3:*"}) {
+		t.Error("HasWildcardActions with mixed should be true")
+	}
+	if generator.HasWildcardActions([]string{"s3:GetObject", "s3:PutObject"}) {
+		t.Error("HasWildcardActions with explicit only should be false")
+	}
+	if generator.HasWildcardActions(nil) {
+		t.Error("HasWildcardActions(nil) should be false")
 	}
 }
 
