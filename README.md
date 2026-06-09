@@ -211,23 +211,30 @@ Phase results are saved to `eval/results/`:
 
 **`phase3_alloy.outcomes_pct.success`** — share of in-scope modules where the tool completed full Alloy analysis without error.
 
-The random sample (n=100, seed=42) is drawn at phase2 from the in-scope population. Phase3 uses the same seed and therefore the same 100 modules.
+When using `--strategy random`, the sample is deterministic (seed=42): phase2 and phase3 always pick the same modules, making results reproducible.
 
+---
 
+## Manual Verification (AWS deploy)
 
+Real Terraform configs for deploying each scenario to AWS and validating decisions with `aws iam simulate-principal-policy`. See [`deploy/README.md`](deploy/README.md) for details.
 
-
-
-
-# Policy Simulator сценарии (L1/L4/L5/L6):
+```bash
+# Policy Simulator scenarios (L1/L4/L5/L6)
 ./deploy/validate_all.sh 01 mysuffix
-# → terraform apply + печатает готовые aws iam simulate-principal-policy команды
 
-# SCP/RCP сценарии (L2/L3) — нужен AWS Organizations:
+# SCP/RCP scenarios (L2/L3) — requires AWS Organizations
 ./deploy/validate_all.sh 04 mysuffix <account-id-or-ou-id>
-# → terraform apply + прикрепляет SCP + печатает aws sts assume-role команды
+```
 
+---
 
+## Scalability Tests
 
-go test ./eval/scalability/ -v -timeout 2h -run TestScalabilityTriples смотреть прогрусс
-cd eval/scalability && python3 plot.py --latest  рисовтаь графики
+```bash
+# Run scalability benchmark (can take up to 2h)
+go test ./eval/scalability/ -v -timeout 2h -run TestScalabilityTriples
+
+# Plot results
+cd eval/scalability && python3 plot.py --latest
+```
