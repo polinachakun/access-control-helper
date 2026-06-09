@@ -54,3 +54,13 @@ access-control-helper
 
 # ── Evaluation results (intermediate, not thesis evidence) ───────────────────
 eval/manual_review/
+
+# ── Terraform state (contains real AWS account IDs and resource ARNs) ─────────
+deploy/**/terraform.tfstate
+deploy/**/terraform.tfstate.backup
+deploy/**/.terraform/
+
+# ── Leftover manual-run output folders in project root ───────────────────────
+/s1/
+/s2/
+/scenario*/
