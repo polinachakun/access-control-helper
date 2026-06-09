@@ -132,7 +132,7 @@ Evaluation against the [TerraDS](https://zenodo.org/record/7694141) dataset (62,
 **Requirements:** Python 3.9+, SQLite DB and tarballs extracted from the dataset zip.
 
 ```bash
-# Dataset paths (configure at top of eval/evaluate.py)
+# Dataset paths (configure at top of evaluation/evaluate.py)
 DB_PATH   = /tmp/TerraDS.sqlite
 TERRADS_TAR = /tmp/TerraDS.tar.gz
 ```
@@ -147,10 +147,10 @@ TERRADS_TAR = /tmp/TerraDS.tar.gz
 | `summary` | Aggregates key metrics and percentages from all phases | Existing phase JSON files |
 
 ```bash
-python3 eval/evaluate.py phase1
-python3 eval/evaluate.py phase2 --sample 100
-python3 eval/evaluate.py phase3 --sample 100
-python3 eval/evaluate.py summary   # no DB needed
+python3 evaluation/evaluate.py phase1
+python3 evaluation/evaluate.py phase2 --sample 100
+python3 evaluation/evaluate.py phase3 --sample 100
+python3 evaluation/evaluate.py summary   # no DB needed
 ```
 
 ### Module selection strategy
@@ -165,20 +165,20 @@ Phase 2 and 3 support three ways to pick modules from the in-scope population:
 
 ```bash
 # Random sample of 100 (default, reproducible)
-python3 eval/evaluate.py phase2 --sample 100
+python3 evaluation/evaluate.py phase2 --sample 100
 
 # Top 100 most popular repos by stars
-python3 eval/evaluate.py phase2 --sample 100 --strategy stars
+python3 evaluation/evaluate.py phase2 --sample 100 --strategy stars
 
 # Top 100 most recently updated repos
-python3 eval/evaluate.py phase2 --sample 100 --strategy recent
+python3 evaluation/evaluate.py phase2 --sample 100 --strategy recent
 ```
 
 > The thesis evaluation uses `--strategy stars --sample 100` as the primary run and `--strategy random --sample 100` (seed=42) as the reproducibility baseline.
 
 ### Results
 
-Phase results are saved to `eval/results/`:
+Phase results are saved to `evaluation/results/`:
 
 | File | Contents |
 |------|----------|
@@ -233,8 +233,8 @@ Real Terraform configs for deploying each scenario to AWS and validating decisio
 
 ```bash
 # Run scalability benchmark (can take up to 2h)
-go test ./eval/scalability/ -v -timeout 2h -run TestScalabilityTriples
+go test ./evaluation/scalability/ -v -timeout 2h -run TestScalabilityTriples
 
 # Plot results
-cd eval/scalability && python3 plot.py --latest
+cd evaluation/scalability && python3 plot.py --latest
 ```

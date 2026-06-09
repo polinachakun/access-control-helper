@@ -187,7 +187,7 @@ To characterise the tool's complexity behaviour for the thesis, run a systematic
 - Create synthetic Terraform configurations at a grid of sizes: (1, 2, 5, 10 principals) × (1, 3, 5 buckets).
 - Each config uses simple inline S3 policies with no SCP/RCP/boundary, to isolate scope growth from semantic complexity.
 - Measure Alloy wall-clock time per config (3 runs, take median).
-- Output: `eval/results/scaling_results.csv` and a log-log plot of time vs. triples.
+- Output: `evaluation/results/scaling_results.csv` and a log-log plot of time vs. triples.
 - Thesis framing: "empirically super-linear, consistent with SAT worst-case complexity."
 
 See `doc/evaluation-report.md` Phase 4 for the full method.

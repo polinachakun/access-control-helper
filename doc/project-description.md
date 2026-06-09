@@ -241,7 +241,7 @@ access-control-helper/
 │   ├── unit/                      # Package-level unit tests (parser, IR, generator)
 │   ├── e2e_scenarios_test.go      # Auto-discovery scenario runner
 │   └── reporter_snapshot_test.go  # Golden snapshot tests for report formatting
-├── eval/
+├── evaluation/
 │   ├── evaluate.py                # Dataset evaluation script (TerraDS, phases 1–3)
 │   └── results/                   # Generated evaluation outputs (gitignored)
 └── doc/

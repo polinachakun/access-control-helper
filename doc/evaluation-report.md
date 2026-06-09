@@ -38,7 +38,7 @@ unzip ~/Downloads/14217386.zip TerraDS.tar.gz -d /tmp/
 
 ## Evaluation Script
 
-**Location:** `eval/evaluate.py`
+**Location:** `evaluation/evaluate.py`
 
 **Usage:**
 ```bash
@@ -46,19 +46,19 @@ unzip ~/Downloads/14217386.zip TerraDS.tar.gz -d /tmp/
 make build
 
 # Phase 1 — dataset characterisation (SQLite only, instant)
-python3 eval/evaluate.py phase1
+python3 evaluation/evaluate.py phase1
 
 # Phase 2 — parse/IR success on a random sample (no Alloy needed)
-python3 eval/evaluate.py phase2 --sample 100 --out eval/results/phase2_results.json
+python3 evaluation/evaluate.py phase2 --sample 100 --out evaluation/results/phase2_results.json
 
 # Phase 3 — full Alloy analysis on a subset
-python3 eval/evaluate.py phase3 --sample 30 --out eval/results/phase3_results.json
+python3 evaluation/evaluate.py phase3 --sample 30 --out evaluation/results/phase3_results.json
 
 # All phases
-python3 eval/evaluate.py all
+python3 evaluation/evaluate.py all
 ```
 
-**Results directory:** `eval/results/` (gitignored, generated locally)
+**Results directory:** `evaluation/results/` (gitignored, generated locally)
 
 **Dependencies:** Python 3.9+, standard library only. Java + Alloy required only for Phase 3 (same requirements as the main tool).
 
@@ -249,7 +249,7 @@ If the tool's action scope were later expanded (e.g. to 8 or 16 actions), triple
 
 ### Expected output
 
-- `eval/results/scaling_results.csv` — columns: `principals`, `buckets`, `triples`, `time_s`
+- `evaluation/results/scaling_results.csv` — columns: `principals`, `buckets`, `triples`, `time_s`
 - Plot: time (y-axis) vs triples (x-axis) on log-log scale to characterise growth order
 
 ### Thesis use
@@ -315,14 +315,14 @@ These are the files used in this report. All are committed to the repository.
 
 | File | n | Description |
 |------|---|-------------|
-| `eval/results/phase2_results.json` | 100 | **Final** — parse/spec-generation outcomes |
-| `eval/results/phase3_final.json` | 100 | **Final** — full Alloy analysis outcomes + decisions (after fixes) |
-| `eval/results/phase2_pilot.json` | 20 | Early pilot run, kept for reference |
-| `eval/results/phase3_results.json` | 30 | Earlier run before fixes, kept for reference |
+| `evaluation/results/phase2_results.json` | 100 | **Final** — parse/spec-generation outcomes |
+| `evaluation/results/phase3_final.json` | 100 | **Final** — full Alloy analysis outcomes + decisions (after fixes) |
+| `evaluation/results/phase2_pilot.json` | 20 | Early pilot run, kept for reference |
+| `evaluation/results/phase3_results.json` | 30 | Earlier run before fixes, kept for reference |
 
 All files contain a `per_module` array with `module_id`, `repo_id`, `path`, `outcome`, `elapsed_s` fields. Phase 3 files additionally contain `decisions` per module (list of `{principal, bucket, action, decision, denied_at}`).
 
-The `.als` files generated during Phase 3 (`eval/results/module_*.als`) are gitignored — they are intermediate artifacts and not needed after the run.
+The `.als` files generated during Phase 3 (`evaluation/results/module_*.als`) are gitignored — they are intermediate artifacts and not needed after the run.
 
 ---
 
@@ -343,19 +343,19 @@ make build
 
 ```bash
 # Phase 1 — dataset characterisation (SQLite only, ~5 seconds, no extraction needed)
-python3 eval/evaluate.py phase1
+python3 evaluation/evaluate.py phase1
 
 # Phase 2 — parse/spec-generation success
 #   --sample N   how many modules to test (default: 20)
 #   --out FILE   where to write the JSON results
-python3 eval/evaluate.py phase2 --sample 100 --out eval/results/phase2_results.json
+python3 evaluation/evaluate.py phase2 --sample 100 --out evaluation/results/phase2_results.json
 
 # Phase 3 — full Alloy analysis (slow: ~13s/module × N modules)
 #   --sample N   how many modules to test (default: 20)
-python3 eval/evaluate.py phase3 --sample 100 --out eval/results/phase3_results.json
+python3 evaluation/evaluate.py phase3 --sample 100 --out evaluation/results/phase3_results.json
 
 # All phases in sequence (uses --sample for phase2, --sample3 for phase3)
-python3 eval/evaluate.py all --sample 100 --sample3 100
+python3 evaluation/evaluate.py all --sample 100 --sample3 100
 ```
 
 Results are deterministic: all phases use `random.seed(42)`.
@@ -375,9 +375,9 @@ Phase 3 time estimate: ~13s mean × N modules. With n=100, expect 20–30 min de
 
 | File/Location | Keep? | Description |
 |---------------|-------|-------------|
-| `eval/results/phase2_results.json` | **Yes — commit** | Per-module parse outcomes |
-| `eval/results/phase3_results.json` | **Yes — commit** | Per-module Alloy outcomes + decisions |
-| `eval/results/module_*.als` | No — throwaway | Alloy specs generated during Phase 3, not needed after the run |
+| `evaluation/results/phase2_results.json` | **Yes — commit** | Per-module parse outcomes |
+| `evaluation/results/phase3_results.json` | **Yes — commit** | Per-module Alloy outcomes + decisions |
+| `evaluation/results/module_*.als` | No — throwaway | Alloy specs generated during Phase 3, not needed after the run |
 
 The `.als` files are gitignored automatically. Commit only the final JSON files once you have the runs you want for the thesis.
 
@@ -387,13 +387,13 @@ Use descriptive names so old runs are not overwritten:
 
 ```bash
 # Initial run
-python3 eval/evaluate.py phase3 --sample 30 --out eval/results/phase3_n30.json
+python3 evaluation/evaluate.py phase3 --sample 30 --out evaluation/results/phase3_n30.json
 
 # Larger run for thesis
-python3 eval/evaluate.py phase3 --sample 100 --out eval/results/phase3_n100_final.json
+python3 evaluation/evaluate.py phase3 --sample 100 --out evaluation/results/phase3_n100_final.json
 ```
 
-The files `phase2_results.json` and `phase3_final.json` in `eval/results/` are the runs used in this report.
+The files `phase2_results.json` and `phase3_final.json` in `evaluation/results/` are the runs used in this report.
 
 ---
 
