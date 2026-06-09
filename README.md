@@ -153,6 +153,29 @@ python3 eval/evaluate.py phase3 --sample 100
 python3 eval/evaluate.py summary   # no DB needed
 ```
 
+### Module selection strategy
+
+Phase 2 and 3 support three ways to pick modules from the in-scope population:
+
+| Flag | Behaviour | When to use |
+|------|-----------|-------------|
+| `--strategy random` | Deterministic shuffle (seed=42) — **default** | Reproducible baseline; same seed = same modules every run |
+| `--strategy stars` | Top-N by GitHub star count (most popular repos first) | Representative sample of widely-used configs |
+| `--strategy recent` | Top-N by latest commit date (most recently updated repos first) | Sample of actively maintained configs |
+
+```bash
+# Random sample of 100 (default, reproducible)
+python3 eval/evaluate.py phase2 --sample 100
+
+# Top 100 most popular repos by stars
+python3 eval/evaluate.py phase2 --sample 100 --strategy stars
+
+# Top 100 most recently updated repos
+python3 eval/evaluate.py phase2 --sample 100 --strategy recent
+```
+
+> The thesis evaluation uses `--strategy stars --sample 100` as the primary run and `--strategy random --sample 100` (seed=42) as the reproducibility baseline.
+
 ### Results
 
 Phase results are saved to `eval/results/`:

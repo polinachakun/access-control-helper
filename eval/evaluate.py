@@ -100,6 +100,35 @@ def get_candidate_modules(conn):
     return {r["Id"]: (r["RepositoryId"], r["Path"]) for r in cur.fetchall()}
 
 
+def get_modules_by_strategy(conn, in_scope, strategy, limit):
+    """Return up to `limit` module IDs selected by strategy.
+
+    'random' — deterministic shuffle with RANDOM_SEED (original behaviour)
+    'recent' — sorted by LatestCommitAt DESC (most recently updated repos first)
+    'stars'  — sorted by StarCount DESC (most popular repos first)
+    """
+    if strategy == "random":
+        rng = random.Random(RANDOM_SEED)
+        return rng.sample(sorted(in_scope.keys()), min(limit, len(in_scope)))
+
+    cur = conn.cursor()
+    repo_ids = list({repo_id for repo_id, _, _ in in_scope.values()})
+    cur.execute(
+        "SELECT Id, StarCount, LatestCommitAt FROM Repositories WHERE Id IN ({})".format(
+            ",".join("?" * len(repo_ids))
+        ),
+        repo_ids,
+    )
+    repo_meta = {r[0]: {"stars": r[1] or 0, "latest_commit": r[2] or ""} for r in cur.fetchall()}
+
+    if strategy == "recent":
+        sort_key = lambda mid: repo_meta.get(in_scope[mid][0], {}).get("latest_commit", "")
+    else:  # stars
+        sort_key = lambda mid: repo_meta.get(in_scope[mid][0], {}).get("stars", 0)
+
+    return sorted(in_scope.keys(), key=sort_key, reverse=True)[:limit]
+
+
 def classify_modules(conn, candidates):
     """Split candidates into fully-in-scope vs has-gap dicts."""
     cur = conn.cursor()
@@ -404,7 +433,7 @@ def parse_decisions(report_text):
 # ── Phase 2 ───────────────────────────────────────────────────────────────────
 
 
-def phase2(conn, sample_size=100, output_file=None):
+def phase2(conn, sample_size=100, output_file=None, strategy="random"):
     print("=" * 70)
     print("PHASE 2 — Parse / IR Success on In-Scope Sample")
     print("=" * 70)
@@ -419,9 +448,8 @@ def phase2(conn, sample_size=100, output_file=None):
     in_scope, _ = classify_modules(conn, get_candidate_modules(conn))
     print(f"\nIn-scope population: {len(in_scope):,} modules")
 
-    rng = random.Random(RANDOM_SEED)
-    sample_ids = rng.sample(sorted(in_scope.keys()), min(sample_size, len(in_scope)))
-    print(f"Sample size: {len(sample_ids)} (seed={RANDOM_SEED})")
+    sample_ids = get_modules_by_strategy(conn, in_scope, strategy, sample_size)
+    print(f"Sample size: {len(sample_ids)} (strategy={strategy})")
 
     outcomes = defaultdict(int)
     has_incomplete_warning = 0
@@ -503,26 +531,25 @@ def phase2(conn, sample_size=100, output_file=None):
 # ── Phase 3 ───────────────────────────────────────────────────────────────────
 
 
-def phase3(conn, sample_size=30, phase2_results=None, output_file=None):
+def phase3(conn, sample_size=30, phase2_results=None, output_file=None, strategy="random"):
     print("=" * 70)
     print("PHASE 3 — Full Alloy Analysis on Subset")
     print("=" * 70)
+    print(f"Strategy: {strategy}")
 
     in_scope, _ = classify_modules(conn, get_candidate_modules(conn))
 
-    # Prefer phase2 successes; fall back to fresh sample
     if phase2_results:
         success_ids = [
             r["module_id"] for r in phase2_results
             if r["outcome"] == "success"
         ]
-        rng = random.Random(RANDOM_SEED)
-        sample_ids = rng.sample(success_ids, min(sample_size, len(success_ids)))
-        print(f"\nUsing {len(sample_ids)} modules from phase2 successes")
+        success_in_scope = {mid: in_scope[mid] for mid in success_ids if mid in in_scope}
+        sample_ids = get_modules_by_strategy(conn, success_in_scope, strategy, sample_size)
+        print(f"\nUsing {len(sample_ids)} modules from phase2 successes (strategy={strategy})")
     else:
-        rng = random.Random(RANDOM_SEED)
-        sample_ids = rng.sample(sorted(in_scope.keys()), min(sample_size, len(in_scope)))
-        print(f"\nFresh sample of {len(sample_ids)} in-scope modules")
+        sample_ids = get_modules_by_strategy(conn, in_scope, strategy, sample_size)
+        print(f"\nFresh sample of {len(sample_ids)} in-scope modules (strategy={strategy})")
 
     outcomes = defaultdict(int)
     timings = []
@@ -793,6 +820,8 @@ def main():
                         help="Sample size for phase4 manual review (default: 20)")
     parser.add_argument("--out", help="Output JSON file for results")
     parser.add_argument("--phase3-out", help="Phase 3 results JSON to use as input for phase4")
+    parser.add_argument("--strategy", choices=["random", "recent", "stars"], default="random",
+                        help="Module selection strategy: random (default), recent (latest commit), stars (most popular)")
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -806,13 +835,13 @@ def main():
 
     if args.phase in ("phase2", "all"):
         out = args.out or str(RESULTS_DIR / "phase2_results.json")
-        p2_results, per_module = phase2(conn, sample_size=args.sample, output_file=out)
+        p2_results, per_module = phase2(conn, sample_size=args.sample, output_file=out, strategy=args.strategy)
 
     if args.phase in ("phase3", "all"):
         out = args.out or str(RESULTS_DIR / "phase3_results.json")
         phase2_modules = per_module if args.phase == "all" else None
         sample3 = args.sample3 if args.phase == "all" else args.sample
-        phase3(conn, sample_size=sample3, phase2_results=phase2_modules, output_file=out)
+        phase3(conn, sample_size=sample3, phase2_results=phase2_modules, output_file=out, strategy=args.strategy)
 
     if args.phase in ("phase1", "phase2", "phase3", "all"):
         conn.close()
