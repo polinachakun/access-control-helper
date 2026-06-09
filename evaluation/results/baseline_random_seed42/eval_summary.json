@@ -1,0 +1,42 @@
+{
+  "phase2_parse": {
+    "description": "Parse + IR success on in-scope sample (no Alloy)",
+    "sample_size": 100,
+    "random_seed": 42,
+    "outcomes_pct": {
+      "success": 78.0,
+      "timeout": 12.0,
+      "hcl_error": 6.0,
+      "ir_error": 4.0
+    },
+    "outcomes_count": {
+      "success": 78,
+      "timeout": 12,
+      "hcl_error": 6,
+      "ir_error": 4
+    },
+    "mean_parse_time_s": 10.917
+  },
+  "phase3_alloy": {
+    "description": "Full Alloy analysis on in-scope sample",
+    "sample_size": 100,
+    "outcomes_pct": {
+      "success": 89.0,
+      "fmt_fail": 6.0,
+      "timeout": 1.0,
+      "alloy_error": 4.0
+    },
+    "outcomes_count": {
+      "success": 89,
+      "fmt_fail": 6,
+      "timeout": 1,
+      "alloy_error": 4
+    },
+    "total_triples_analyzed": null,
+    "allow_count": null,
+    "deny_count": null,
+    "allow_pct": null,
+    "deny_pct": null,
+    "mean_alloy_time_s": 14.3
+  }
+}

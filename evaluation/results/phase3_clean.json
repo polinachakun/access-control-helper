@@ -1,0 +1,2040 @@
+{
+  "phase": 3,
+  "sample_size": 30,
+  "outcomes": {
+    "success": 27,
+    "fmt_fail": 1,
+    "timeout": 1,
+    "alloy_error": 1
+  },
+  "total_decisions": 254,
+  "allow_count": 51,
+  "deny_count": 203,
+  "mean_alloy_time_s": 14.7,
+  "per_module": [
+    {
+      "module_id": 43112,
+      "repo_id": 225246515,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "cloudtrail",
+          "action": "s3:DeleteObject",
+          "bucket": "cloudtrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail",
+          "action": "s3:GetObject",
+          "bucket": "cloudtrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail",
+          "action": "s3:ListBucket",
+          "bucket": "cloudtrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail",
+          "action": "s3:PutObject",
+          "bucket": "cloudtrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 3.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 11475,
+      "repo_id": 125882052,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "config",
+          "action": "s3:DeleteObject",
+          "bucket": "config",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "config",
+          "action": "s3:GetObject",
+          "bucket": "config",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "config",
+          "action": "s3:ListBucket",
+          "bucket": "config",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "config",
+          "action": "s3:PutObject",
+          "bucket": "config",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 106150,
+      "repo_id": 418237110,
+      "path": "terraform",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:DeleteObject",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:GetObject",
+          "bucket": "my",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:ListBucket",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:PutObject",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:DeleteObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:GetObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:ListBucket",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_execution_role",
+          "action": "s3:PutObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:DeleteObject",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:GetObject",
+          "bucket": "my",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:ListBucket",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:PutObject",
+          "bucket": "my",
+          "decision": "DENY",
+          "denied_at": "Layer 4/5"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:DeleteObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:GetObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:ListBucket",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ecs_task_role",
+          "action": "s3:PutObject",
+          "bucket": "sosol_prod",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 41.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 92530,
+      "repo_id": 379335834,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "main",
+          "action": "s3:DeleteObject",
+          "bucket": "main",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "main",
+          "action": "s3:GetObject",
+          "bucket": "main",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "main",
+          "action": "s3:ListBucket",
+          "bucket": "main",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "main",
+          "action": "s3:PutObject",
+          "bucket": "main",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 83496,
+      "repo_id": 351595185,
+      "path": "templates",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_fargate_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_iam_sa_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_firehose_delivery_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_target_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:DeleteObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:GetObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:ListBucket",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "eks_stepfunction_vpc_flow_log_role",
+          "action": "s3:PutObject",
+          "bucket": "eks_stepfunction_source_s3bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 87.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 51794,
+      "repo_id": 251065990,
+      "path": "examples/simple",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "cloudtrail_cloudwatch_events_role",
+          "action": "s3:DeleteObject",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail_cloudwatch_events_role",
+          "action": "s3:GetObject",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail_cloudwatch_events_role",
+          "action": "s3:ListBucket",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudtrail_cloudwatch_events_role",
+          "action": "s3:PutObject",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 37754,
+      "repo_id": 208811317,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "gateway",
+          "action": "s3:DeleteObject",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:GetAccelerateConfiguration",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:GetBucketLocation",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:GetBucketVersioning",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:GetObject",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:ListBucket",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:ListBucketMultipartUploads",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:ListBucketVersions",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "gateway",
+          "action": "s3:PutObject",
+          "bucket": "bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 8.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 32866,
+      "repo_id": 192798767,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "default",
+          "action": "s3:DeleteObject",
+          "bucket": "default",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "default",
+          "action": "s3:GetBucketVersioning",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "default",
+          "action": "s3:GetObject",
+          "bucket": "default",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "default",
+          "action": "s3:GetObjectVersion",
+          "bucket": "default",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "default",
+          "action": "s3:ListBucket",
+          "bucket": "default",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "default",
+          "action": "s3:PutObject",
+          "bucket": "default",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 4.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203778,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/green",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "this",
+          "action": "s3:DeleteObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:GetObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:ListBucket",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:PutObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 12536,
+      "repo_id": 130301673,
+      "path": ".",
+      "outcome": "fmt_fail",
+      "decisions": [],
+      "elapsed_s": 0.0,
+      "error_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mAttribute redefined\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  o"
+    },
+    {
+      "module_id": 12127,
+      "repo_id": 128112531,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:AbortMultipartUpload",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:DeleteObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:GetBucketLocation",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:GetObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:ListBucket",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:ListBucketMultipartUploads",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudwatch_to_firehose",
+          "action": "s3:PutObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:AbortMultipartUpload",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:DeleteObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:GetBucketLocation",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:GetObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:ListBucket",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:ListBucketMultipartUploads",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_to_s3",
+          "action": "s3:PutObject",
+          "bucket": "cloudwatch_logging_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 14.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 35098,
+      "repo_id": 200780348,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "useast_prod_CloudTrail_Role_01",
+          "action": "s3:DeleteObject",
+          "bucket": "marti_logs_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "useast_prod_CloudTrail_Role_01",
+          "action": "s3:GetObject",
+          "bucket": "marti_logs_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "useast_prod_CloudTrail_Role_01",
+          "action": "s3:ListBucket",
+          "bucket": "marti_logs_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "useast_prod_CloudTrail_Role_01",
+          "action": "s3:PutObject",
+          "bucket": "marti_logs_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 81868,
+      "repo_id": 347167044,
+      "path": "databricks/terraform/random",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:DeleteObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetBucketLocation",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetObjectVersion",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:ListBucket",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:PutObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:PutObjectAcl",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:DeleteObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetBucketLocation",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:GetObjectVersion",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:ListBucket",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:PutObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "metastore_data_access",
+          "action": "s3:PutObjectAcl",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:DeleteObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetBucketLocation",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetObjectVersion",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:ListBucket",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:PutObject",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:PutObjectAcl",
+          "bucket": "external",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:DeleteObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetBucketLocation",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:GetObjectVersion",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:ListBucket",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:PutObject",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "external_data_access",
+          "action": "s3:PutObjectAcl",
+          "bucket": "metastore",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        }
+      ],
+      "elapsed_s": 40.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 87422,
+      "repo_id": 362886107,
+      "path": "test-cases/terraform/aws/iam/resource-policies/glue_data_catalog_not_secure_policy",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "cloudrail_glue_iam",
+          "action": "s3:DeleteObject",
+          "bucket": "cloudrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudrail_glue_iam",
+          "action": "s3:GetObject",
+          "bucket": "cloudrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudrail_glue_iam",
+          "action": "s3:ListBucket",
+          "bucket": "cloudrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cloudrail_glue_iam",
+          "action": "s3:PutObject",
+          "bucket": "cloudrail",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 279304,
+      "repo_id": 829647612,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "lambda_role",
+          "action": "s3:DeleteObject",
+          "bucket": "datalake",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_role",
+          "action": "s3:GetObject",
+          "bucket": "datalake",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_role",
+          "action": "s3:ListBucket",
+          "bucket": "datalake",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_role",
+          "action": "s3:PutObject",
+          "bucket": "datalake",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 11603,
+      "repo_id": 126539684,
+      "path": "cli/assets/terraform/aws/codepipeline/codepipeline/encryption_key/tests/terraform12",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "test_role",
+          "action": "s3:DeleteObject",
+          "bucket": "test_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "test_role",
+          "action": "s3:GetBucketVersioning",
+          "bucket": "test_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "test_role",
+          "action": "s3:GetObject",
+          "bucket": "test_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "test_role",
+          "action": "s3:GetObjectVersion",
+          "bucket": "test_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "test_role",
+          "action": "s3:ListBucket",
+          "bucket": "test_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "test_role",
+          "action": "s3:PutObject",
+          "bucket": "test_bucket",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 4.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 76329,
+      "repo_id": 328243337,
+      "path": "tf",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "pypicloud",
+          "action": "s3:DeleteObject",
+          "bucket": "pypicloud",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "pypicloud",
+          "action": "s3:GetObject",
+          "bucket": "pypicloud",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "pypicloud",
+          "action": "s3:ListBucket",
+          "bucket": "pypicloud",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "pypicloud",
+          "action": "s3:PutObject",
+          "bucket": "pypicloud",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203475,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/red",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "firehose_role",
+          "action": "s3:DeleteObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_role",
+          "action": "s3:GetObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_role",
+          "action": "s3:ListBucket",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "firehose_role",
+          "action": "s3:PutObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_iam",
+          "action": "s3:DeleteObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_iam",
+          "action": "s3:GetObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_iam",
+          "action": "s3:ListBucket",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_iam",
+          "action": "s3:PutObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 6.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 82066,
+      "repo_id": 347939606,
+      "path": "codepipeline",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "codepipeline_role",
+          "action": "s3:DeleteObject",
+          "bucket": "codepipeline_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "codepipeline_role",
+          "action": "s3:GetObject",
+          "bucket": "codepipeline_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "codepipeline_role",
+          "action": "s3:ListBucket",
+          "bucket": "codepipeline_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "codepipeline_role",
+          "action": "s3:PutObject",
+          "bucket": "codepipeline_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        }
+      ],
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 228346,
+      "repo_id": 693838183,
+      "path": "open5gs/infrastructure/eks",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:DeleteObject",
+          "bucket": "cntf_open5gs_bucket_logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:GetObject",
+          "bucket": "cntf_open5gs_bucket_logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:ListBucket",
+          "bucket": "cntf_open5gs_bucket_logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:PutObject",
+          "bucket": "cntf_open5gs_bucket_logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:DeleteObject",
+          "bucket": "cntf_open5gs_bucket_metrics",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:GetObject",
+          "bucket": "cntf_open5gs_bucket_metrics",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:ListBucket",
+          "bucket": "cntf_open5gs_bucket_metrics",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "aws_ebs_csi_driver",
+          "action": "s3:PutObject",
+          "bucket": "cntf_open5gs_bucket_metrics",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 5.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 109208,
+      "repo_id": 425399051,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "iam_for_handler_lambda",
+          "action": "s3:DeleteObject",
+          "bucket": "file_upload_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "iam_for_handler_lambda",
+          "action": "s3:GetObject",
+          "bucket": "file_upload_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "iam_for_handler_lambda",
+          "action": "s3:ListBucket",
+          "bucket": "file_upload_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        },
+        {
+          "principal": "iam_for_handler_lambda",
+          "action": "s3:PutObject",
+          "bucket": "file_upload_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 6"
+        }
+      ],
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 2682,
+      "repo_id": 79487689,
+      "path": "apps/careers/tf",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:DeleteObject",
+          "bucket": "logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:GetObject",
+          "bucket": "logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:ListBucket",
+          "bucket": "logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:PutObject",
+          "bucket": "logs",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:DeleteObject",
+          "bucket": "mozilla_careers",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:GetObject",
+          "bucket": "mozilla_careers",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:ListBucket",
+          "bucket": "mozilla_careers",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:PutObject",
+          "bucket": "mozilla_careers",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:DeleteObject",
+          "bucket": "mozilla_careers_stage",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:GetObject",
+          "bucket": "mozilla_careers_stage",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:ListBucket",
+          "bucket": "mozilla_careers_stage",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "lambda_edge_role",
+          "action": "s3:PutObject",
+          "bucket": "mozilla_careers_stage",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 10.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 58590,
+      "repo_id": 272654044,
+      "path": "terraform",
+      "outcome": "timeout",
+      "decisions": [],
+      "elapsed_s": 120.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203779,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/red",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "this",
+          "action": "s3:DeleteObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:GetObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:ListBucket",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "this",
+          "action": "s3:PutObject",
+          "bucket": "this",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 146866,
+      "repo_id": 514483273,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "tf_codebuild_role",
+          "action": "s3:DeleteObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codebuild_role",
+          "action": "s3:GetObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codebuild_role",
+          "action": "s3:ListBucket",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codebuild_role",
+          "action": "s3:PutObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codepipeline_role",
+          "action": "s3:DeleteObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codepipeline_role",
+          "action": "s3:GetObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codepipeline_role",
+          "action": "s3:ListBucket",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_codepipeline_role",
+          "action": "s3:PutObject",
+          "bucket": "codepipeline_artifacts",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 6.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 57046,
+      "repo_id": 267980798,
+      "path": "modules/support/vault",
+      "outcome": "alloy_error",
+      "decisions": [],
+      "elapsed_s": 0.0,
+      "error_snippet": "error: configuration error: no IAM roles found in configuration; nothing to analyse"
+    },
+    {
+      "module_id": 80357,
+      "repo_id": 342194216,
+      "path": "components/automation",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "codepipeline",
+          "action": "s3:DeleteObject",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "codepipeline",
+          "action": "s3:GetBucketVersioning",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "codepipeline",
+          "action": "s3:GetObject",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "codepipeline",
+          "action": "s3:GetObjectVersion",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "codepipeline",
+          "action": "s3:ListBucket",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "codepipeline",
+          "action": "s3:PutObject",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:DeleteObject",
+          "bucket": "codepipeline",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:GetBucketVersioning",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:GetObject",
+          "bucket": "codepipeline",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:GetObjectVersion",
+          "bucket": "codepipeline",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:ListBucket",
+          "bucket": "codepipeline",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_deployer",
+          "action": "s3:PutObject",
+          "bucket": "codepipeline",
+          "decision": "ALLOW"
+        }
+      ],
+      "elapsed_s": 11.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 143624,
+      "repo_id": 508597835,
+      "path": "aws-modular",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "cluster",
+          "action": "s3:DeleteObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:GetObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:ListBucket",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:PutObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:DeleteObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:GetObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:ListBucket",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "cluster",
+          "action": "s3:PutObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:DeleteObject",
+          "bucket": "mlflow_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:GetObject",
+          "bucket": "mlflow_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:ListBucket",
+          "bucket": "mlflow_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:PutObject",
+          "bucket": "mlflow_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:DeleteObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:GetObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:ListBucket",
+          "bucket": "zenml_artifact_store",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "sagemaker_role",
+          "action": "s3:PutObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:DeleteObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:GetObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:ListBucket",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:PutObject",
+          "bucket": "mlflow_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:DeleteObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:GetObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:ListBucket",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "ng",
+          "action": "s3:PutObject",
+          "bucket": "zenml_artifact_store",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 30.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 35052,
+      "repo_id": 200723082,
+      "path": ".",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "main",
+          "action": "s3:DeleteObject",
+          "bucket": "main",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "main",
+          "action": "s3:GetObject",
+          "bucket": "main",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "main",
+          "action": "s3:ListBucket",
+          "bucket": "main",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "main",
+          "action": "s3:PutObject",
+          "bucket": "main",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 187117,
+      "repo_id": 611289101,
+      "path": "samples/mlops-sagemaker-github-codepipeline-codebuild-codedeploy/terraform",
+      "outcome": "success",
+      "decisions": [
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:CreateBucket",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:DeleteObject",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:GetBucketAcl",
+          "bucket": "artifacts_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:GetBucketCors",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:GetBucketLocation",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:GetObject",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:ListAllMyBuckets",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:ListBucket",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:PutBucketCors",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:PutObject",
+          "bucket": "artifacts_bucket",
+          "decision": "ALLOW"
+        },
+        {
+          "principal": "tf_mlops_role",
+          "action": "s3:PutObjectAcl",
+          "bucket": "artifacts_bucket",
+          "decision": "DENY",
+          "denied_at": "Layer 5"
+        }
+      ],
+      "elapsed_s": 12.8,
+      "error_snippet": ""
+    }
+  ]
+}

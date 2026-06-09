@@ -1,0 +1,194 @@
+{
+  "phase": 2,
+  "sample_size": 20,
+  "random_seed": 42,
+  "outcomes": {
+    "success": 16,
+    "ir_error": 3,
+    "hcl_error": 1
+  },
+  "incomplete_warning_count": 0,
+  "mean_parse_time_s": 0.008,
+  "per_module": [
+    {
+      "module_id": 43112,
+      "repo_id": 225246515,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.012,
+      "stderr_snippet": "warning: role policy \"cloudtrail\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value"
+    },
+    {
+      "module_id": 11475,
+      "repo_id": 125882052,
+      "path": ".",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": "error: IR build: bucket policy \"config_bucket_policy\" has an unparseable policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\n  AWS rejects this at put-bucket-policy time \u2014 the Terraform config is invalid"
+    },
+    {
+      "module_id": 106150,
+      "repo_id": 418237110,
+      "path": "terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.012,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 92530,
+      "repo_id": 379335834,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": "warning: IAM policy \"main\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value"
+    },
+    {
+      "module_id": 83496,
+      "repo_id": 351595185,
+      "path": "templates",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.014,
+      "stderr_snippet": "warning: role policy \"eks_firehose_delivery_role_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role policy \"eks_stepfunction_iam_sa_role_attachment_policy\": failed to parse policy document: failed to parse policy "
+    },
+    {
+      "module_id": 51794,
+      "repo_id": 251065990,
+      "path": "examples/simple",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": "error: IR build: bucket policy \"default\" has an unparseable policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\n  AWS rejects this at put-bucket-policy time \u2014 the Terraform config is invalid"
+    },
+    {
+      "module_id": 37754,
+      "repo_id": 208811317,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": "warning: IAM policy \"s3-bucket-access\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value"
+    },
+    {
+      "module_id": 32866,
+      "repo_id": 192798767,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": "warning: IAM policy \"default\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: IAM policy \"codebuild\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarnin"
+    },
+    {
+      "module_id": 203778,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/green",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 12536,
+      "repo_id": 130301673,
+      "path": ".",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": "error: parse: parse errors: /var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmpqsvemm5b/rules.tf:134,3-13: Attribute redefined; The argument \"depends_on\" was already set at /var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmpqsvemm5b/rules.tf:132,3-13. Each argument may be set only once."
+    },
+    {
+      "module_id": 12127,
+      "repo_id": 128112531,
+      "path": ".",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": "error: IR build: bucket policy \"cloudwatch_logging_bucket\" has an unparseable policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\n  AWS rejects this at put-bucket-policy time \u2014 the Terraform config is invalid"
+    },
+    {
+      "module_id": 35098,
+      "repo_id": 200780348,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": "warning: IAM policy \"cloud_trail_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'p' looking for beginning of value"
+    },
+    {
+      "module_id": 81868,
+      "repo_id": 347167044,
+      "path": "databricks/terraform/random",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.01,
+      "stderr_snippet": "warning: IAM policy \"sample_data\": failed to parse policy document: failed to parse policy JSON: invalid character 'l' looking for beginning of value\nwarning: IAM policy \"unity_metastore\": failed to parse policy document: failed to parse policy JSON: invalid character 'l' looking for beginning of va"
+    },
+    {
+      "module_id": 87422,
+      "repo_id": 362886107,
+      "path": "test-cases/terraform/aws/iam/resource-policies/glue_data_catalog_not_secure_policy",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 279304,
+      "repo_id": 829647612,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 11603,
+      "repo_id": 126539684,
+      "path": "cli/assets/terraform/aws/codepipeline/codepipeline/encryption_key/tests/terraform12",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.006,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 76329,
+      "repo_id": 328243337,
+      "path": "tf",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": "warning: IAM policy \"pypicloud_dynamo\": failed to parse policy document: failed to parse policy JSON: invalid character 'v' looking for beginning of value\nwarning: IAM policy \"pypicloud_rw\": failed to parse policy document: failed to parse policy JSON: invalid character 'v' looking for beginning of "
+    },
+    {
+      "module_id": 203475,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/red",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 82066,
+      "repo_id": 347939606,
+      "path": "codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.007,
+      "stderr_snippet": "warning: role policy \"codepipeline_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value"
+    },
+    {
+      "module_id": 228346,
+      "repo_id": 693838183,
+      "path": "open5gs/infrastructure/eks",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 0.008,
+      "stderr_snippet": ""
+    }
+  ]
+}

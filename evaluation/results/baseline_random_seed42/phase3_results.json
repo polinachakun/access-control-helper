@@ -1,0 +1,634 @@
+{
+  "phase": 3,
+  "sample_size": 78,
+  "outcomes": {
+    "success": 78
+  },
+  "mean_alloy_time_s": 9.3,
+  "per_module": [
+    {
+      "module_id": 82066,
+      "repo_id": 347939606,
+      "path": "codepipeline",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 37754,
+      "repo_id": 208811317,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 8.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 36793,
+      "repo_id": 205921171,
+      "path": "prv_s3_objs",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 26218,
+      "repo_id": 170306226,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 11.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 184669,
+      "repo_id": 606297719,
+      "path": "tfs",
+      "outcome": "success",
+      "elapsed_s": 6.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 2682,
+      "repo_id": 79487689,
+      "path": "apps/careers/tf",
+      "outcome": "success",
+      "elapsed_s": 10.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203475,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/red",
+      "outcome": "success",
+      "elapsed_s": 6.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 24573,
+      "repo_id": 163387408,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 11603,
+      "repo_id": 126539684,
+      "path": "cli/assets/terraform/aws/codepipeline/codepipeline/encryption_key/tests/terraform12",
+      "outcome": "success",
+      "elapsed_s": 5.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 79598,
+      "repo_id": 340387630,
+      "path": "aws",
+      "outcome": "success",
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 32866,
+      "repo_id": 192798767,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 5.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 214913,
+      "repo_id": 667957828,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 192154,
+      "repo_id": 623483297,
+      "path": "modules/aws-waf/examples/wafv2-logging-configuration",
+      "outcome": "success",
+      "elapsed_s": 5.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 243889,
+      "repo_id": 729503833,
+      "path": "infra",
+      "outcome": "success",
+      "elapsed_s": 4.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 116222,
+      "repo_id": 444041209,
+      "path": "modules/cloudtrail",
+      "outcome": "success",
+      "elapsed_s": 24.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 17060,
+      "repo_id": 141842318,
+      "path": "terraform/prod/prod-global",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 182068,
+      "repo_id": 598823582,
+      "path": "01_AWS/04_Lambda_APIGateway_NodeTS",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 92530,
+      "repo_id": 379335834,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 116223,
+      "repo_id": 444041209,
+      "path": "modules/config",
+      "outcome": "success",
+      "elapsed_s": 24.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 76329,
+      "repo_id": 328243337,
+      "path": "tf",
+      "outcome": "success",
+      "elapsed_s": 4.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 245716,
+      "repo_id": 733603228,
+      "path": "modules/cloudtrail",
+      "outcome": "success",
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 101750,
+      "repo_id": 407957146,
+      "path": "terraform_infraestructure",
+      "outcome": "success",
+      "elapsed_s": 5.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 61538,
+      "repo_id": 281595049,
+      "path": "modules/replicated_s3_bucket",
+      "outcome": "success",
+      "elapsed_s": 21.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 115078,
+      "repo_id": 439826793,
+      "path": "iaac-tf-scripts/iaac-tf-scripts-n-core/iaac-tf-script-n-core-cicd",
+      "outcome": "success",
+      "elapsed_s": 14.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 16933,
+      "repo_id": 140958647,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 57819,
+      "repo_id": 269710826,
+      "path": "archive/backend",
+      "outcome": "success",
+      "elapsed_s": 12.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 4644,
+      "repo_id": 97277436,
+      "path": "aws/cloudtrail",
+      "outcome": "success",
+      "elapsed_s": 30.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 61117,
+      "repo_id": 280202968,
+      "path": "terraform",
+      "outcome": "success",
+      "elapsed_s": 15.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 94266,
+      "repo_id": 385180357,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 14.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 43112,
+      "repo_id": 225246515,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 279304,
+      "repo_id": 829647612,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202911,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 23.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 269547,
+      "repo_id": 798573779,
+      "path": "terraform/aws-devops-pipeline-module",
+      "outcome": "success",
+      "elapsed_s": 26.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 35052,
+      "repo_id": 200723082,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 85680,
+      "repo_id": 358326767,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 4.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 87422,
+      "repo_id": 362886107,
+      "path": "test-cases/terraform/aws/iam/resource-policies/glue_data_catalog_not_secure_policy",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 247140,
+      "repo_id": 737124100,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 11.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 186734,
+      "repo_id": 610552122,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 12127,
+      "repo_id": 128112531,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 14.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203778,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/green",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 168741,
+      "repo_id": 566575680,
+      "path": "aws-code-pipeline",
+      "outcome": "success",
+      "elapsed_s": 6.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 161244,
+      "repo_id": 551754115,
+      "path": "modules/config",
+      "outcome": "success",
+      "elapsed_s": 23.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 187117,
+      "repo_id": 611289101,
+      "path": "samples/mlops-sagemaker-github-codepipeline-codebuild-codedeploy/terraform",
+      "outcome": "success",
+      "elapsed_s": 12.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 205045,
+      "repo_id": 646920155,
+      "path": "terraform",
+      "outcome": "success",
+      "elapsed_s": 19.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 109208,
+      "repo_id": 425399051,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 51794,
+      "repo_id": 251065990,
+      "path": "examples/simple",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 281759,
+      "repo_id": 839074150,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 65269,
+      "repo_id": 291749876,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 11.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 41901,
+      "repo_id": 221537061,
+      "path": "modules/codepipeline_multi_stage",
+      "outcome": "success",
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 100144,
+      "repo_id": 403212292,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 51698,
+      "repo_id": 251064584,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 73626,
+      "repo_id": 317170998,
+      "path": "terraform/service",
+      "outcome": "success",
+      "elapsed_s": 23.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 26832,
+      "repo_id": 172914703,
+      "path": ".terraform",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 80357,
+      "repo_id": 342194216,
+      "path": "components/automation",
+      "outcome": "success",
+      "elapsed_s": 10.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 146866,
+      "repo_id": 514483273,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 6.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 34571,
+      "repo_id": 199083232,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 16.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203779,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/red",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 234139,
+      "repo_id": 705826039,
+      "path": "terraform/modules/cict",
+      "outcome": "success",
+      "elapsed_s": 15.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 53171,
+      "repo_id": 255943416,
+      "path": "modules/aws/api",
+      "outcome": "success",
+      "elapsed_s": 5.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202940,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-078-root_usage_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 35098,
+      "repo_id": 200780348,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 149599,
+      "repo_id": 520667306,
+      "path": "infrastructure",
+      "outcome": "success",
+      "elapsed_s": 6.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 35665,
+      "repo_id": 203186963,
+      "path": "config",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 242360,
+      "repo_id": 726811942,
+      "path": "terraform/lambda",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 44307,
+      "repo_id": 228814712,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 19.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 78432,
+      "repo_id": 335974891,
+      "path": "lab-terraform/tf/service-pipelines/modules/service-pipeline",
+      "outcome": "success",
+      "elapsed_s": 22.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 127787,
+      "repo_id": 471383299,
+      "path": "25",
+      "outcome": "success",
+      "elapsed_s": 16.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 56017,
+      "repo_id": 265017823,
+      "path": "components/automation",
+      "outcome": "success",
+      "elapsed_s": 11.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 78687,
+      "repo_id": 337294261,
+      "path": "terraform/dual_api",
+      "outcome": "success",
+      "elapsed_s": 6.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 174423,
+      "repo_id": 579232336,
+      "path": "AWS_Services/terraform-aws-dynamodb",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 228346,
+      "repo_id": 693838183,
+      "path": "open5gs/infrastructure/eks",
+      "outcome": "success",
+      "elapsed_s": 6.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 85114,
+      "repo_id": 357111653,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 59160,
+      "repo_id": 274025857,
+      "path": "examples/simple-custom-idp",
+      "outcome": "success",
+      "elapsed_s": 6.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202944,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-079-iam_policy_changes_alarm_exist/red",
+      "outcome": "success",
+      "elapsed_s": 24.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 81868,
+      "repo_id": 347167044,
+      "path": "databricks/terraform/random",
+      "outcome": "success",
+      "elapsed_s": 15.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 102837,
+      "repo_id": 410829168,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 22154,
+      "repo_id": 154380862,
+      "path": "terraform",
+      "outcome": "success",
+      "elapsed_s": 16.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 132200,
+      "repo_id": 484593753,
+      "path": "terraform-test/infrastructure",
+      "outcome": "success",
+      "elapsed_s": 8.8,
+      "error_snippet": ""
+    }
+  ]
+}

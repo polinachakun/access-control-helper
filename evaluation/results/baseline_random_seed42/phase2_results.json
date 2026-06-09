@@ -1,0 +1,915 @@
+{
+  "phase": 2,
+  "sample_size": 100,
+  "random_seed": 42,
+  "outcomes": {
+    "success": 78,
+    "timeout": 12,
+    "hcl_error": 6,
+    "ir_error": 4
+  },
+  "incomplete_warning_count": 0,
+  "mean_parse_time_s": 10.917,
+  "per_module": [
+    {
+      "module_id": 43112,
+      "repo_id": 225246515,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.108,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 11475,
+      "repo_id": 125882052,
+      "path": ".",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 106150,
+      "repo_id": 418237110,
+      "path": "terraform",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 92530,
+      "repo_id": 379335834,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.294,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 83496,
+      "repo_id": 351595185,
+      "path": "templates",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 51794,
+      "repo_id": 251065990,
+      "path": "examples/simple",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.154,
+      "stderr_snippet": "warning: bucket policy \"default\": skipped \u2014 policy document contains unresolved Terraform references (analysis is a lower bound)\nIR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 37754,
+      "repo_id": 208811317,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 9.222,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 72 check(s)."
+    },
+    {
+      "module_id": 32866,
+      "repo_id": 192798767,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 5.097,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 48 check(s)."
+    },
+    {
+      "module_id": 203778,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/green",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.862,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 12536,
+      "repo_id": 130301673,
+      "path": ".",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.029,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mAttribute redefined\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmpedy138k_/rules.tf line 134"
+    },
+    {
+      "module_id": 12127,
+      "repo_id": 128112531,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 14.108,
+      "stderr_snippet": "warning: bucket policy cloudwatch_logging_bucket statement DefaultDeny: unrecognized allow conditions [StringNotLike/aws:userId] are ignored; statement modeled as unconditional allow (may over-grant access in analysis)\nwarning: bucket policy cloudwatch_logging_bucket statement 1 has no principals; s"
+    },
+    {
+      "module_id": 35098,
+      "repo_id": 200780348,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.832,
+      "stderr_snippet": "warning: IAM policy \"cloud_trail_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'p' looking for beginning of value\nwarning: role \"useast-prod-CloudTrail-Role-01\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuousl"
+    },
+    {
+      "module_id": 81868,
+      "repo_id": 347167044,
+      "path": "databricks/terraform/random",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 16.794,
+      "stderr_snippet": "warning: IAM policy \"sample_data\": failed to parse policy document: failed to parse policy JSON: invalid character 'l' looking for beginning of value\nwarning: IAM policy \"unity_metastore\": failed to parse policy document: failed to parse policy JSON: invalid character 'l' looking for beginning of va"
+    },
+    {
+      "module_id": 87422,
+      "repo_id": 362886107,
+      "path": "test-cases/terraform/aws/iam/resource-policies/glue_data_catalog_not_secure_policy",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.07,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 279304,
+      "repo_id": 829647612,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.76,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 11603,
+      "repo_id": 126539684,
+      "path": "cli/assets/terraform/aws/codepipeline/codepipeline/encryption_key/tests/terraform12",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 4.74,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 48 check(s)."
+    },
+    {
+      "module_id": 76329,
+      "repo_id": 328243337,
+      "path": "tf",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 4.704,
+      "stderr_snippet": "warning: IAM policy \"pypicloud_dynamo\": failed to parse policy document: failed to parse policy JSON: invalid character 'v' looking for beginning of value\nIR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 48 check(s)."
+    },
+    {
+      "module_id": 203475,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/red",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.318,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 82066,
+      "repo_id": 347939606,
+      "path": "codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.776,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 228346,
+      "repo_id": 693838183,
+      "path": "open5gs/infrastructure/eks",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.195,
+      "stderr_snippet": "warning: role \"aws-ebs-csi-driver\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 2 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 109208,
+      "repo_id": 425399051,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.991,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 2682,
+      "repo_id": 79487689,
+      "path": "apps/careers/tf",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 11.302,
+      "stderr_snippet": "IR: 3 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 96 check(s)."
+    },
+    {
+      "module_id": 58590,
+      "repo_id": 272654044,
+      "path": "terraform",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.005,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 203779,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-481-codebuild_project_environment_privileged_check/red",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.243,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 146866,
+      "repo_id": 514483273,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.297,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 57046,
+      "repo_id": 267980798,
+      "path": "modules/support/vault",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.027,
+      "stderr_snippet": "error: configuration error: no IAM roles found in configuration; nothing to analyse"
+    },
+    {
+      "module_id": 80357,
+      "repo_id": 342194216,
+      "path": "components/automation",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 11.51,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 96 check(s)."
+    },
+    {
+      "module_id": 143624,
+      "repo_id": 508597835,
+      "path": "aws-modular",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 35052,
+      "repo_id": 200723082,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.967,
+      "stderr_snippet": "warning: data.aws_iam_policy_document.main: dynamic \"statement\" block cannot be statically evaluated; affected statements skipped (analysis is a lower bound)\nwarning: data.aws_iam_policy_document.main: dynamic \"statement\" block cannot be statically evaluated; affected statements skipped (analysis is"
+    },
+    {
+      "module_id": 187117,
+      "repo_id": 611289101,
+      "path": "samples/mlops-sagemaker-github-codepipeline-codebuild-codedeploy/terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 12.434,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 88 check(s)."
+    },
+    {
+      "module_id": 35665,
+      "repo_id": 203186963,
+      "path": "config",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.942,
+      "stderr_snippet": "warning: role policy \"p\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"r\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 1 role(s), 0 bucket "
+    },
+    {
+      "module_id": 168741,
+      "repo_id": 566575680,
+      "path": "aws-code-pipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.386,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 149599,
+      "repo_id": 520667306,
+      "path": "infrastructure",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.141,
+      "stderr_snippet": "warning: IAM policy \"dynamodb_default\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"lambda_rest_api\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 2 buc"
+    },
+    {
+      "module_id": 100601,
+      "repo_id": 404559088,
+      "path": "terraform",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 16933,
+      "repo_id": 140958647,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.116,
+      "stderr_snippet": "warning: IAM policy \"flapping_container_detector_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: IAM policy \"flapping_container_ssm_read_access\": failed to parse policy document: failed to parse policy JSON: invalid"
+    },
+    {
+      "module_id": 243889,
+      "repo_id": 729503833,
+      "path": "infra",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 4.689,
+      "stderr_snippet": "warning: IAM policy \"allow_ecr_app\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: IAM policy \"allow_ecr_proxy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of "
+    },
+    {
+      "module_id": 47395,
+      "repo_id": 238065115,
+      "path": "terraform/modules/secrets-manager",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.026,
+      "stderr_snippet": "warning: bucket policy secrets_backup statement deny-except: NotPrincipal [arn:aws:iam::167290662341:user/nick, arn:aws:iam::167290662341:user/secrets-manager] is not supported by this verifier; statement skipped\nerror: configuration error: no IAM roles found in configuration; nothing to analyse"
+    },
+    {
+      "module_id": 184669,
+      "repo_id": 606297719,
+      "path": "tfs",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.779,
+      "stderr_snippet": "warning: role \"prefect_agent_execution_role\" inline_policy: failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nIR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 ch"
+    },
+    {
+      "module_id": 29986,
+      "repo_id": 184873748,
+      "path": "terraform",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.032,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mInvalid argument name\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmp7gdxnf2u/lb.tf line 71, "
+    },
+    {
+      "module_id": 116222,
+      "repo_id": 444041209,
+      "path": "modules/cloudtrail",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 25.283,
+      "stderr_snippet": "warning: role policy \"cw_log_iam_role_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: bucket policy bucket_policy statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled"
+    },
+    {
+      "module_id": 171680,
+      "repo_id": 574732770,
+      "path": "pipelineStacks",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.003,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 73626,
+      "repo_id": 317170998,
+      "path": "terraform/service",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 25.76,
+      "stderr_snippet": "IR: 1 bucket(s), 3 role(s), 1 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 96 check(s)."
+    },
+    {
+      "module_id": 26218,
+      "repo_id": 170306226,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 11.889,
+      "stderr_snippet": "warning: role \"index\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nwarning: role \"about\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nwarning: role \"apigateway\" has a policy attachme"
+    },
+    {
+      "module_id": 17060,
+      "repo_id": 141842318,
+      "path": "terraform/prod/prod-global",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.962,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 85114,
+      "repo_id": 357111653,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.74,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 115078,
+      "repo_id": 439826793,
+      "path": "iaac-tf-scripts/iaac-tf-scripts-n-core/iaac-tf-script-n-core-cicd",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 16.753,
+      "stderr_snippet": "warning: role policy \"demo-codebuild\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"demo-codebuild\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 2 bucke"
+    },
+    {
+      "module_id": 30322,
+      "repo_id": 185677259,
+      "path": "terraform",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.006,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 36793,
+      "repo_id": 205921171,
+      "path": "prv_s3_objs",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 3.123,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 234139,
+      "repo_id": 705826039,
+      "path": "terraform/modules/cict",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 16.192,
+      "stderr_snippet": "warning: role policy \"awscodepipeline_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'p' looking for beginning of value\nwarning: role policy \"awscodebuild_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'p' looking fo"
+    },
+    {
+      "module_id": 178452,
+      "repo_id": 590196574,
+      "path": "modules/magiclink",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 61117,
+      "repo_id": 280202968,
+      "path": "terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 14.349,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 112 check(s)."
+    },
+    {
+      "module_id": 182068,
+      "repo_id": 598823582,
+      "path": "01_AWS/04_Lambda_APIGateway_NodeTS",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.708,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 161244,
+      "repo_id": 551754115,
+      "path": "modules/config",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 23.186,
+      "stderr_snippet": "warning: bucket policy bucket_policy statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (may over-grant access in analysis)\nwarning: role \"config_iam_role\" has a policy attachment but no actions were extracted; identity grant "
+    },
+    {
+      "module_id": 78432,
+      "repo_id": 335974891,
+      "path": "lab-terraform/tf/service-pipelines/modules/service-pipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 20.868,
+      "stderr_snippet": "warning: IAM policy \"trigger_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"trigger_role\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s"
+    },
+    {
+      "module_id": 101750,
+      "repo_id": 407957146,
+      "path": "terraform_infraestructure",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 6.024,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 26832,
+      "repo_id": 172914703,
+      "path": ".terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.887,
+      "stderr_snippet": "warning: bucket policy \"alb-proxy\": skipped \u2014 policy document contains unresolved Terraform references (analysis is a lower bound)\nIR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 65269,
+      "repo_id": 291749876,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 11.082,
+      "stderr_snippet": "warning: bucket policy \"lb_access_logs\": skipped \u2014 policy document contains unresolved Terraform references (analysis is a lower bound)\nwarning: role \"ecsTaskExecutionRole\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 3 role"
+    },
+    {
+      "module_id": 61538,
+      "repo_id": 281595049,
+      "path": "modules/replicated_s3_bucket",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 21.105,
+      "stderr_snippet": "IR: 2 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 144 check(s)."
+    },
+    {
+      "module_id": 245716,
+      "repo_id": 733603228,
+      "path": "modules/cloudtrail",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.85,
+      "stderr_snippet": "warning: IAM policy \"cloudwatch_logs\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: bucket policy \"example\": skipped \u2014 policy document contains unresolved Terraform references (analysis is a lower bound)\nwarning: role \"ex"
+    },
+    {
+      "module_id": 186734,
+      "repo_id": 610552122,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.538,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 103604,
+      "repo_id": 412504467,
+      "path": "Solutions Architect - Associate/5.12: Set up Cross-Region S3 Bucket Replication",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.003,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 82053,
+      "repo_id": 347932232,
+      "path": "modules/cloudfront_waf",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.005,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 132200,
+      "repo_id": 484593753,
+      "path": "terraform-test/infrastructure",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 8.988,
+      "stderr_snippet": "warning: role policy \"dynamodb_organizations_table_role_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role policy \"ssp_bucket_policy\": failed to parse policy document: failed to parse policy JSON: invalid characte"
+    },
+    {
+      "module_id": 22154,
+      "repo_id": 154380862,
+      "path": "terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 15.635,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 104 check(s)."
+    },
+    {
+      "module_id": 85680,
+      "repo_id": 358326767,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 4.672,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 48 check(s)."
+    },
+    {
+      "module_id": 127787,
+      "repo_id": 471383299,
+      "path": "25",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 14.351,
+      "stderr_snippet": "IR: 2 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 128 check(s)."
+    },
+    {
+      "module_id": 202944,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-079-iam_policy_changes_alarm_exist/red",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 24.423,
+      "stderr_snippet": "warning: role policy \"this\": failed to parse policy document: failed to parse policy JSON: invalid character 'v' looking for beginning of value\nwarning: bucket policy this statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (ma"
+    },
+    {
+      "module_id": 102837,
+      "repo_id": 410829168,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.543,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 25029,
+      "repo_id": 165471600,
+      "path": ".",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.024,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mInvalid argument name\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmpb8cti0hs/codebuild.tf li"
+    },
+    {
+      "module_id": 78687,
+      "repo_id": 337294261,
+      "path": "terraform/dual_api",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 5.68,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 1 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 127637,
+      "repo_id": 470985108,
+      "path": ".",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.255,
+      "stderr_snippet": "warning: role policy \"secrets\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: role \"ecs_execution\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 2 "
+    },
+    {
+      "module_id": 79598,
+      "repo_id": 340387630,
+      "path": "aws",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.615,
+      "stderr_snippet": "warning: role \"lambda-edge-role\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 273955,
+      "repo_id": 811593176,
+      "path": "pipelineStacks",
+      "outcome": "timeout",
+      "incomplete_warning": false,
+      "elapsed_s": 30.004,
+      "stderr_snippet": ""
+    },
+    {
+      "module_id": 202911,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red1",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 24.643,
+      "stderr_snippet": "warning: role policy \"this\": failed to parse policy document: failed to parse policy JSON: invalid character 'v' looking for beginning of value\nwarning: bucket policy this statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (ma"
+    },
+    {
+      "module_id": 242360,
+      "repo_id": 726811942,
+      "path": "terraform/lambda",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.626,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 53171,
+      "repo_id": 255943416,
+      "path": "modules/aws/api",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 5.514,
+      "stderr_snippet": "warning: role \"task_execution_role\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 1 role(s), 1 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 100757,
+      "repo_id": 405053038,
+      "path": ".",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.028,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mInvalid argument name\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmprnqfwk4r/lb.tf line 71, "
+    },
+    {
+      "module_id": 93117,
+      "repo_id": 381566960,
+      "path": "modules/services/s3/s3_v2",
+      "outcome": "ir_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.024,
+      "stderr_snippet": "warning: bucket policy \"s3_pub_acl\": skipped \u2014 policy document contains unresolved Terraform references (analysis is a lower bound)\nerror: configuration error: no IAM roles found in configuration; nothing to analyse"
+    },
+    {
+      "module_id": 100144,
+      "repo_id": 403212292,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.763,
+      "stderr_snippet": "warning: role policy \"lambda_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"role_for_lambda\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucke"
+    },
+    {
+      "module_id": 205045,
+      "repo_id": 646920155,
+      "path": "terraform",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 16.861,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 2 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    },
+    {
+      "module_id": 202940,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-078-root_usage_alarm_exists/green",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 23.534,
+      "stderr_snippet": "warning: bucket policy this statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (may over-grant access in analysis)\nwarning: role policy \"this\": failed to parse policy document: failed to parse policy JSON: invalid character 'v"
+    },
+    {
+      "module_id": 174423,
+      "repo_id": 579232336,
+      "path": "AWS_Services/terraform-aws-dynamodb",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.619,
+      "stderr_snippet": "warning: IAM policy \"dynamodb_lambda_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: role \"iam_for_lambda\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: "
+    },
+    {
+      "module_id": 51698,
+      "repo_id": 251064584,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.63,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 281759,
+      "repo_id": 839074150,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.624,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 269547,
+      "repo_id": 798573779,
+      "path": "terraform/aws-devops-pipeline-module",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 26.784,
+      "stderr_snippet": "IR: 1 bucket(s), 3 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 168 check(s)."
+    },
+    {
+      "module_id": 34571,
+      "repo_id": 199083232,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 14.965,
+      "stderr_snippet": "warning: role policy \"ct\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: role policy \"role\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: bucke"
+    },
+    {
+      "module_id": 17602,
+      "repo_id": 143766031,
+      "path": "terraform",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.023,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mUnexpected comma after argument\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmptfy7ab23/iam.t"
+    },
+    {
+      "module_id": 41901,
+      "repo_id": 221537061,
+      "path": "modules/codepipeline_multi_stage",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.972,
+      "stderr_snippet": "warning: role policy \"pipeline_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'p' looking for beginning of value\nwarning: role \"codepipeline_role\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 b"
+    },
+    {
+      "module_id": 56017,
+      "repo_id": 265017823,
+      "path": "components/automation",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 10.638,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 96 check(s)."
+    },
+    {
+      "module_id": 59160,
+      "repo_id": 274025857,
+      "path": "examples/simple-custom-idp",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 5.917,
+      "stderr_snippet": "warning: role \"apigw_logging\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nwarning: role \"lambda_basic_execution\" has a policy attachment but no actions were extracted; identity grant path (L5) will be vacuously empty\nIR: 1 bucket(s), 2 role"
+    },
+    {
+      "module_id": 24573,
+      "repo_id": 163387408,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.902,
+      "stderr_snippet": "warning: IAM policy \"cloudwatch\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginning of value\nwarning: IAM policy \"cloudwatch-subscription\": failed to parse policy document: failed to parse policy JSON: invalid character 'd' looking for beginnin"
+    },
+    {
+      "module_id": 192154,
+      "repo_id": 623483297,
+      "path": "modules/aws-waf/examples/wafv2-logging-configuration",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 5.601,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 56 check(s)."
+    },
+    {
+      "module_id": 190034,
+      "repo_id": 618306157,
+      "path": "terraform-beginner-to-advanced-resource-master/Section 2 - Read, Generate, Modify Congiruations",
+      "outcome": "hcl_error",
+      "incomplete_warning": false,
+      "elapsed_s": 0.025,
+      "stderr_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mArgument or block definition required\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  on ../../../../../../../var/folders/9j/1050b49n4kj_615mds_fqt2c0000gn/T/tmpq8xlrgz0"
+    },
+    {
+      "module_id": 247140,
+      "repo_id": 737124100,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 11.536,
+      "stderr_snippet": "warning: IAM policy \"ecs_task_execution_policy\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for beginning of value\nwarning: IAM policy \"ecs_efs_access\": failed to parse policy document: failed to parse policy JSON: invalid character 'a' looking for be"
+    },
+    {
+      "module_id": 94266,
+      "repo_id": 385180357,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 14.781,
+      "stderr_snippet": "IR: 1 bucket(s), 2 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 112 check(s)."
+    },
+    {
+      "module_id": 4644,
+      "repo_id": 97277436,
+      "path": "aws/cloudtrail",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 29.491,
+      "stderr_snippet": "warning: bucket policy cloudtrail statement CloudTrail Write: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (may over-grant access in analysis)\nwarning: bucket policy cloudtrail statement DenyUnsecuredTransport: unrecognized deny cond"
+    },
+    {
+      "module_id": 44307,
+      "repo_id": 228814712,
+      "path": ".",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 20.58,
+      "stderr_snippet": "IR: 3 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 144 check(s)."
+    },
+    {
+      "module_id": 116223,
+      "repo_id": 444041209,
+      "path": "modules/config",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 23.159,
+      "stderr_snippet": "warning: bucket policy bucket_policy statement 2: unrecognized allow conditions [StringEquals/s3:x-amz-acl] are ignored; statement modeled as unconditional allow (may over-grant access in analysis)\nwarning: role \"config_iam_role\" has a policy attachment but no actions were extracted; identity grant "
+    },
+    {
+      "module_id": 214913,
+      "repo_id": 667957828,
+      "path": "aws-pipeline-iac/infra-modules/cicd/codepipeline",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 2.6,
+      "stderr_snippet": "IR: 1 bucket(s), 1 role(s), 0 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 32 check(s)."
+    },
+    {
+      "module_id": 57819,
+      "repo_id": 269710826,
+      "path": "archive/backend",
+      "outcome": "success",
+      "incomplete_warning": false,
+      "elapsed_s": 12.42,
+      "stderr_snippet": "IR: 2 bucket(s), 1 role(s), 1 bucket policy(ies), 0 RCP(s), 0 SCP(s)\nRunning Alloy formal verification\u2026\nAlloy completed 64 check(s)."
+    }
+  ]
+}

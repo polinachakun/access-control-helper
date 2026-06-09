@@ -1,0 +1,812 @@
+{
+  "phase": 3,
+  "sample_size": 100,
+  "outcomes": {
+    "success": 98,
+    "timeout": 1,
+    "fmt_fail": 1
+  },
+  "mean_alloy_time_s": 18.3,
+  "per_module": [
+    {
+      "module_id": 282973,
+      "repo_id": 843838788,
+      "path": "09-provisionamento-aws-rds/terraform",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 282974,
+      "repo_id": 843838788,
+      "path": "10-provisionamento-aws-step-functions/terraform",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 86638,
+      "repo_id": 359745886,
+      "path": "terraform/environments/mojfin",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 61554,
+      "repo_id": 281671220,
+      "path": "modules/kinesis_firehose_xsiam",
+      "outcome": "success",
+      "elapsed_s": 14.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 63641,
+      "repo_id": 286929205,
+      "path": "aws/kinesisfirehoseforlogs",
+      "outcome": "success",
+      "elapsed_s": 6.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 63643,
+      "repo_id": 286929205,
+      "path": "aws/kinesisfirehoseformetrics",
+      "outcome": "success",
+      "elapsed_s": 12.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 143624,
+      "repo_id": 508597835,
+      "path": "aws-modular",
+      "outcome": "success",
+      "elapsed_s": 82.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 143652,
+      "repo_id": 508597835,
+      "path": "src/mlstacks/terraform/aws-modular",
+      "outcome": "success",
+      "elapsed_s": 81.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 123405,
+      "repo_id": 462488677,
+      "path": "modules/firehose-logs",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 123406,
+      "repo_id": 462488677,
+      "path": "modules/firehose-metrics",
+      "outcome": "success",
+      "elapsed_s": 11.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 76776,
+      "repo_id": 329387386,
+      "path": "components/website-cms",
+      "outcome": "success",
+      "elapsed_s": 14.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 221254,
+      "repo_id": 678565584,
+      "path": "terraform/aws/implementation/modules/s3",
+      "outcome": "success",
+      "elapsed_s": 4.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 283478,
+      "repo_id": 845745580,
+      "path": "pipelineStacks",
+      "outcome": "success",
+      "elapsed_s": 36.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 22317,
+      "repo_id": 155242818,
+      "path": ".",
+      "outcome": "timeout",
+      "elapsed_s": 120.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 109208,
+      "repo_id": 425399051,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 46979,
+      "repo_id": 237012886,
+      "path": "images",
+      "outcome": "success",
+      "elapsed_s": 20.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 46983,
+      "repo_id": 237012886,
+      "path": "terraform",
+      "outcome": "success",
+      "elapsed_s": 19.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 19811,
+      "repo_id": 150452833,
+      "path": "aws/arctic-wolf",
+      "outcome": "success",
+      "elapsed_s": 6.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 19852,
+      "repo_id": 150452833,
+      "path": "aws/rds/modules/db-option-group",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 19861,
+      "repo_id": 150452833,
+      "path": "aws/s3-cdn",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 91829,
+      "repo_id": 376770594,
+      "path": "modules/kinesis_firehose_xsiam",
+      "outcome": "success",
+      "elapsed_s": 15.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 262707,
+      "repo_id": 777973989,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 12.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 263664,
+      "repo_id": 780559206,
+      "path": ".",
+      "outcome": "fmt_fail",
+      "elapsed_s": 0.0,
+      "error_snippet": "error: Terraform HCL syntax check failed \u2014 fix formatting before analysis:\n\u001b[31m\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31mError: \u001b[0m\u001b[0m\u001b[1mMissing newline after argument\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m "
+    },
+    {
+      "module_id": 221486,
+      "repo_id": 679240337,
+      "path": "terraform/aws/development-infrastructure/synthetics-canary",
+      "outcome": "success",
+      "elapsed_s": 5.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 3025,
+      "repo_id": 83412971,
+      "path": "govwifi-sync-certs",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 273191,
+      "repo_id": 807635123,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 283938,
+      "repo_id": 848003194,
+      "path": "pipelineStacks",
+      "outcome": "success",
+      "elapsed_s": 35.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 270386,
+      "repo_id": 801128805,
+      "path": "terraform/tf-tests/resources/s3-bucket-with-iam-role",
+      "outcome": "success",
+      "elapsed_s": 3.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 82674,
+      "repo_id": 348775313,
+      "path": "terraform/groups/chs/modules/cloudwatch",
+      "outcome": "success",
+      "elapsed_s": 4.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 207323,
+      "repo_id": 652518511,
+      "path": "test/kubernetes",
+      "outcome": "success",
+      "elapsed_s": 5.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 82101,
+      "repo_id": 348057122,
+      "path": "ex05_terraform_simple_lambda",
+      "outcome": "success",
+      "elapsed_s": 2.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 4279,
+      "repo_id": 95103797,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 4.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 15324,
+      "repo_id": 136536356,
+      "path": ".",
+      "outcome": "success",
+      "elapsed_s": 4.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 185911,
+      "repo_id": 608800010,
+      "path": ".terraform/pipeline",
+      "outcome": "success",
+      "elapsed_s": 4.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 280594,
+      "repo_id": 835151878,
+      "path": "modules/s3-bucket",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 283959,
+      "repo_id": 848079513,
+      "path": "modules/storage",
+      "outcome": "success",
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 258601,
+      "repo_id": 768181979,
+      "path": "tests/create_all",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 10031,
+      "repo_id": 119580097,
+      "path": "modules/kinesis",
+      "outcome": "success",
+      "elapsed_s": 3.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 154263,
+      "repo_id": 533395359,
+      "path": "examples/s3/direct-put-to-s3",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 221824,
+      "repo_id": 679764777,
+      "path": "deploy",
+      "outcome": "success",
+      "elapsed_s": 6.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 268446,
+      "repo_id": 796441874,
+      "path": "aws/mwaa-sso",
+      "outcome": "success",
+      "elapsed_s": 6.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 191943,
+      "repo_id": 623483297,
+      "path": "modules/aws-centralized-logging",
+      "outcome": "success",
+      "elapsed_s": 7.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 192154,
+      "repo_id": 623483297,
+      "path": "modules/aws-waf/examples/wafv2-logging-configuration",
+      "outcome": "success",
+      "elapsed_s": 7.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202882,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-055-cloudtrail_integrated_with_cloudwatch/green",
+      "outcome": "success",
+      "elapsed_s": 27.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202890,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-059-config_enabled_all_regions/green",
+      "outcome": "success",
+      "elapsed_s": 3.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202891,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-059-config_enabled_all_regions/red",
+      "outcome": "success",
+      "elapsed_s": 2.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202892,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-059-config_enabled_all_regions/red1",
+      "outcome": "success",
+      "elapsed_s": 2.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202908,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/green_full",
+      "outcome": "success",
+      "elapsed_s": 25.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202911,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 26.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202912,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red2",
+      "outcome": "success",
+      "elapsed_s": 25.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202913,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red3",
+      "outcome": "success",
+      "elapsed_s": 27.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202914,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-067-unauthorized_api_calls_alarm_exists/red4",
+      "outcome": "success",
+      "elapsed_s": 26.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202937,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-077-sign_in_without_mfa_alarm_exist/green",
+      "outcome": "success",
+      "elapsed_s": 25.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202938,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-077-sign_in_without_mfa_alarm_exist/red",
+      "outcome": "success",
+      "elapsed_s": 25.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202939,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-077-sign_in_without_mfa_alarm_exist/red1",
+      "outcome": "success",
+      "elapsed_s": 25.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202940,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-078-root_usage_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 25.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202941,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-078-root_usage_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 24.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202942,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-078-root_usage_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 25.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202943,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-079-iam_policy_changes_alarm_exist/green",
+      "outcome": "success",
+      "elapsed_s": 24.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202944,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-079-iam_policy_changes_alarm_exist/red",
+      "outcome": "success",
+      "elapsed_s": 24.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202945,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-079-iam_policy_changes_alarm_exist/red1",
+      "outcome": "success",
+      "elapsed_s": 24.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202946,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-080-cloudtrail_configuration_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202947,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-080-cloudtrail_configuration_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202948,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-080-cloudtrail_configuration_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 24.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202949,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-081-console_auth_failure_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 25.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202950,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-081-console_auth_failure_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202951,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-081-console_auth_failure_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 24.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202952,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-082-cmk_key_disabling_or_deletion_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202953,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-082-cmk_key_disabling_or_deletion_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 24.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202954,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-082-cmk_key_disabling_or_deletion_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 26.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202977,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-094-s3_bucket_policy_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 27.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202978,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-094-s3_bucket_policy_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202979,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-094-s3_bucket_policy_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 24.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202980,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-095-aws_config_configuration_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 26.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202981,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-095-aws_config_configuration_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 24.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202982,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-095-aws_config_configuration_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 26.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202983,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-096-security_group_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 26.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202984,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-096-security_group_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202985,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-096-security_group_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 26.4,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202986,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-097-network_access_control_lists_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 26.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202987,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-097-network_access_control_lists_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 24.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202988,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-097-network_access_control_lists_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 24.5,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202989,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-098-network_gateways_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.2,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202990,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-098-network_gateways_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 23.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202991,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-098-network_gateways_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 23.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202992,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-099-route_table_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202993,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-099-route_table_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 24.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202994,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-099-route_table_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 24.8,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202995,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-100-vpc_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 25.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202996,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-100-vpc_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 202997,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-100-vpc_changes_alarm_exists/red1",
+      "outcome": "success",
+      "elapsed_s": 23.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203086,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-145-organizations_changes_alarm_exists/green",
+      "outcome": "success",
+      "elapsed_s": 24.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203087,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-145-organizations_changes_alarm_exists/red",
+      "outcome": "success",
+      "elapsed_s": 25.3,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203424,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-309-config_delivery_failed/green",
+      "outcome": "success",
+      "elapsed_s": 3.1,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203425,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-309-config_delivery_failed/red",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203473,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/green",
+      "outcome": "success",
+      "elapsed_s": 6.7,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203474,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/green1",
+      "outcome": "success",
+      "elapsed_s": 11.9,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203475,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-334-kinesis_firehose_delivery_streams_encrypted_using_SSE/red",
+      "outcome": "success",
+      "elapsed_s": 6.6,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203607,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-399-codebuild_without_tag_information/green",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    },
+    {
+      "module_id": 203608,
+      "repo_id": 644001193,
+      "path": "terraform/ecc-aws-399-codebuild_without_tag_information/red",
+      "outcome": "success",
+      "elapsed_s": 3.0,
+      "error_snippet": ""
+    }
+  ]
+}
