@@ -691,8 +691,6 @@ func (g *Generator) buildConfigFacts() string {
 	return sb.String()
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 func actionLevelFacts(action string) (bucketLevel string, objectLevel string) {
 	switch action {
 	case "S3_ListBucket":

@@ -1,9 +1,5 @@
-// Package analyzer integrates with the Alloy model checker to formally verify
-// the generated .als specification. It invokes the Alloy jar via the Java CLI
-// and parses the check-result output.
-//
-// The Alloy jar is expected at tools/org.alloytools.alloy.dist.jar relative to
-// the running binary.
+// Package analyzer runs Alloy checks on generated .als files.
+// The Alloy jar is expected at tools/org.alloytools.alloy.dist.jar.
 package analyzer
 
 import (
@@ -17,14 +13,10 @@ import (
 )
 
 type CheckResult struct {
-	// Name is the assertion name passed to the check command.
-	Name string
-	// Valid is true when Alloy found no counterexample (assertion holds).
-	Valid bool
-	// HasCounterExample is true when Alloy found a counterexample.
+	Name              string
+	Valid             bool // true = no counterexample (assertion holds)
 	HasCounterExample bool
-	// RawOutput is the raw Alloy output lines for this check.
-	RawOutput string
+	RawOutput         string
 }
 
 // Analyzer runs Alloy checks on a generated .als file.
@@ -41,9 +33,6 @@ func New() *Analyzer {
 	}
 }
 
-// bundledJarPath returns the path to the Alloy jar bundled in tools/.
-// It checks next to the binary first, then relative to the working directory
-// (the latter covers `go run` and development workflows).
 func bundledJarPath() string {
 	const rel = "tools/org.alloytools.alloy.dist.jar"
 
@@ -78,7 +67,6 @@ func (a *Analyzer) Available() bool {
 func (a *Analyzer) JarPath() string { return a.jarPath }
 
 // Check runs all `check` commands in specFile and returns one CheckResult per command.
-// Returns an error only when the Alloy process cannot be started.
 func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	if !a.Available() {
 		return nil, fmt.Errorf("alloy not available")
@@ -86,7 +74,6 @@ func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 
 	output, err := runAlloy(a.javaPath, a.jarPath, specFile)
 
-	// Clean up the output directory Alloy creates (e.g. "output4.als" → "output4/").
 	defer cleanupAlloyOutput(specFile)
 
 	if err != nil {
@@ -101,7 +88,6 @@ func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	return results, nil
 }
 
-// cleanupAlloyOutput removes the directory Alloy creates next to the spec file.
 func cleanupAlloyOutput(specFile string) {
 	base := strings.TrimSuffix(filepath.Base(specFile), filepath.Ext(specFile))
 	dir := filepath.Join(filepath.Dir(specFile), base)
@@ -133,7 +119,6 @@ func parseOutput(raw string) []CheckResult {
 }
 
 func runAlloy(javaPath, jarPath, specFile string) (string, error) {
-	// -f overwrites the output directory if it already exists from a prior run.
 	cmd := exec.Command(javaPath, "-jar", jarPath, "exec", "-f", specFile)
 	out, err := cmd.CombinedOutput()
 	return string(out), err

@@ -191,7 +191,6 @@ type TemplateData struct {
 	Checks                []Check
 }
 
-// RenderTemplate renders the Alloy template to w.
 func RenderTemplate(w io.Writer, data *TemplateData) error {
 	funcMap := template.FuncMap{
 		"join": strings.Join,
@@ -223,47 +222,4 @@ type ConfigFact struct {
 	Resource string
 	Field    string
 	Value    string
-}
-
-// BucketFacts holds Alloy facts for an S3 bucket.
-type BucketFacts struct {
-	TFName                string
-	EnvTag                string
-	BlockPublicACLs       string
-	IgnorePublicACLs      string
-	BlockPublicPolicy     string
-	RestrictPublicBuckets string
-}
-
-// BucketPolicyFacts holds Alloy facts for a bucket policy.
-type BucketPolicyFacts struct {
-	TFName         string
-	Bucket         string
-	DenyAllExcept  string
-	AllowPrincipal string
-	AllowActions   string
-	DenyActions    string
-	DenyPrincipal  string
-	AbacCondition  string
-	DependsOn      string
-}
-
-// RoleFacts holds Alloy facts for an IAM role.
-type RoleFacts struct {
-	TFName               string
-	EnvTag               string
-	HasRolePolicy        string
-	RoleAllowActions     string
-	HasBoundary          string
-	BoundaryActions      string
-	HasSessionPolicy     string
-	SessionPolicyActions string
-}
-
-// OrgPolicyFacts holds Alloy facts for an RCP or SCP.
-type OrgPolicyFacts struct {
-	TFName        string
-	SigPrefix     string // "rcp_" or "scp_"
-	AllowActionsF string
-	DenyActionsF  string
 }

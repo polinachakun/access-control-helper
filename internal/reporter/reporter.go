@@ -14,7 +14,7 @@ import (
 
 const (
 	sectionWidth = 62
-	colHeader    = 38 // width of the "Layer N — Name:" column
+	colHeader    = 38
 )
 
 // LayerInfo holds the status of a single evaluation layer for one triple.
@@ -33,7 +33,6 @@ type TripleResult struct {
 	AdditionalFindings []string
 	Layers             [7]LayerInfo
 
-	// Set for CONDITIONAL_ALLOW: the policy granting access and its conditions.
 	AllowedBy  string
 	Conditions []ir.Condition
 }
@@ -130,7 +129,6 @@ func deniedAtDescription(layers [7]LayerInfo) (string, []string) {
 	l4ng := layers[3].Status == "NOT GRANTED"
 	l5ng := layers[4].Status == "NOT GRANTED"
 
-	// blocking layers first
 	for _, idx := range []int{0, 1, 2, 5, 6} {
 		if layers[idx].Status == "DENY" {
 			if l4ng && l5ng {

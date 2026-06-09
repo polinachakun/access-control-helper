@@ -201,17 +201,3 @@ func TestBoolToAlloy(t *testing.T) {
 		t.Error("BoolToAlloy(false) should be False")
 	}
 }
-
-func TestNormalizeActions_DeduplicatesAndConverts(t *testing.T) {
-	got := generator.NormalizeActions([]string{"s3:GetObject", "s3:GetObject", "s3:PutObject"})
-	if len(got) != 2 {
-		t.Fatalf("expected 2 unique actions, got %d: %v", len(got), got)
-	}
-}
-
-func TestNormalizeActions_SkipsBareWildcard(t *testing.T) {
-	got := generator.NormalizeActions([]string{"*", "s3:GetObject"})
-	if len(got) != 1 {
-		t.Fatalf("expected 1 (bare * skipped), got %d: %v", len(got), got)
-	}
-}

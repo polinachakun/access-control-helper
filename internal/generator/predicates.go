@@ -201,7 +201,6 @@ var LayerPredicates = []LayerPredicateInfo{
 	{"_L7", "sessionPolicyAllows[req]", "Layer 7: Session policy allows", "blocking"},
 }
 
-// PrincipalEntry holds the display name and the Alloy sig name for a principal.
 type PrincipalEntry struct {
 	Name             string
 	SigName          string
@@ -210,21 +209,18 @@ type PrincipalEntry struct {
 
 // TripleKey maps a base assertion name back to its human-readable components.
 type TripleKey struct {
-	Principal         string
-	Bucket            string
-	Action            string
-	AssertionBaseName string
-	HasSessionPolicy  bool
-	PrincipalDisplay  string
-	BucketDisplay     string
-
-	// Set when a bucket policy grants this triple conditionally
+	Principal                  string
+	Bucket                     string
+	Action                     string
+	AssertionBaseName          string
+	HasSessionPolicy           bool
+	PrincipalDisplay           string
+	BucketDisplay              string
 	HasConditionalAllow        bool
 	ConditionalAllowConditions []ir.Condition
 	ConditionalAllowedBy       string
 }
 
-// BuildTripleKeys computes a TripleKey for every (role, bucket, action) combination.
 func BuildTripleKeys(roleNames, bucketNames, actionNames []string) []TripleKey {
 	principals := make([]PrincipalEntry, len(roleNames))
 	for i, r := range roleNames {
@@ -233,7 +229,6 @@ func BuildTripleKeys(roleNames, bucketNames, actionNames []string) []TripleKey {
 	return BuildTripleKeysFromPrincipals(principals, bucketNames, actionNames)
 }
 
-// BuildTripleKeysFromPrincipals computes a TripleKey for every (principal, bucket, action) combination.
 func BuildTripleKeysFromPrincipals(principals []PrincipalEntry, bucketNames, actionNames []string) []TripleKey {
 	var keys []TripleKey
 	for _, p := range principals {
@@ -253,7 +248,6 @@ func BuildTripleKeysFromPrincipals(principals []PrincipalEntry, bucketNames, act
 	return keys
 }
 
-// tripleBaseName returns the PascalCase assertion base name for a triple.
 func tripleBaseName(role, bucket, action string) string {
 	return toPascalCase(role) +
 		"Can" + toPascalCase(trimPrefix(action, "S3_")) +
@@ -270,7 +264,6 @@ func GenerateAccessAssertions(roleNames, bucketNames, actionNames []string) []As
 	return GenerateAccessAssertionsForPrincipals(principals, bucketNames, actionNames)
 }
 
-// GenerateAccessAssertionsForPrincipals creates 8 assertions per (principal, bucket, action) triple.
 func GenerateAccessAssertionsForPrincipals(principals []PrincipalEntry, bucketNames, actionNames []string) []Assertion {
 	var assertions []Assertion
 	for _, p := range principals {
@@ -305,7 +298,6 @@ func GenerateAccessAssertionsForPrincipals(principals []PrincipalEntry, bucketNa
 	return assertions
 }
 
-// GenerateChecks returns check commands for the given assertions with the given scope.
 func GenerateChecks(scope string, assertions []Assertion) []Check {
 	checks := make([]Check, len(assertions))
 	for i, a := range assertions {
@@ -314,7 +306,6 @@ func GenerateChecks(scope string, assertions []Assertion) []Check {
 	return checks
 }
 
-// toPascalCase converts a snake_case or camelCase string to PascalCase.
 func toPascalCase(s string) string {
 	parts := strings.Split(s, "_")
 	for i, p := range parts {
@@ -323,7 +314,6 @@ func toPascalCase(s string) string {
 	return strings.Join(parts, "")
 }
 
-// capitalizeFirst uppercases the first character of s.
 func capitalizeFirst(s string) string {
 	if s == "" {
 		return s
@@ -331,12 +321,6 @@ func capitalizeFirst(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// stripUnderscores removes underscores from s.
-func stripUnderscores(s string) string {
-	return strings.ReplaceAll(s, "_", "")
-}
-
-// trimPrefix removes a leading prefix if present.
 func trimPrefix(s, prefix string) string {
 	return strings.TrimPrefix(s, prefix)
 }

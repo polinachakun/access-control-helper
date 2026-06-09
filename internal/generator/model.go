@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// AlloyModel represents the complete Alloy specification.
 type AlloyModel struct {
 	Header            string
 	TypeDefinitions   []TypeDef
@@ -20,7 +19,6 @@ type AlloyModel struct {
 	Checks            []Check
 }
 
-// TypeDef represents an Alloy type definition.
 type TypeDef struct {
 	Name     string
 	Abstract bool
@@ -28,7 +26,6 @@ type TypeDef struct {
 	Sigs     []string // For "one sig X, Y extends Parent {}"
 }
 
-// Signature represents an Alloy signature.
 type Signature struct {
 	Name     string
 	Abstract bool
@@ -37,20 +34,17 @@ type Signature struct {
 	Fields   []Field
 }
 
-// Field represents a field in an Alloy signature.
 type Field struct {
 	Name         string
 	Type         string
 	Multiplicity string // "one", "lone", "set", "seq"
 }
 
-// ConcreteResource represents a concrete Alloy signature.
 type ConcreteResource struct {
 	Name    string
 	Extends string
 }
 
-// Predicate represents an Alloy predicate.
 type Predicate struct {
 	Name    string
 	Params  []string
@@ -58,14 +52,12 @@ type Predicate struct {
 	Comment string
 }
 
-// Assertion represents an Alloy assertion.
 type Assertion struct {
 	Name    string
 	Body    string
 	Comment string
 }
 
-// Check represents an Alloy check command.
 type Check struct {
 	AssertionName string
 	Scope         string
@@ -82,8 +74,6 @@ func HasWildcardActions(actions []string) bool {
 }
 
 // ExpandAnalyzableActions filters a list of IAM action strings to explicit S3 actions only.
-// Wildcards (e.g. s3:*) are skipped — callers should check HasWildcardActions separately
-// and treat wildcard presence as granting/denying all actions in the model universe.
 func ExpandAnalyzableActions(actions []string) []string {
 	seen := make(map[string]bool)
 	var result []string
@@ -97,7 +87,7 @@ func ExpandAnalyzableActions(actions []string) []string {
 		parts := strings.SplitN(a, ":", 2)
 		if len(parts) == 2 {
 			service := strings.ToLower(parts[0])
-			// Skip wildcard actions — handled by HasWildcardActions at call sites.
+			// Skip wildcard actions.
 			if strings.Contains(parts[1], "*") {
 				continue
 			}
@@ -116,7 +106,6 @@ func ExpandAnalyzableActions(actions []string) []string {
 	return result
 }
 
-// HumanAction converts Alloy action IDs back to IAM-like syntax for reporting.
 func HumanAction(action string) string {
 	parts := strings.SplitN(action, "_", 2)
 	if len(parts) != 2 {
@@ -127,12 +116,9 @@ func HumanAction(action string) string {
 
 // AlloyID converts a Terraform name to a valid Alloy identifier.
 func AlloyID(name string) string {
-	// Replace hyphens with underscores
 	name = strings.ReplaceAll(name, "-", "_")
-	// Remove any characters that aren't alphanumeric or underscore
 	re := regexp.MustCompile(`[^a-zA-Z0-9_]`)
 	name = re.ReplaceAllString(name, "")
-	// Ensure it starts with a letter
 	if len(name) > 0 && (name[0] >= '0' && name[0] <= '9') {
 		name = "r_" + name
 	}
@@ -150,7 +136,6 @@ func TagToAlloyID(tag string) string {
 
 // VpceToAlloyID converts a VPCE ID to an Alloy identifier.
 func VpceToAlloyID(vpce string) string {
-	// vpce-0a1b2c3d -> VPCE_0A1B2C3D
 	vpce = strings.ToUpper(vpce)
 	vpce = strings.ReplaceAll(vpce, "-", "_")
 	re := regexp.MustCompile(`[^A-Z0-9_]`)
@@ -158,14 +143,12 @@ func VpceToAlloyID(vpce string) string {
 	return vpce
 }
 
-// ActionToAlloyID converts an IAM action to an Alloy identifier.
+// ActionToAlloyID converts an IAM action to an Alloy identifier (s3:GetObject → S3_GetObject).
 func ActionToAlloyID(action string) string {
-	// s3:GetObject -> S3_GetObject
 	parts := strings.SplitN(action, ":", 2)
 	if len(parts) == 2 {
 		service := strings.ToUpper(parts[0])
 		op := parts[1]
-		// Handle wildcards
 		if op == "*" {
 			return service + "_All"
 		}
@@ -174,28 +157,6 @@ func ActionToAlloyID(action string) string {
 	return strings.ReplaceAll(action, ":", "_")
 }
 
-// NormalizeActions extracts unique action names from various formats.
-func NormalizeActions(actions []string) []string {
-	seen := make(map[string]bool)
-	var result []string
-
-	for _, a := range actions {
-		// Handle wildcards
-		if a == "*" {
-			continue // Skip full wildcards
-		}
-
-		id := ActionToAlloyID(a)
-		if !seen[id] {
-			seen[id] = true
-			result = append(result, id)
-		}
-	}
-
-	return result
-}
-
-// BoolToAlloy converts a Go bool to an Alloy Bool reference.
 func BoolToAlloy(b bool) string {
 	if b {
 		return "True"
@@ -203,7 +164,6 @@ func BoolToAlloy(b bool) string {
 	return "False"
 }
 
-// FormatAlloySet formats a slice as an Alloy set expression.
 func FormatAlloySet(items []string) string {
 	if len(items) == 0 {
 		return "none"
