@@ -269,7 +269,7 @@ func (r *Reporter) Summary(results []*TripleResult) {
 		fmt.Fprintf(r.w, "Note: Unlisted S3 actions are DENY at %s\n", r.fate.BlockingLayer)
 		fmt.Fprintf(r.w, "      (%s).\n", r.fate.BlockingReason)
 	default:
-		fmt.Fprintln(r.w, "Note: Unlisted S3 actions are ALLOW (s3:* grant passes all layers unrestricted).")
+		fmt.Fprintln(r.w, "Note: Unlisted S3 actions are ALLOW — all evaluation layers passed.")
 	}
 	fmt.Fprintln(r.w)
 }

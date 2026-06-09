@@ -243,6 +243,7 @@ func (g *Generator) collectValues() {
 		}
 		if len(ExpandAnalyzableActions(r.RoleNotActions)) > 0 {
 			addAllExplicitActions()
+			g.addWildcardLayer("Layer 5 (identity policy)")
 		}
 		if HasWildcardActions(r.BoundaryActions) {
 			g.addWildcardLayer("Layer 6 (permission boundary)")
@@ -267,6 +268,7 @@ func (g *Generator) collectValues() {
 		}
 		if len(ExpandAnalyzableActions(u.UserNotActions)) > 0 {
 			addAllExplicitActions()
+			g.addWildcardLayer("Layer 5 (identity policy)")
 		}
 		if HasWildcardActions(u.BoundaryActions) {
 			g.addWildcardLayer("Layer 6 (permission boundary)")
