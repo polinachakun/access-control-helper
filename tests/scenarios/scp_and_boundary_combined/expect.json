@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "name": "scp_and_boundary_combined",
+  "queries": [
+    {
+      "principal": "restricted-role",
+      "bucket": "data-bucket",
+      "action": "S3_GetObject",
+      "decision": "ALLOW",
+      "denied_at": null,
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "restricted-role",
+      "bucket": "data-bucket",
+      "action": "S3_PutObject",
+      "decision": "DENY",
+      "denied_at": "Layer 3",
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "DENY",
+        "L4": "PASS",
+        "L5": "PASS",
+        "L6": "DENY",
+        "L7": "NOT APPLICABLE"
+      }
+    }
+  ]
+}

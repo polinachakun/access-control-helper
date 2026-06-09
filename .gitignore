@@ -48,7 +48,8 @@ access-control-helper
 # ── Temp directories (created by eval script and manual testing) ──────────────
 /tmp/
 /tmp*/
-/test*/
+/test[0-9]*/
+/test_*/
 /svc_test/
 /main/
 
