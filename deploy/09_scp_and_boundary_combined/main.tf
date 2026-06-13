@@ -7,21 +7,31 @@ terraform {
   }
 }
 
+# Management account — Organizations resources (SCP) only
 provider "aws" {
   region = var.aws_region
 }
 
-data "aws_caller_identity" "current" {}
-
-locals {
-  effective_target_id = var.target_id != "" ? var.target_id : data.aws_caller_identity.current.account_id
-  sfx                 = var.suffix != "" ? "-${var.suffix}" : ""
+# Member account — IAM role, boundary, and S3 bucket live here so SCP applies
+provider "aws" {
+  alias  = "member"
+  region = var.aws_region
+  assume_role {
+    role_arn = "arn:aws:iam::${var.target_id}:role/OrganizationAccountAccessRole"
+  }
 }
 
-# ── Permission Boundary ───────────────────────────────────────────────────────
+data "aws_caller_identity" "management" {}
+
+locals {
+  sfx = var.suffix != "" ? "-${var.suffix}" : ""
+}
+
+# ── Permission Boundary (member account) ──────────────────────────────────────
 
 resource "aws_iam_policy" "boundary_get_only" {
-  name = "boundary-get-only${local.sfx}"
+  provider = aws.member
+  name     = "boundary-get-only${local.sfx}"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -33,25 +43,33 @@ resource "aws_iam_policy" "boundary_get_only" {
   })
 }
 
-# ── IAM Role (boundary + full identity policy) ────────────────────────────────
+# ── IAM Role (member account) ────────────────────────────────────────────────
 
 resource "aws_iam_role" "restricted_role" {
-  name = "restricted-role${local.sfx}"
+  provider             = aws.member
+  name                 = "restricted-role${local.sfx}"
+  permissions_boundary = aws_iam_policy.boundary_get_only.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { Service = "ec2.amazonaws.com" }
+      },
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.management.account_id}:root" }
+      }
+    ]
   })
-
-  permissions_boundary = aws_iam_policy.boundary_get_only.arn
 }
 
 resource "aws_iam_policy" "s3_full" {
-  name = "s3-full-access${local.sfx}"
+  provider = aws.member
+  name     = "s3-full-access${local.sfx}"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -64,13 +82,15 @@ resource "aws_iam_policy" "s3_full" {
 }
 
 resource "aws_iam_role_policy_attachment" "attach_full" {
+  provider   = aws.member
   role       = aws_iam_role.restricted_role.name
   policy_arn = aws_iam_policy.s3_full.arn
 }
 
-# ── S3 Bucket ────────────────────────────────────────────────────────────────
+# ── S3 Bucket (member account) ───────────────────────────────────────────────
 
 resource "aws_s3_bucket" "data_bucket" {
+  provider      = aws.member
   bucket        = "data-bucket${local.sfx}"
   force_destroy = true
 }
@@ -95,5 +115,5 @@ resource "aws_organizations_policy" "scp_no_put" {
 
 resource "aws_organizations_policy_attachment" "scp_attach" {
   policy_id = aws_organizations_policy.scp_no_put.id
-  target_id = local.effective_target_id
+  target_id = var.target_id
 }

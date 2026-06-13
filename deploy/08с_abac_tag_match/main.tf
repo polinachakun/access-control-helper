@@ -10,13 +10,10 @@ provider "aws" {
 
 locals {
   sfx = var.suffix != "" ? "-${var.suffix}" : ""
-  # VPC endpoint ID used in the bucket policy condition.
-  # Replace with a real vpce-* ID from your VPC before applying.
-  vpce_id = "vpce-0a1b2c3d"
 }
 
 resource "aws_iam_role" "developer" {
-  name = "developer${local.sfx}"
+  name = "developer-c${local.sfx}"
 
   tags = {
     environment = "dev"
@@ -24,20 +21,43 @@ resource "aws_iam_role" "developer" {
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { Service = "ec2.amazonaws.com" }
+      },
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { AWS = "arn:aws:iam::184789577674:user/polina" }
+      }
+    ]
+  })
+}
+
+# Minimal inline policy so the IAM Policy Simulator can use this role as a caller.
+# Does NOT grant S3 — access to S3 comes solely from the bucket policy ABAC condition.
+resource "aws_iam_role_policy" "minimal" {
+  name = "allow-get-caller-identity${local.sfx}"
+  role = aws_iam_role.developer.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
     Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "ec2.amazonaws.com" }
+      Effect   = "Allow"
+      Action   = "sts:GetCallerIdentity"
+      Resource = "*"
     }]
   })
 }
 
 resource "aws_s3_bucket" "data" {
-  bucket        = "my-data-bucket${local.sfx}"
+  bucket        = "my-data-bucket-c${local.sfx}"
   force_destroy = true
 
   tags = {
-    environment = "prod"
+    environment = "dev"
   }
 }
 
@@ -48,18 +68,6 @@ resource "aws_s3_bucket_policy" "data" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "DenyWithoutVPCE"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "s3:*"
-        Resource  = [aws_s3_bucket.data.arn, "${aws_s3_bucket.data.arn}/*"]
-        Condition = {
-          StringNotEquals = {
-            "aws:SourceVpce" = local.vpce_id
-          }
-        }
-      },
-      {
         Sid       = "AllowRoleAccessIfTagsMatch"
         Effect    = "Allow"
         Principal = { AWS = aws_iam_role.developer.arn }
@@ -67,7 +75,7 @@ resource "aws_s3_bucket_policy" "data" {
         Resource  = [aws_s3_bucket.data.arn, "${aws_s3_bucket.data.arn}/*"]
         Condition = {
           StringEquals = {
-            "aws:PrincipalTag/environment" = "prod"
+            "aws:PrincipalTag/environment" = "dev"
           }
         }
       }

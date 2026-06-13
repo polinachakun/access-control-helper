@@ -7,29 +7,47 @@ terraform {
   }
 }
 
+# Management account — Organizations resources (RCP) only
 provider "aws" {
   region = var.aws_region
 }
 
-data "aws_caller_identity" "current" {}
-
-locals {
-  effective_target_id = var.target_id != "" ? var.target_id : data.aws_caller_identity.current.account_id
-  sfx                 = var.suffix != "" ? "-${var.suffix}" : ""
+# Member account — S3 bucket lives here so RCP actually applies to it.
+# RCPs restrict resources in the attached account regardless of caller identity.
+provider "aws" {
+  alias  = "member"
+  region = var.aws_region
+  assume_role {
+    role_arn = "arn:aws:iam::${var.target_id}:role/OrganizationAccountAccessRole"
+  }
 }
 
-# ── IAM Role ────────────────────────────────────────────────────────────────
+data "aws_caller_identity" "management" {}
+
+locals {
+  sfx = var.suffix != "" ? "-${var.suffix}" : ""
+}
+
+# ── IAM Role (management account) ───────────────────────────────────────────
+# RCP applies to the resource (bucket), not the identity, so role can stay here.
 
 resource "aws_iam_role" "app_role" {
   name = "app-role${local.sfx}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { Service = "ec2.amazonaws.com" }
+      },
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.management.account_id}:root" }
+      }
+    ]
   })
 }
 
@@ -51,15 +69,18 @@ resource "aws_iam_role_policy_attachment" "attach" {
   policy_arn = aws_iam_policy.s3_full.arn
 }
 
-# ── S3 Bucket ────────────────────────────────────────────────────────────────
+# ── S3 Bucket (member account) ───────────────────────────────────────────────
+# Bucket must be in member account so the RCP attached to it takes effect.
 
 resource "aws_s3_bucket" "my_bucket" {
+  provider      = aws.member
   bucket        = "my-bucket${local.sfx}"
   force_destroy = true
 }
 
 resource "aws_s3_bucket_policy" "allow_role" {
-  bucket = aws_s3_bucket.my_bucket.id
+  provider = aws.member
+  bucket   = aws_s3_bucket.my_bucket.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -67,7 +88,7 @@ resource "aws_s3_bucket_policy" "allow_role" {
       Effect    = "Allow"
       Principal = { AWS = aws_iam_role.app_role.arn }
       Action    = "s3:*"
-      Resource  = [
+      Resource = [
         aws_s3_bucket.my_bucket.arn,
         "${aws_s3_bucket.my_bucket.arn}/*"
       ]
@@ -75,9 +96,7 @@ resource "aws_s3_bucket_policy" "allow_role" {
   })
 }
 
-# ── RCP: deny s3:DeleteObject ─────────────────────────────────────────────
-# Resource Control Policies (RCPs) apply to resource-based access regardless
-# of the calling identity. Requires AWS Organizations.
+# ── RCP: deny s3:DeleteObject ─────────────────────────────────────────────────
 
 resource "aws_organizations_policy" "rcp_no_delete" {
   name = "deny-s3-delete${local.sfx}"
@@ -86,14 +105,15 @@ resource "aws_organizations_policy" "rcp_no_delete" {
   content = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Deny"
-      Action   = "s3:DeleteObject"
-      Resource = "*"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:DeleteObject"
+      Resource  = "*"
     }]
   })
 }
 
 resource "aws_organizations_policy_attachment" "rcp_attach" {
   policy_id = aws_organizations_policy.rcp_no_delete.id
-  target_id = local.effective_target_id
+  target_id = var.target_id
 }

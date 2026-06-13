@@ -5,9 +5,13 @@ variable "aws_region" {
 }
 
 variable "target_id" {
-  description = "Organizations target for SCP attachment: account ID (12 digits) or OU ID (ou-xxxx-xxxxxxxx). Defaults to the current account."
+  description = "Member account ID (12 digits) to deploy IAM/S3 resources in and attach SCP to. Required — management account is exempt from SCPs."
   type        = string
-  default     = ""
+
+  validation {
+    condition     = var.target_id != ""
+    error_message = "target_id must be set to a member account ID. Management account is exempt from SCPs."
+  }
 }
 
 variable "suffix" {
