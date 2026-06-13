@@ -35,6 +35,7 @@ L7  Session Policies           → must have Allow if present, else DENY → ALL
 
 Key semantic rules the tool encodes:
 - Within the same account, L4 and L5 grant paths are **union** — either one is sufficient.
+- Cross-account principals require **both** L4 and L5 to grant (intersection); detected via assume-role ARN patterns.
 - A failed `Condition` in an Allow statement is **not** an explicit deny — the statement simply does not apply.
 - S3 actions apply at different resource levels: some target the bucket itself, others target objects within it. Policies must match accordingly.
 - Actions not mentioned in any policy are **implicitly denied** (AWS default).
@@ -99,9 +100,9 @@ access-control-helper/
 ├── evaluation/
 │   ├── evaluate.py                # TerraDS dataset evaluation (phases 1–3)
 │   ├── results/                   # Phase JSON results
-│   └── scalability/               # Go benchmark + plots for scaling analysis
-├── deploy/                        # 10 deployable Terraform scenarios for live parity
-│   └── validate_all.sh            # Generates aws iam simulate-principal-policy commands
+│   ├── scalability/               # Go benchmark + plots for scaling analysis
+│   └── manual_verification/       # 10+ deployable Terraform scenarios for live parity
+│       └── validate_all.sh        # Generates aws iam simulate-principal-policy commands
 └── doc/
 ```
 
@@ -127,7 +128,8 @@ access-control-helper/
 - Managed policy attachment resolution (`aws_iam_policy` via `aws_iam_role_policy_attachment`)
 
 **Policy semantics:**
-- Explicit deny (L1), RCP (L2), SCP (L3), resource-based (L4), identity-based (L5), permission boundary (L6)
+- Explicit deny (L1), RCP (L2), SCP (L3), resource-based (L4), identity-based (L5), permission boundary (L6), session policy (L7)
+- Session policy (L7) always passes in Terraform analysis: session policy content is a runtime `sts:AssumeRole` parameter, not present in Terraform source; shown as `NOT APPLICABLE` in reports
 - Bucket-scoped identity grants (`IdentityAllowActionsPerBucket`) and boundary scoping per bucket
 - `NotAction` in Allow/Deny statements (correctly modeled as implicit deny for excluded actions at L5)
 - ABAC tag conditions (`aws:PrincipalTag/environment`) — tag-match and tag-mismatch produce distinct L4 outcomes
@@ -136,10 +138,9 @@ access-control-helper/
 - Unrecognized condition operators → `CONDITIONAL_ALLOW` (noted but not modeled)
 
 **S3 actions:**
-- 4 primary analyzed actions: `s3:GetObject` (object-level), `s3:PutObject` (object-level), `s3:DeleteObject` (object-level), `s3:ListBucket` (bucket-level)
-- All known S3 actions classified by resource level (bucket vs object ARN) in `actionLevelFacts`
+- Any explicit S3 action in the configuration is analyzed; `actionLevelFacts` in `generator.go` classifies all known S3 actions by resource level (bucket vs object ARN)
 - Actions absent from configuration → implicit deny (no triple generated, consistent with AWS default)
-- Wildcard actions (`s3:*`) → full Alloy `Action` universe; the tool reports whether unlisted actions would be blocked by a bounding layer
+- Wildcard actions (`s3:*`) → full Alloy `Action` universe; the tool determines whether unlisted actions would be blocked by explicit deny (L1), RCP (L2), SCP (L3), or permission boundary (L6)
 
 **Validation and diagnostics:**
 - `Config.Validate()` — structural checks (no buckets, no principals, empty policy attachments, public exposure risk)
@@ -150,3 +151,36 @@ access-control-helper/
 - Alloy 6 (`alloytools.org`, formal verification),
 - Python 3 + SQLite (dataset evaluation),
 - Python matplotlib (benchmark plots).
+
+---
+
+## Output vocabulary
+
+### Final verdict (per triple)
+
+| Verdict | Meaning |
+|---------|---------|
+| `ALLOW` | All evaluation layers passed; access is granted |
+| `DENY` | At least one layer blocked or no grant path exists |
+| `CONDITIONAL_ALLOW` | A bucket policy Allow statement matches but carries unrecognized conditions; access depends on runtime context not available in Terraform source |
+
+### Layer status (per layer, per triple)
+
+| Status | Applies to | Meaning |
+|--------|-----------|---------|
+| `PASS` | L1, L2, L3, L4, L5, L6, L7 | Layer did not block; for L4/L5: a grant was found |
+| `DENY` | L1, L2, L3, L6 | This layer explicitly blocked access |
+| `NOT GRANTED` | L4, L5 | No applicable Allow statement found at this layer |
+| `NOT APPLICABLE` | L7 | Session policy layer not relevant (always the case in Terraform analysis) |
+
+### Denied at (location of the blocking layer)
+
+| Value | Cause |
+|-------|-------|
+| `Layer 1` | Explicit Deny statement in bucket policy or identity policy |
+| `Layer 2` | RCP does not allow the action |
+| `Layer 3` | SCP does not allow the action |
+| `Layer 4/5` | No grant from either resource-based or identity-based policy |
+| `Layer 4` | Identity policy grants but resource policy does not (cross-account only) |
+| `Layer 5` | Resource policy grants but identity policy does not (cross-account only) |
+| `Layer 6` | Permission boundary does not allow the action |

@@ -215,19 +215,6 @@ When using `--strategy random`, the sample is deterministic (seed=42): phase2 an
 
 ---
 
-## Manual Verification (AWS deploy)
-
-Real Terraform configs for deploying each scenario to AWS and validating decisions with `aws iam simulate-principal-policy`. See [`deploy/README.md`](deploy/README.md) for details.
-
-```bash
-# Policy Simulator scenarios (L1/L4/L5/L6)
-./deploy/validate_all.sh 01 mysuffix
-
-# SCP/RCP scenarios (L2/L3) — requires AWS Organizations
-./deploy/validate_all.sh 04 mysuffix <account-id-or-ou-id>
-```
-
----
 
 ## Scalability Tests
 

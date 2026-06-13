@@ -1,573 +1,130 @@
 # Tests Strategy
 
-## Purpose
+## Overview
 
-This document defines the testing strategy for `access-control-helper`.
+The test suite validates the full pipeline end-to-end:
 
-The goal of the test suite is to validate the full analysis pipeline:
+`.tf` → parser → resolver → IR → Alloy spec → analyzer → reporter
 
-`Terraform -> parser -> resolver -> IR -> Alloy -> analyzer -> reporter`
-
-The suite must provide confidence in two complementary dimensions:
-
-1. **Implementation correctness**  
-   The tool must correctly parse Terraform, build the internal model, generate Alloy, interpret Alloy results, and produce the expected access-control report.
-
-2. **Scenario correctness**  
-   The Terraform fixtures used in tests must represent realistic AWS S3 access-control situations, and the expected results must reflect the access-control model implemented by this project.
-
-This strategy is intended to scale from a few scenarios to many scenarios (at least 100) without turning the repository into a collection of fragile, ad hoc golden files.
+| Test type | Location | Count |
+|-----------|----------|-------|
+| Scenario-based e2e tests | `tests/e2e_scenarios_test.go` | 12 scenarios (14 folders) |
+| Reporter snapshot tests | `tests/reporter_snapshot_test.go` | 5 golden files |
+| Package-level unit tests | `tests/unit/` | 11 test files |
+| Deployable live parity | `evaluation/manual_verification/` | 10 configurations |
 
 ---
 
-## Testing Goals
+## Structure
 
-The test suite should provide confidence that:
-
-- Terraform fixtures are valid and runnable as Terraform configurations.
-- The parser and resolver correctly derive the intended configuration state.
-- The IR correctly represents principals, buckets, policies, actions, resources, and conditions.
-- The Alloy generator produces the expected formal model.
-- Alloy checks the intended access properties for each `(principal, bucket, action)` triple.
-- The reporter reconstructs final decisions and layer-by-layer statuses correctly.
-- The tool distinguishes correctly between:
-  - explicit deny,
-  - missing grant paths,
-  - resource/action mismatches,
-  - permission-boundary restrictions,
-  - and other relevant policy-layer effects.
-
----
-
-## Current Scope
-
-At the moment, the repository contains a `tests/` folder with four scenario-based tests.
-
-This is a good starting point, but the current structure does not scale well if the number of scenarios grows significantly. In particular:
-
-- generated Alloy outputs should not be stored as numbered files in the repository,
-- semantic expectations should not be expressed only through text snapshots,
-- and it should be possible to add new scenarios without duplicating test logic.
-
-This document defines the target structure and implementation plan.
-
----
-
-## Guiding Principles
-
-The following principles guide the design of the test suite:
-
-1. **Test the full pipeline, not isolated text output only.**  
-   The main value of the project lies in the full transformation from Terraform to a formal access-control decision.
-
-2. **Separate semantic truth from textual formatting.**  
-   Structured expectations should define whether a scenario is correct. Golden files should only protect human-readable formatting.
-
-3. **Keep scenarios easy to add.**  
-   Adding a new scenario should require adding a new scenario folder, not writing a new custom test runner.
-
-4. **Prefer generated temporary artifacts over committed generated files.**  
-   Generated `.als` files should be written to temporary directories during test execution.
-
-5. **Make test failures diagnostic.**  
-   A failed test should explain whether the problem lies in semantics, formatting, parsing, or scenario validity.
-
----
-
-## Recommended Test Structure
-
-All scenario-based tests should live under `tests/`.
-
-Recommended layout:
-
-```text
+```
 tests/
-  scenarios/
-    <scenario-name-1>/
-      input.tf
-      expect.json
-      report.golden.txt   # optional
-    <scenario-name-2>/
-      input.tf
-      expect.json
-      report.golden.txt   # optional
-  e2e_scenarios_test.go
-  reporter_snapshot_test.go
+├── scenarios/                  # e2e scenario folders
+│   ├── <name>/
+│   │   ├── input.tf            # Terraform fixture
+│   │   └── expect.json         # Semantic expectations
+│   └── error_demos/            # 4 invalid-input fixtures (unit tests only)
+├── unit/                       # Package-level unit tests
+├── testdata/snapshots/         # 5 golden files for report formatting
+├── e2e_scenarios_test.go       # Auto-discovers and runs all scenario folders
+└── reporter_snapshot_test.go
 ```
-
-### Rules
-
-- `input.tf` is the Terraform fixture for the scenario.
-- `expect.json` is the semantic oracle for the scenario.
-- `report.golden.txt` is optional and should be used only when the human-readable report format must be protected by a snapshot test.
 
 ---
 
+## Scenario-Based Tests
 
-## Scenario Naming
+`e2e_scenarios_test.go` auto-discovers all folders under `tests/scenarios/`, runs the full pipeline on each `input.tf`, and compares output against `expect.json`. Each `expect.json` specifies per-triple `decision`, `denied_at`, and per-layer statuses (see `doc/project-description.md` → Output vocabulary).
 
-Scenarios should use descriptive names instead of generic folder names such as `scenario1`, `scenario2`, and so on.
+**Motivating example**: scenario 8, three sub-cases sharing the same Terraform configuration with one variable changed (tag value or VPCE condition):
 
-Recommended naming style:
+| Sub-case | Folder | What it tests |
+|----------|--------|---------------|
+| 8a | `vpce_and_abac_deny` | VPCE deny fires → DENY at L1 regardless of other policies |
+| 8b | `abac_tag_mismatch` | VPCE satisfied; tags differ → no grant at L4 or L5 |
+| 8c | `abac_tag_match` | VPCE satisfied; tags match → ALLOW via L4 |
 
-- `explicit_deny_vpce`
-- `abac_not_granted`
-- `abac_explicit_deny`
-- `permission_boundary_blocks_allow`
-- `scp_blocks_allow`
-- `bucket_vs_object_resource_match`
+**Remaining scenarios:**
 
-The scenario name should communicate the semantic property being tested.
+| # | Folder | What it tests |
+|---|--------|---------------|
+| 1 | `identity_allow_only` | Identity-based allow only, no bucket policy |
+| 2 | `explicit_deny_wins` | Explicit deny in bucket policy overrides identity allow |
+| 3 | `permission_boundary_blocks` | Permission boundary blocks identity-based allow at L6 |
+| 4 | `scp_blocks_allow` | SCP blocks otherwise-allowed access at L3 |
+| 5 | `rcp_blocks_allow` | RCP blocks otherwise-allowed access at L2 |
+| 6 | `scp_restricts_account_wide` | SCP applies to all roles including admin |
+| 7 | `service_principal_allow` | AWS service principal granted via bucket policy |
+| 9 | `scp_and_boundary_combined` | SCP and permission boundary apply independently |
+| 10 | `rcp_and_scp_combined` | RCP and SCP both present |
+| 11 | `notaction_identity` | `NotAction` in identity policy denies the excluded action at L5 |
+| 12 | `bucket_policy_grants_same_account` | Resource-based allow via bucket policy, no identity grant |
 
----
+### Error demos
 
-## Scenario Format
+`error_demos/` contains 4 `.tf` files that demonstrate pipeline error behaviour manually (`go run . <file> /tmp/out.als`). They are not part of the automated test suite.
 
-Each scenario folder should contain the following files.
-
-### `input.tf`
-
-The Terraform fixture that defines the scenario.
-
-Requirements:
-
-- it must be valid Terraform,
-- it should be focused and self-contained,
-- and it should model one key access-control behavior or one carefully chosen interaction between multiple behaviors.
-
-### `expect.json`
-
-This file contains the semantic expectation for the scenario.
-
-It should store the expected result in structured form rather than as plain report text.
-
-Expected contents include:
-
-- principal,
-- bucket,
-- action,
-- final decision,
-- denial layer, if any,
-- layer-by-layer statuses.
-
-#### Layer status vocabulary
-
-Every `expect.json` uses the following fixed set of status values for each layer:
-
-| Value | Applies to | Meaning |
-|---|---|---|
-| `DENY` | Any layer | An explicit Deny statement applied at this layer |
-| `PASS` | Blocking layers (L1, L2, L3, L6, L7) | This layer did not block access |
-| `GRANT` | Grant layers (L4, L5) | Access was granted at this layer |
-| `NOT GRANTED` | Grant layers (L4, L5) | No applicable Allow statement found |
-| `NOT APPLICABLE` | Any layer | This layer is absent from the scenario (e.g. no SCP configured) |
-
-For ALLOW outcomes, `denied_at` must be `null`. For DENY outcomes, `denied_at` must name the blocking layer.
-
-All `expect.json` files must include a `schema_version` field. The current version is `1`. This allows old files to be identified and migrated if the layer model changes.
-
-Example:
-
-```json
-{
-  "schema_version": 1,
-  "name": "abac_explicit_deny",
-  "queries": [
-    {
-      "principal": "developer",
-      "bucket": "data",
-      "action": "s3:GetObject",
-      "decision": "DENY",
-      "denied_at": "Layer 1",
-      "layers": {
-        "L1": "DENY",
-        "L2": "PASS",
-        "L3": "PASS",
-        "L4": "NOT GRANTED",
-        "L5": "PASS",
-        "L6": "PASS",
-        "L7": "PASS"
-      }
-    }
-  ]
-}
-```
-
-For error scenarios (invalid input, malformed policy), use `"decision": "ERROR"` with an `"error_contains"` field instead of layer statuses:
-
-```json
-{
-  "schema_version": 1,
-  "name": "malformed_policy_json",
-  "queries": [
-    {
-      "principal": "developer",
-      "bucket": "data",
-      "action": "s3:GetObject",
-      "decision": "ERROR",
-      "error_contains": "invalid character"
-    }
-  ]
-}
-```
-
-This is the main semantic source of truth.
-
-#### Generating `expect.json`
-
-For 100+ scenarios, writing `expect.json` by hand is not practical.
-
-The test runner should support a generate mode that runs the full pipeline and writes the initial `expect.json` from actual Alloy output:
-
-```bash
-go test ./tests/ -update
-```
-
-Workflow:
-
-1. Create a new `input.tf` scenario folder.
-2. Run `go test ./tests/ -update` — the test runner writes `expect.json` from the current pipeline output.
-3. Review the generated file: verify that each decision reflects real AWS semantics.
-4. Commit the reviewed `expect.json` as the oracle for that scenario.
-
-This is the same pattern as snapshot update flags (`-update-snapshots`, `-update-golden`). The file is machine-generated, but human-reviewed before commit.
-
-### `report.golden.txt`
-
-Optional snapshot of the human-readable report output.
-
-Use this only when the formatting of the report itself needs protection against regressions.
-
-Maintain exactly **one golden file per distinct verdict type**:
-
-- `ALLOW`
-- `DENY` at a blocking layer (e.g. Layer 1 explicit deny)
-- `DENY` at a grant layer (missing grant path, Layer 4/5)
-- `DENY` at a bounding layer (e.g. Layer 6 permission boundary)
-
-These four cases cover all formatting branches in `reporter.go`. Do not add additional golden files unless a new verdict type is introduced.
-
----
-
-## Main End-to-End Scenario Tests
-
-Create `tests/e2e_scenarios_test.go`.
-
-This file should implement a scenario runner that:
-
-1. discovers all scenario folders under `tests/scenarios/`,
-2. reads `input.tf`,
-3. runs the full project pipeline,
-4. writes the generated Alloy specification to a temporary `.als` file,
-5. executes Alloy,
-6. builds the resulting structured report data,
-7. compares the result against `expect.json`.
-
-### The end-to-end tests must verify:
-
-- final decision (`ALLOW` / `DENY`),
-- denial layer (`Layer 1`, `Layer 4/5`, etc.),
-- layer-by-layer statuses,
-- consistency across all queries generated from the scenario.
-
-### Important principle
-
-The main end-to-end tests must compare against **structured expectations**, not only raw text output.
+| File | Pipeline behaviour |
+|------|--------------------|
+| `malformed_policy.tf` | Non-fatal warning; malformed bucket policy skipped, pipeline continues |
+| `no_buckets.tf` | Fatal error: no S3 buckets found |
+| `no_roles.tf` | Fatal error: no IAM roles or users found |
+| `no_principals_statement.tf` | Non-fatal warning; role policy with no principal statement skipped |
 
 ---
 
 ## Reporter Snapshot Tests
 
-Create `tests/reporter_snapshot_test.go`.
+Five golden files in `tests/testdata/snapshots/` cover all formatting branches in `reporter.go`:
 
-This file should contain a smaller number of representative snapshot tests for the human-readable report.
-
-### Purpose
-
-These tests protect:
-
-- report layout,
-- layer ordering,
-- summary formatting,
-- result wording.
-
-### Rules
-
-- Do not create a report snapshot for every scenario.
-- Use snapshots only for a small set of representative scenarios.
-- Keep semantic correctness in `expect.json`, not in the snapshot file.
+| File | Verdict type |
+|------|-------------|
+| `allow.golden.txt` | ALLOW |
+| `deny_layer1.golden.txt` | DENY at explicit deny layer (L1) |
+| `deny_layer45.golden.txt` | DENY at missing grant path (L4/5) |
+| `deny_layer6.golden.txt` | DENY at bounding layer (L6) |
+| `incomplete_warning.golden.txt` | INCOMPLETE ANALYSIS warning header |
 
 ---
 
-## Terraform Validation for Fixtures
+## Package-Level Unit Tests
 
-Every `input.tf` scenario should also be validated as Terraform.
+`tests/unit/` covers all major packages:
 
-For each scenario fixture, the test suite should run:
-
-- `terraform fmt -check`
-- `terraform init -backend=false`
-- `terraform validate`
-
----
-
-## Required Scenario Categories
-
-The suite should eventually include at least the following categories.
-
-### Explicit Deny
-
-- explicit deny via VPCE condition overrides allow
-- explicit deny via tag mismatch overrides identity allow
-- explicit deny on one action but not another
-
-### Grant Paths
-
-- identity-based allow only
-- resource-based allow only
-- neither grant path applies
-- ABAC allow matches
-- ABAC allow does not match
-
-### S3 Resource Matching
-
-- `s3:GetObject` allowed while `s3:ListBucket` denied
-- `s3:ListBucket` allowed while `s3:GetObject` denied
-- bucket ARN vs object ARN matching works correctly
-
-### Bounding Policies
-
-- permissions boundary blocks identity-based allow
-- SCP blocks otherwise-allowed access
-- RCP blocks otherwise-allowed access
-- session policy blocks otherwise-allowed access
-
-### Multi-Statement Correctness
-
-- multiple statements must not be flattened incorrectly
-- different resources and actions must remain distinct
-- separate principals must not be mixed across statements
-
-### Error Handling
-
-These scenarios test that the pipeline fails cleanly and produces a useful error message:
-
-- `unresolved_reference` — a role attached to a policy that does not exist in the Terraform configuration
-- `malformed_policy_json` — a bucket policy with invalid JSON in its document
-- `unsupported_action_type` — a policy statement using an action outside the supported S3 action set
-
-Error scenarios use the `"decision": "ERROR"` and `"error_contains"` fields in `expect.json` instead of layer statuses.
+| File | What it tests |
+|------|---------------|
+| `ir_policy_test.go` | JSON policy parsing, condition classification |
+| `ir_builder_test.go` | IR construction from resolved resources |
+| `config_validate_test.go` | `Config.Validate()` structural checks |
+| `managed_policies_test.go` | AWS managed policy action resolution |
+| `parser_schema_test.go` | HCL schema and resource type classification |
+| `policy_document_datasource_test.go` | `aws_iam_policy_document` data source parsing |
+| `generator_model_test.go` | Alloy ID conversion, action level classification |
+| `generator_predicates_test.go` | Predicate generation and triple assertion structure |
+| `analyzer_test.go` | Alloy CLI output parsing (SAT/UNSAT) |
+| `reporter_test.go` | Result building and report formatting |
+| `pipeline_integration_test.go` | Full pipeline on fixture inputs |
 
 ---
 
-## Regression and Metamorphic Tests
-
-In addition to ordinary scenario tests, the suite should include regression tests for important invariants.
-
-Examples:
-
-- adding an unrelated resource must not change the result,
-- renaming a Terraform resource label must not change the result,
-- adding an extra allow must not override an explicit deny,
-- removing an unused policy must not change the result,
-- changing an ABAC tag from mismatch to match must change the result in the expected direction.
-
-These tests help validate the stability of the model and reduce the risk of accidental regressions.
-
-### Implementation approach: paired scenario folders
-
-Each metamorphic test consists of two scenario folders with the same expected outcome:
-
-```text
-tests/scenarios/
-  explicit_deny_base/
-    input.tf          # base configuration
-    expect.json
-  explicit_deny_with_extra_resource/
-    input.tf          # base + one unrelated S3 bucket added
-    expect.json       # identical to the base scenario's expect.json
-```
-
-The test runner verifies that both folders produce identical structured results.
-
-This approach is preferred over programmatic transformation because every test case is fully inspectable as a file in the repository, which is important for thesis reproducibility and review.
-
----
-
-## Package-Level Tests
-
-Scenario tests are necessary but not sufficient.
-
-Focused package-level tests should also exist for critical components.
-
-### `internal/ir/policy.go`
-
-Test:
-
-- `Principal = "*"`
-- `Principal = { AWS = ... }`
-- `Action` as string and array
-- `Condition` parsing
-- single statement vs statement array
-- bucket ARN vs object ARN handling
-
-### `internal/ir/builder.go`
-
-Test:
-
-- statements are not flattened incorrectly,
-- role tags are propagated correctly,
-- policy attachments populate role actions,
-- permission boundaries are linked correctly,
-- ABAC-relevant flags are represented correctly in the IR.
-
-### `internal/generator/*`
-
-Test:
-
-- access assertions are created for each `(principal, bucket, action)` triple,
-- bucket-level and object-level actions are distinguished correctly,
-- generated Alloy facts match the expected IR,
-- Layer 4 / Layer 5 logic is encoded as intended.
-
-### `internal/reporter/reporter.go`
-
-Test:
-
-- `ALLOW` formatting,
-- `DENY at Layer 1`,
-- `NOT GRANTED` remains distinct from `DENY`,
-- grant-path failures are represented correctly,
-- summary and detailed report remain consistent.
-
----
-
-## CI Requirements
-
-The continuous integration pipeline runs two distinct jobs.
-
-### Job 1: Go tests
-
-```bash
-go test ./...
-```
-
-This single command covers:
-
-- all package-level unit tests (`internal/ir/`, `internal/generator/`, `internal/reporter/`)
-- end-to-end scenario tests (`tests/e2e_scenarios_test.go`)
-- reporter snapshot tests (`tests/reporter_snapshot_test.go`)
-
-`go test ./...` already includes `tests/` because it is part of the module. Do not list e2e and snapshot tests separately — they are covered by this command.
-
-**Prerequisites for end-to-end tests**: Alloy requires a Java runtime and the Alloy JAR.
-
-- Java version: JDK 17 or later
-- Alloy JAR: `tools/org.alloytools.alloy.dist.jar` (pin a specific version, e.g. `6.0.0`)
-- GitHub Actions setup: use `actions/setup-java` with `distribution: temurin, java-version: 17`
-- If the JAR is absent, the test runner must skip end-to-end tests with a clear message (`SKIP: alloy JAR not found at tools/`) rather than failing silently or panicking.
-
-### Job 2: Terraform fixture validation
-
-Run separately via shell:
-
-```bash
-terraform fmt -check tests/scenarios/*/input.tf
-terraform validate tests/scenarios/*/
-```
-
-**Note on `terraform init`**: Running `terraform init -backend=false` downloads provider plugins from the registry, which is slow and requires network access. Check whether `terraform validate` can run without initializing providers for the fixture patterns in this project (fixtures that only declare resources and do not use provider-specific datasources may not require `init`). If `init` is required, cache the `.terraform` plugin directory in CI to avoid re-downloading on every run.
-
-Live parity tests run as a separate, manually triggered job gated by an environment variable (`RUN_LIVE_PARITY=true`) and a sandbox AWS account. They are never part of normal CI.
-
----
-
-## Optional Live Parity Validation Against AWS
-
-The standard test suite validates the project against its own modeled semantics.
-
-To gain stronger confidence that the model matches real AWS behavior, the project should also support an **optional live parity suite**.
-
-Suggested file:
-
-```text
-tests/live_parity_test.go
-```
-
-This suite should run only when explicitly enabled, for example via environment variables and a sandbox AWS account.
-
-### For each selected canonical scenario:
-
-1. run `terraform apply`,
-2. assume the relevant role with `sts assume-role`,
-3. issue real S3 API requests such as:
-   - `list-objects-v2`
-   - `head-object`
-   - `get-object`
-   - `put-object`
-   - `delete-object`
-4. compare:
-   - actual AWS result,
-   - tool result.
-
-### Important note
-
-This live suite is not intended for normal CI.
-
-It is intended for:
-
-- validation against AWS as an external oracle,
-- thesis evaluation,
-- and manual confidence-building for canonical scenarios.
-
-### Thesis evaluation methodology
-
-For thesis purposes, the live parity suite must define a measurable evaluation methodology:
-
-**Coverage target**: run live parity for at least one scenario from each required category (Explicit Deny, Grant Paths, S3 Resource Matching, Bounding Policies). This ensures every layer type is validated against real AWS.
-
-**Parity metric**: report results as `N correct / M total` verdicts per category and overall. A correct verdict is one where the tool's final decision (ALLOW / DENY) matches the real AWS API response.
-
-**Discrepancy protocol**: when the tool result differs from the AWS result, classify the discrepancy as one of:
-- **Tool bug** — the pipeline produces a wrong result that should be fixed.
-- **Model gap** — a real AWS behavior that the model does not currently cover (document as a known limitation).
-- **Out-of-scope** — a configuration the tool explicitly does not claim to support.
-
-Each discrepancy must be documented in the thesis with its classification.
-
-**AWS environment**: use a dedicated sandbox account with no production data. Configure SCPs in the sandbox account to match the scenarios being tested, so the live environment reflects the modeled constraints.
-
----
-
-## Criteria for Completion
-
-The testing strategy can be considered implemented when:
-
-- the current four scenarios have been migrated into the new structure,
-- each scenario has `input.tf` and `expect.json`,
-- end-to-end scenario discovery and execution are automatic,
-- generated `.als` files are temporary and not stored as permanent artifacts,
-- report snapshots are separated from semantic expectations,
-- Terraform fixture validation is integrated,
-- and adding a new scenario requires only adding a new folder, not duplicating test code.
-
----
-
-## Implementation Guidance
-
-When implementing this strategy, follow these principles:
-
-- do not duplicate production logic inside tests,
-- keep helpers reusable and scenario-driven,
-- make failure messages highly diagnostic,
-- implement the test infrastructure first,
-- migrate the existing four scenarios next,
-- then expand coverage to additional semantic categories.
-
-The result should be a test suite that is:
-
-- scalable,
-- maintainable,
-- semantically meaningful,
-- and useful both for engineering validation and thesis-quality evaluation.
+## Deploy Scenarios and Live Parity
+
+`evaluation/manual_verification/` contains 10 deployable Terraform configurations covering the same semantic categories as the test scenarios:
+
+| Deploy folder | Test scenario |
+|--------------|---------------|
+| `01_identity_allow_only` | `identity_allow_only` |
+| `02_explicit_deny_wins` | `explicit_deny_wins` |
+| `03_permission_boundary_blocks` | `permission_boundary_blocks` |
+| `04_scp_blocks_allow` | `scp_blocks_allow` |
+| `05_rcp_blocks_allow` | `rcp_blocks_allow` |
+| `06_scp_restricts_account_wide` | `scp_restricts_account_wide` |
+| `07_service_principal_allow` | `service_principal_allow` |
+| `08_vpce_and_abac_deny` + `08b_abac_tag_mismatch` + `08с_abac_tag_match` | Motivating example (3 sub-scenarios) |
+| `09_scp_and_boundary_combined` | `scp_and_boundary_combined` |
+| `10_notaction_identity` | `notaction_identity` |
+
+`validate_all.sh` generates `aws iam simulate-principal-policy` commands for each scenario, ready for execution in a sandbox AWS account.
+
+Live parity evidence (AWS CLI output, console screenshots) is stored in `evaluation/manual_verification/screenshots/`.
 

@@ -86,6 +86,7 @@ func GeneratePredicates() []Predicate {
     statementMatchesResource[req, bp.allowBucketResource, bp.allowObjectResource] and
     (bp.allowAnyPrincipal = True or bp.allowPrincipal = req.principal) and
     (bp.allowAnyPrincipal = True implies req.target.restrictPublicBuckets = False) and
+    (bp.allowAnyPrincipal = True implies req.target.blockPublicPolicy = False) and
     (bp.abacCondition = True implies
        req.principal.envTag = req.target.envTag)`,
 		},
