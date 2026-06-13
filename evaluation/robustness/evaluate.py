@@ -34,9 +34,10 @@ from pathlib import Path
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DB_PATH = "/tmp/TerraDS.sqlite"
-TERRADS_TAR = "/tmp/TerraDS.tar.gz"
-TOOL_BINARY = str(Path(__file__).parent.parent / "access-control-helper")
+_TERRADS_DIR = os.path.expanduser(os.environ.get("TERRADS_DIR", "~/TerraDS"))
+DB_PATH      = os.path.join(_TERRADS_DIR, "TerraDS.sqlite")
+TERRADS_TAR  = os.path.join(_TERRADS_DIR, "TerraDS.tar.gz")
+TOOL_BINARY = str(Path(__file__).parent.parent.parent / "access-control-helper")
 RESULTS_DIR = Path(__file__).parent / "results"
 
 SUPPORTED_MANAGED = {

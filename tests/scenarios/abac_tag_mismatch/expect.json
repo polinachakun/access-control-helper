@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "name": "abac_tag_mismatch",
+  "queries": [
+    {
+      "principal": "developer",
+      "bucket": "my-data-bucket-abac-mismatch",
+      "action": "S3_GetObject",
+      "decision": "DENY",
+      "denied_at": "Layer 4/5",
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    },
+    {
+      "principal": "developer",
+      "bucket": "my-data-bucket-abac-mismatch",
+      "action": "S3_ListBucket",
+      "decision": "DENY",
+      "denied_at": "Layer 4/5",
+      "layers": {
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "NOT GRANTED",
+        "L5": "NOT GRANTED",
+        "L6": "PASS",
+        "L7": "NOT APPLICABLE"
+      }
+    }
+  ]
+}

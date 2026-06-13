@@ -1,0 +1,24 @@
+{
+  "phase": 1,
+  "total_repositories": 62406,
+  "total_modules": 279344,
+  "total_resources": 1773991,
+  "modules_with_s3": 14106,
+  "candidate_modules": 5514,
+  "in_scope_count": 1051,
+  "in_scope_pct": 19.1,
+  "has_gap_count": 4463,
+  "has_gap_pct": 80.9,
+  "top_gap_types": [
+    {"type": "aws_iam_instance_profile",                          "module_count": 1989, "pct_of_candidates": 36.1},
+    {"type": "aws_s3_bucket_object",                             "module_count": 1065, "pct_of_candidates": 19.3},
+    {"type": "aws_iam_access_key",                               "module_count": 926,  "pct_of_candidates": 16.8},
+    {"type": "aws_s3_bucket_server_side_encryption_configuration","module_count": 882,  "pct_of_candidates": 16.0},
+    {"type": "aws_s3_bucket_acl",                                "module_count": 771,  "pct_of_candidates": 14.0},
+    {"type": "aws_s3_object",                                    "module_count": 753,  "pct_of_candidates": 13.7},
+    {"type": "aws_s3_bucket_versioning",                         "module_count": 661,  "pct_of_candidates": 12.0},
+    {"type": "aws_s3_bucket_ownership_controls",                 "module_count": 356,  "pct_of_candidates": 6.5},
+    {"type": "aws_iam_policy_attachment",                        "module_count": 310,  "pct_of_candidates": 5.6},
+    {"type": "aws_iam_user_policy_attachment",                   "module_count": 251,  "pct_of_candidates": 4.6}
+  ]
+}

@@ -1,16 +1,20 @@
 # access-control-helper
 
-Static analysis tool for validating AWS S3 access control from Terraform source code.
+Static analysis tool that answers **"can principal X perform action Z on bucket Y?"** directly from Terraform source code without deployment and AWS credentials.
 
-**Pipeline:** `.tf` files → parser → resolver → IR → Alloy spec → Alloy model checker → report
+**Pipeline:** `.tf` files → HCL parser → resolver → IR → Alloy spec → Alloy model checker → layer-aware report
+
+The tool produces an `ALLOW` / `DENY` verdict and identifies which AWS policy layer blocks or grants the request.
 
 ---
 
 ## Requirements
 
-- Go 1.21+
-- Java 11+ (for Alloy verification)
-- `tools/org.alloytools.alloy.dist.jar` (Alloy JAR)
+| Dependency | Version |
+|---|---|
+| Go | 1.21+ |
+| Java | 11+ |
+| Alloy JAR | `tools/org.alloytools.alloy.dist.jar` |
 
 ---
 
@@ -23,205 +27,97 @@ go build -o access-control-helper .
 # Print Alloy spec to stdout (no Alloy run)
 ./access-control-helper <path/to/terraform>
 
-# Run full analysis and write spec
+# Run full analysis and write spec to file
 ./access-control-helper <path/to/terraform> output.als
+```
+
+---
+
+## Project structure
+
+```
+access-control-helper/
+├── main.go / run.go           CLI entry point and pipeline execution
+├── internal/
+│   ├── parser/                HCL parser for 10 resource types
+│   ├── resolver/              Cross-reference resolver, ARN interpolation
+│   ├── ir/                    Internal representation: types, policy, builder
+│   ├── generator/             IR → Alloy spec generation
+│   ├── analyzer/              Alloy CLI runner and output parser
+│   └── reporter/              Human-readable report formatter
+├── tests/                     E2e scenarios, unit tests, snapshots  →  tests/README.md
+├── evaluation/                Robustness, scalability, manual verification  →  evaluation/README.md
+├── tools/                     Alloy JAR
+└── doc/                       Architecture and design notes
 ```
 
 ---
 
 ## Tests
 
-### Run all tests
-
 ```bash
+# All e2e + snapshot tests (no Alloy JAR needed for generation checks)
 go test ./tests/
-```
 
-- `TestScenarios_Generation` — always runs, no Alloy JAR needed. Verifies parse → IR → spec generation succeeds for every scenario.
-- `TestScenarios_Verification` — requires Alloy JAR. Runs full pipeline and compares against `expect.json`. Skips automatically if JAR is absent.
+# Unit tests only
+go test ./tests/unit/
 
-```bash
-go test ./tests/unit/    # unit tests (no Alloy needed)
-```
+# Full pipeline with Alloy verification (requires JAR)
+go test ./tests/ -run TestScenarios_Verification
 
-### Run a specific scenario
-
-```bash
+# Specific scenario
 go test ./tests/ -run TestScenarios_Verification/identity_allow_only
-```
 
-### Regenerate expect.json after changing a scenario
-
-```bash
+# Regenerate expect.json after intentionally changing a scenario
 go test ./tests/ -update -run TestScenarios_Verification/identity_allow_only
 ```
 
-> Use `-update` only when you intentionally changed expected behavior.
+See [`tests/README.md`](tests/README.md) for test structure and scenario descriptions.
 
 ---
 
-## Scenarios
+## Evaluation
 
-Each scenario lives in `tests/scenarios/<name>/` and contains two files:
+Three evaluation tracks in [`evaluation/`](evaluation/README.md):
 
-```
-tests/scenarios/my_scenario/
-├── input.tf       # Terraform config to analyze
-└── expect.json    # expected decisions per (principal, bucket, action)
-```
+| Track | What it measures |
+|---|---|
+| **Robustness** | Parse and analysis success rate on 62,406 real-world Terraform repos (TerraDS dataset) |
+| **Scalability** | Alloy analysis time vs configuration size (benchmark + plots) |
+| **Manual verification** | 12 scenarios deployed to real AWS — tool output vs `aws iam simulate-principal-policy` (100% match) |
 
-### expect.json structure
+```bash
+# Quick start: dataset coverage (no tarballs needed)
+python3 evaluation/robustness/evaluate.py phase1
 
-```json
-{
-  "schema_version": 1,
-  "name": "my_scenario",
-  "queries": [
-    {
-      "principal": "app-role",
-      "bucket": "my-bucket",
-      "action": "S3_GetObject",
-      "decision": "ALLOW",
-      "denied_at": null,
-      "layers": {
-        "L1": "PASS",
-        "L2": "PASS",
-        "L3": "PASS",
-        "L4": "PASS",
-        "L5": "PASS",
-        "L6": "PASS",
-        "L7": "NOT APPLICABLE"
-      }
-    }
-  ]
-}
+# Full pipeline sample
+python3 evaluation/robustness/evaluate.py phase3 --sample 100
 ```
 
-**`decision`**: `ALLOW` or `DENY`
-
-**`denied_at`**: `"Layer 5"` (or null for ALLOW)
-
-**Layer meanings:**
-
-| Layer | Policy type               | Possible values                          |
-|-------|---------------------------|------------------------------------------|
-| L1    | Explicit Deny             | `PASS`, `DENIED`                         |
-| L2    | Resource Control Policy   | `PASS`, `DENIED`                         |
-| L3    | Service Control Policy    | `PASS`, `DENIED`                         |
-| L4    | Resource Policy           | `PASS`, `NOT GRANTED`                    |
-| L5    | Identity Policy           | `PASS`, `NOT GRANTED`                    |
-| L6    | Permission Boundary       | `PASS`, `NOT GRANTED`                    |
-| L7    | Session Policy            | `PASS`, `NOT GRANTED`, `NOT APPLICABLE`  |
-
-### How to add a new scenario
-
-1. Create `tests/scenarios/<name>/input.tf` with a Terraform config.
-2. Run with `-update` to auto-generate `expect.json`:
-   ```bash
-   go test ./tests/ -update -run TestScenarios_Verification/<name>
-   ```
-3. Review the generated `expect.json` — verify the decisions are correct.
-4. Commit both files.
+See [`evaluation/README.md`](evaluation/README.md) for full commands and results.
 
 ---
 
-## Dataset Evaluation
+## Policy layers
 
-Evaluation against the [TerraDS](https://zenodo.org/record/7694141) dataset (62,406 real-world Terraform repos).
+| Layer | Policy type | Effect when absent |
+|---|---|---|
+| L1 | Explicit Deny | — |
+| L2 | Resource Control Policy (RCP) | DENY |
+| L3 | Service Control Policy (SCP) | DENY |
+| L4 | Resource-based policy | DENY (cross-account only) |
+| L5 | Identity-based policy | DENY |
+| L6 | Permission Boundary | DENY |
+| L7 | Session Policy | NOT APPLICABLE (runtime only) |
 
-**Requirements:** Python 3.9+, SQLite DB and tarballs extracted from the dataset zip.
+Within same account, L4 and L5 are a **union**.
 
-```bash
-# Dataset paths (configure at top of evaluation/evaluate.py)
-DB_PATH   = /tmp/TerraDS.sqlite
-TERRADS_TAR = /tmp/TerraDS.tar.gz
-```
+---
 
-### Phases
-
-| Phase | What it does | Requires |
-|-------|-------------|----------|
-| `phase1` | Coverage: how many real configs fall within the tool's scope | SQLite only |
-| `phase2` | Parse success: tool runs without crashing (no Alloy) | SQLite + tarballs |
-| `phase3` | Full Alloy analysis: end-to-end success rate | SQLite + tarballs + Alloy JAR |
-| `summary` | Aggregates key metrics and percentages from all phases | Existing phase JSON files |
-
-```bash
-python3 evaluation/evaluate.py phase1
-python3 evaluation/evaluate.py phase2 --sample 100
-python3 evaluation/evaluate.py phase3 --sample 100
-python3 evaluation/evaluate.py summary   # no DB needed
-```
-
-### Module selection strategy
-
-Phase 2 and 3 support three ways to pick modules from the in-scope population:
-
-| Flag | Behaviour | When to use |
-|------|-----------|-------------|
-| `--strategy random` | Deterministic shuffle (seed=42) — **default** | Reproducible baseline; same seed = same modules every run |
-| `--strategy stars` | Top-N by GitHub star count (most popular repos first) | Representative sample of widely-used configs |
-| `--strategy recent` | Top-N by latest commit date (most recently updated repos first) | Sample of actively maintained configs |
-
-```bash
-# Random sample of 100 (default, reproducible)
-python3 evaluation/evaluate.py phase2 --sample 100
-
-# Top 100 most popular repos by stars
-python3 evaluation/evaluate.py phase2 --sample 100 --strategy stars
-
-# Top 100 most recently updated repos
-python3 evaluation/evaluate.py phase2 --sample 100 --strategy recent
-```
-
-> The thesis evaluation uses `--strategy stars --sample 100` as the primary run and `--strategy random --sample 100` (seed=42) as the reproducibility baseline.
-
-### Results
-
-Phase results are saved to `evaluation/results/`:
+## Documentation
 
 | File | Contents |
-|------|----------|
-| `phase1_results.json` | Scope coverage counts and percentages |
-| `phase2_results.json` | Parse/IR outcomes per module |
-| `phase3_results.json` | Alloy analysis outcomes per module |
-| `eval_summary.json` | All key metrics in one place |
-
-### Reading eval_summary.json
-
-```json
-{
-  "phase1_coverage": {
-    "candidate_modules": 5514,
-    "in_scope_count": 1051,
-    "in_scope_pct": 19.1
-  },
-  "phase2_parse": {
-    "outcomes_pct": { "success": 78.0, "timeout": 12.0, ... }
-  },
-  "phase3_alloy": {
-    "outcomes_pct": { "success": 82.0, "alloy_error": 9.0, ... },
-    "total_triples_analyzed": 752,
-    "mean_alloy_time_s": 13.1
-  }
-}
-```
-
-**`in_scope_pct`** — share of S3+IAM modules that contain only resource types the tool supports.
-
-**`phase3_alloy.outcomes_pct.success`** — share of in-scope modules where the tool completed full Alloy analysis without error.
-
-When using `--strategy random`, the sample is deterministic (seed=42): phase2 and phase3 always pick the same modules, making results reproducible.
-
----
-
-
-## Scalability Tests
-
-```bash
-# Run scalability benchmark (can take up to 2h)
-go test ./evaluation/scalability/ -v -timeout 2h -run TestScalabilityTriples
-
-# Plot results
-cd evaluation/scalability && python3 plot.py --latest
-```
+|---|---|
+| [`doc/project-description.md`](doc/project-description.md) | Architecture, design decisions, full capability list |
+| [`doc/scope-and-limits.md`](doc/scope-and-limits.md) | What is and is not in scope |
+| [`doc/tests-strategy.md`](doc/tests-strategy.md) | Testing approach and coverage rationale |

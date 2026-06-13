@@ -67,15 +67,34 @@ func (a *Analyzer) Available() bool {
 func (a *Analyzer) JarPath() string { return a.jarPath }
 
 // Check runs all `check` commands in specFile and returns one CheckResult per command.
+// Alloy is executed inside a temporary directory so counterexample folders are
+// always written to /tmp and never pollute the caller's working directory.
 func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	if !a.Available() {
 		return nil, fmt.Errorf("alloy not available")
 	}
 
-	output, err := runAlloy(a.javaPath, a.jarPath, specFile)
+	// Copy the spec into a fresh temp dir so Alloy writes all artifacts there.
+	tmpDir, err := os.MkdirTemp("", "ach-alloy-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
 
-	defer cleanupAlloyOutput(specFile)
+	absSpec, err := filepath.Abs(specFile)
+	if err != nil {
+		return nil, fmt.Errorf("resolve spec path: %w", err)
+	}
+	tmpSpec := filepath.Join(tmpDir, filepath.Base(absSpec))
+	data, err := os.ReadFile(absSpec)
+	if err != nil {
+		return nil, fmt.Errorf("read spec: %w", err)
+	}
+	if err := os.WriteFile(tmpSpec, data, 0o644); err != nil {
+		return nil, fmt.Errorf("write temp spec: %w", err)
+	}
 
+	output, err := runAlloy(a.javaPath, a.jarPath, tmpSpec)
 	if err != nil {
 		return nil, fmt.Errorf("alloy execution failed: %w\nraw output:\n%s", err, output)
 	}
@@ -86,12 +105,6 @@ func (a *Analyzer) Check(specFile string) ([]CheckResult, error) {
 	}
 
 	return results, nil
-}
-
-func cleanupAlloyOutput(specFile string) {
-	base := strings.TrimSuffix(filepath.Base(specFile), filepath.Ext(specFile))
-	dir := filepath.Join(filepath.Dir(specFile), base)
-	os.RemoveAll(dir)
 }
 
 var checkLineRe = regexp.MustCompile(`^\d+\.\s+check\s+(\w+)\s+.*\b(SAT|UNSAT)\s*$`)
