@@ -58,6 +58,8 @@ func (b *Builder) Build() (*Config, error) {
 			b.handlePublicAccessBlock(res)
 		case "aws_iam_role_policy_attachment":
 			b.handleRolePolicyAttachment(res)
+		case "aws_iam_user_policy_attachment":
+			b.handleUserPolicyAttachment(res)
 		}
 	}
 
@@ -601,6 +603,63 @@ func (b *Builder) handleRolePolicyAttachment(res *resolver.ResolvedResource) {
 			} else if actions := ManagedPolicyS3Actions(managedPolicyARN); len(actions) > 0 {
 				role.RolePolicyActions = append(role.RolePolicyActions, actions...)
 				mergePerBucketActions(role.IdentityAllowActionsPerBucket, map[string][]string{"*": actions})
+			}
+			break
+		}
+	}
+}
+
+// handleUserPolicyAttachment updates the corresponding user's HasUserPolicy flag
+// and resolves the attached policy document or well-known managed policy ARN.
+func (b *Builder) handleUserPolicyAttachment(res *resolver.ResolvedResource) {
+	userRef := ""
+	if user := b.getAttrAsString(res, "user"); user != "" {
+		userRef = extractResourceRef(user)
+	}
+	if userRef == "" {
+		for _, r := range res.References {
+			if strings.HasPrefix(r, "aws_iam_user.") {
+				userRef = r
+				break
+			}
+		}
+	}
+
+	if userRef == "" {
+		return
+	}
+
+	policyRef := ""
+	for _, r := range res.References {
+		if strings.HasPrefix(r, "aws_iam_policy.") {
+			policyRef = r
+			break
+		}
+	}
+
+	managedPolicyARN := b.getAttrAsString(res, "policy_arn")
+
+	userName := strings.TrimPrefix(userRef, "aws_iam_user.")
+	for _, user := range b.config.Users {
+		if user.TFName == userName {
+			user.HasUserPolicy = true
+
+			if policyRef != "" {
+				policyName := strings.TrimPrefix(policyRef, "aws_iam_policy.")
+				if p := b.config.GetPolicyByTFName(policyName); p != nil && p.Policy != nil {
+					user.UserPolicyActions = append(user.UserPolicyActions, p.Policy.GetAllActions()...)
+					user.UserDenyActions = append(user.UserDenyActions, p.Policy.GetDeniedActions()...)
+					mergePerBucketActions(user.IdentityAllowActionsPerBucket, p.Policy.GetAllowActionsPerBucket())
+					for _, stmt := range p.Policy.Statements {
+						if stmt.IsAllow() && len(stmt.NotActions) > 0 {
+							user.HasUserNotAction = true
+							user.UserNotActions = append(user.UserNotActions, stmt.NotActions...)
+						}
+					}
+				}
+			} else if actions := ManagedPolicyS3Actions(managedPolicyARN); len(actions) > 0 {
+				user.UserPolicyActions = append(user.UserPolicyActions, actions...)
+				mergePerBucketActions(user.IdentityAllowActionsPerBucket, map[string][]string{"*": actions})
 			}
 			break
 		}

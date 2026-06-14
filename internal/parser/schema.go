@@ -24,6 +24,8 @@ func ResourceSchema(resourceType string) *hcl.BodySchema {
 		return iamRolePolicySchema
 	case "aws_iam_role_policy_attachment":
 		return iamRolePolicyAttachmentSchema
+	case "aws_iam_user_policy_attachment":
+		return iamUserPolicyAttachmentSchema
 	case "aws_iam_user":
 		return iamUserSchema
 	case "aws_iam_user_policy":
@@ -125,6 +127,15 @@ var iamRolePolicyAttachmentSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{},
 }
 
+// iamUserPolicyAttachmentSchema defines the schema for aws_iam_user_policy_attachment.
+var iamUserPolicyAttachmentSchema = &hcl.BodySchema{
+	Attributes: []hcl.AttributeSchema{
+		{Name: "user", Required: true},
+		{Name: "policy_arn", Required: true},
+	},
+	Blocks: []hcl.BlockHeaderSchema{},
+}
+
 // iamUserSchema defines the schema for aws_iam_user resources.
 var iamUserSchema = &hcl.BodySchema{
 	Attributes: []hcl.AttributeSchema{
@@ -195,6 +206,7 @@ var SupportedResourceTypes = map[string]bool{
 	"aws_iam_role":                      true,
 	"aws_iam_role_policy":               true,
 	"aws_iam_role_policy_attachment":    true,
+	"aws_iam_user_policy_attachment":    true,
 	"aws_iam_user":                      true,
 	"aws_iam_user_policy":               true,
 	"aws_iam_policy":                    true,
