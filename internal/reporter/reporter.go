@@ -91,11 +91,7 @@ func BuildTripleResults(checks []analyzer.CheckResult, keys []generator.TripleKe
 		}
 
 		// Per-layer status.
-		// "granting" layers (4, 5) show "NOT GRANTED" on failure (they don't
-		// block, they just didn't grant). "blocking" layers show "DENY".
-		// L7 (session policy) shows "NOT APPLICABLE" when no session policy is
-		// configured — session policies are runtime sts:AssumeRole parameters and
-		// cannot be derived from Terraform source.
+		// "granting" layers (4, 5) show "NOT GRANTED" on failure
 		for i, suffix := range layerSuffixes {
 			assertionName := key.AssertionBaseName + suffix
 			cr, ok := byName[assertionName]
@@ -161,9 +157,7 @@ func New(w io.Writer) *Reporter { return &Reporter{w: w} }
 // SetWildcardFate records the fate of unlisted S3 actions for the summary note.
 func (r *Reporter) SetWildcardFate(fate generator.WildcardFate) { r.fate = fate }
 
-// IncompleteWarning prints a prominent warning when security-relevant resource
-// types were skipped during parsing. Results should be treated as a lower bound
-// only — additional resources may grant or restrict access.
+// IncompleteWarning prints a prominent warning when security-relevant resource types were skipped during parsing.
 func (r *Reporter) IncompleteWarning(skippedTypes []string) {
 	fmt.Fprintln(r.w)
 	fmt.Fprintln(r.w, "⚠  INCOMPLETE ANALYSIS")

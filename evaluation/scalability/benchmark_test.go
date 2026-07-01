@@ -1,10 +1,13 @@
+//go:build scalability
+
 // Scalability benchmark for the access-control-helper Alloy pipeline.
 //
-// Usage:
+// Usage (requires -tags scalability to run):
 //
-//	go test ./evaluation/scalability/ -v -timeout 30m
-//	go test ./evaluation/scalability/ -v -timeout 30m -run TestScalabilityDimensions
-//	go test ./evaluation/scalability/ -v -timeout 30m -run TestScalabilityTriples
+//	go test ./evaluation/scalability/ -v -timeout 30m -tags scalability
+//	go test ./evaluation/scalability/ -v -timeout 30m -tags scalability -run TestScalabilityDimensions
+//	go test ./evaluation/scalability/ -v -timeout 30m -tags scalability -run TestScalabilityTriples
+//	go test ./evaluation/scalability/ -v -timeout 30m -tags scalability -run TestScalabilityHeatmap
 package scalability_test
 
 import (
@@ -31,6 +34,8 @@ var supportedActions = []string{
 	"s3:PutObject",
 	"s3:ListBucket",
 	"s3:DeleteObject",
+	"s3:CopyObject",
+	"s3:GetBucketLocation",
 }
 
 // ── Synthetic TF generator ────────────────────────────────────────────────────
@@ -219,7 +224,7 @@ func TestScalabilityDimensions(t *testing.T) {
 			{1, 1, 1}, {1, 2, 1}, {1, 3, 1}, {1, 4, 1}, {1, 5, 1}, {1, 6, 1},
 		},
 		"vary_actions": {
-			{1, 1, 1}, {1, 1, 2}, {1, 1, 3}, {1, 1, 4},
+			{1, 1, 1}, {1, 1, 2}, {1, 1, 3}, {1, 1, 4}, {1, 1, 5}, {1, 1, 6},
 		},
 	}
 

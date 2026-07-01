@@ -102,7 +102,10 @@ Measures how Alloy analysis time scales with configuration size using synthetic 
 
 ```bash
 # Run benchmark (saves CSV with current date in filename)
-go test ./evaluation/scalability/ -bench=. -benchtime=1x -v
+go test ./evaluation/scalability/ -v -timeout 30m -tags scalability
+
+# Run only one benchmark
+go test ./evaluation/scalability/ -v -timeout 30m -tags scalability -run TestScalabilityTriples
 
 # Generate plots from the newest CSVs in results/
 python3 evaluation/scalability/plot.py --latest

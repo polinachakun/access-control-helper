@@ -12,6 +12,7 @@
 /identity_allow_only/
 /explicit_deny_wins/
 /permission_boundary_blocks/
+/[0-9][0-9]_*/
 
 # Alloy artifacts inside test folders
 tests/unit/*/

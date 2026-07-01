@@ -4,8 +4,7 @@ package ir
 // actions they grant, restricted to the 7 actions the tool analyses:
 // GetObject, PutObject, DeleteObject, ListBucket,
 // GetBucketVersioning, GetObjectVersion, PutObjectAcl.
-//
-// Source: https://docs.aws.amazon.com/aws-managed-policy/latest/reference/
+
 var managedPolicyS3Actions = map[string][]string{
 	// Full administrative access — Action:"*" covers all S3 actions.
 	"arn:aws:iam::aws:policy/AdministratorAccess": {

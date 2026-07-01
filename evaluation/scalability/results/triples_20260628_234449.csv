@@ -1,0 +1,10 @@
+experiment,label,principals,buckets,actions,triples,assertions,elapsed_ms,status
+triples,P1_B1_A1,1,1,1,1,8,1001,ok
+triples,P2_B1_A1,2,1,1,2,16,1458,ok
+triples,P2_B2_A1,2,2,1,4,32,3262,ok
+triples,P2_B2_A2,2,2,2,8,64,7070,ok
+triples,P3_B2_A2,3,2,2,12,96,12302,ok
+triples,P3_B3_A2,3,3,2,18,144,21560,ok
+triples,P4_B3_A2,4,3,2,24,192,37735,ok
+triples,P4_B4_A2,4,4,2,32,256,69552,ok
+triples,P4_B4_A3,4,4,3,48,384,120724,ok

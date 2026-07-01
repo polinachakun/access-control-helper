@@ -6,7 +6,7 @@
 
 **Pipeline:** `.tf` files → HCL parser → resolver → IR → Alloy spec → Alloy model checker → layer-aware report
 
-The tool not only produces an `ALLOW` / `DENY` verdict but identifies which policy layer blocks the request or which grant path does not apply.
+The tool not only produces an `ALLOW` / `DENY` / `CONDITIONAL_ALLOW` verdict but identifies which policy layer blocks the request or which grant path does not apply.
 
 ---
 
@@ -84,7 +84,10 @@ access-control-helper/
 │   ├── ir/
 │   │   ├── types.go               # Config, S3Bucket, IAMRole, ServicePrincipal, ...
 │   │   ├── policy.go              # IAM policy JSON parser (Action, NotAction, Condition, ...)
-│   │   ├── builder.go             # Builds Config IR from resolved resources
+│   │   ├── builder.go             # Builds Config IR — core, linkResources, detectCrossAccount
+│   │   ├── builder_s3.go          # S3 bucket/policy builder and statement expansion
+│   │   ├── builder_iam.go         # IAM role/user/policy builders and attachments
+│   │   ├── builder_helpers.go     # Attribute accessors and ref helpers
 │   │   ├── blockpath.go           # Determines which layer denied access
 │   │   └── managed_policies.go    # Resolves aws_iam_policy attachments to roles
 │   ├── preflight/hcl_syntax.go    # HCL syntax pre-check
@@ -98,8 +101,9 @@ access-control-helper/
 │   ├── e2e_scenarios_test.go      # Auto-discovery scenario runner
 │   └── reporter_snapshot_test.go
 ├── evaluation/
-│   ├── evaluate.py                # TerraDS dataset evaluation (phases 1–3)
-│   ├── results/                   # Phase JSON results
+│   ├── robustness/                # TerraDS dataset evaluation
+│   │   ├── evaluate.py            # Phases 1–3 evaluation script
+│   │   └── results/               # Phase JSON results + plots
 │   ├── scalability/               # Go benchmark + plots for scaling analysis
 │   └── manual_verification/       # 10+ deployable Terraform scenarios for live parity
 │       └── validate_all.sh        # Generates aws iam simulate-principal-policy commands
@@ -138,7 +142,7 @@ access-control-helper/
 - Unrecognized condition operators → `CONDITIONAL_ALLOW` (noted but not modeled)
 
 **S3 actions:**
-- Any explicit S3 action in the configuration is analyzed; `actionLevelFacts` in `generator.go` classifies all known S3 actions by resource level (bucket vs object ARN)
+- Any explicit S3 action in the configuration is analyzed; `actionLevelFacts` in `generator/action_levels.go` classifies all known S3 actions by resource level (bucket vs object ARN)
 - Actions absent from configuration → implicit deny (no triple generated, consistent with AWS default)
 - Wildcard actions (`s3:*`) → full Alloy `Action` universe; the tool determines whether unlisted actions would be blocked by explicit deny (L1), RCP (L2), SCP (L3), or permission boundary (L6)
 

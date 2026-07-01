@@ -4,7 +4,7 @@ Static analysis tool that answers **"can principal X perform action Z on bucket 
 
 **Pipeline:** `.tf` files → HCL parser → resolver → IR → Alloy spec → Alloy model checker → layer-aware report
 
-The tool produces an `ALLOW` / `DENY` verdict and identifies which AWS policy layer blocks or grants the request.
+The tool produces an `ALLOW` / `DENY` / `CONDITIONAL_ALLOW` verdict and identifies which AWS policy layer blocks or grants the request.
 
 ---
 
@@ -24,11 +24,14 @@ The tool produces an `ALLOW` / `DENY` verdict and identifies which AWS policy la
 # Build
 go build -o access-control-helper .
 
-# Print Alloy spec to stdout (no Alloy run)
+# Run full analysis (spec auto-saved to output/)
 ./access-control-helper <path/to/terraform>
 
-# Run full analysis and write spec to file
+# Run full analysis and write spec to specific file
 ./access-control-helper <path/to/terraform> output.als
+
+# Print Alloy spec to stdout only (no Alloy run, no Java needed)
+./access-control-helper <path/to/terraform> -
 ```
 
 ---
@@ -55,30 +58,11 @@ access-control-helper/
 
 ## Tests
 
-```bash
-# All e2e + snapshot tests (no Alloy JAR needed for generation checks)
-go test ./tests/
-
-# Unit tests only
-go test ./tests/unit/
-
-# Full pipeline with Alloy verification (requires JAR)
-go test ./tests/ -run TestScenarios_Verification
-
-# Specific scenario
-go test ./tests/ -run TestScenarios_Verification/identity_allow_only
-
-# Regenerate expect.json after intentionally changing a scenario
-go test ./tests/ -update -run TestScenarios_Verification/identity_allow_only
-```
-
-See [`tests/README.md`](tests/README.md) for test structure and scenario descriptions.
+See [`tests/README.md`](tests/README.md) for commands, test structure, and scenario descriptions.
 
 ---
 
 ## Evaluation
-
-Three evaluation tracks in [`evaluation/`](evaluation/README.md):
 
 | Track | What it measures |
 |---|---|
@@ -86,31 +70,34 @@ Three evaluation tracks in [`evaluation/`](evaluation/README.md):
 | **Scalability** | Alloy analysis time vs configuration size (benchmark + plots) |
 | **Manual verification** | 12 scenarios deployed to real AWS — tool output vs `aws iam simulate-principal-policy` (100% match) |
 
-```bash
-# Quick start: dataset coverage (no tarballs needed)
-python3 evaluation/robustness/evaluate.py phase1
-
-# Full pipeline sample
-python3 evaluation/robustness/evaluate.py phase3 --sample 100
-```
-
-See [`evaluation/README.md`](evaluation/README.md) for full commands and results.
+See [`evaluation/README.md`](evaluation/README.md) for commands and results.
 
 ---
 
 ## Policy layers
 
-| Layer | Policy type | Effect when absent |
-|---|---|---|
-| L1 | Explicit Deny | — |
-| L2 | Resource Control Policy (RCP) | DENY |
-| L3 | Service Control Policy (SCP) | DENY |
-| L4 | Resource-based policy | DENY (cross-account only) |
-| L5 | Identity-based policy | DENY |
-| L6 | Permission Boundary | DENY |
-| L7 | Session Policy | NOT APPLICABLE (runtime only) |
+| Layer | Policy type |
+|---|---|
+| L1 | Explicit Deny |
+| L2 | Resource Control Policy (RCP) |
+| L3 | Service Control Policy (SCP) |
+| L4 | Resource-based policy |
+| L5 | Identity-based policy |
+| L6 | Permission Boundary |
+| L7 | Session Policy |
 
-Within same account, L4 and L5 are a **union**.
+Within the same account, L4 and L5 are a **union** — either one is sufficient to grant access.
+
+### Layer status per verdict
+
+Each layer in the report carries one of four statuses:
+
+| Status | Applies to | Meaning |
+|---|---|---|
+| `PASS` | L1–L7 | Layer did not block; for L4/L5: a grant was found |
+| `DENY` | L1, L2, L3, L6 | Layer explicitly blocked access |
+| `NOT GRANTED` | L4, L5 | No applicable Allow statement found — including when no policy exists at this layer |
+| `NOT APPLICABLE` | L7 | Session policy is a runtime parameter, not present in Terraform source |
 
 ---
 
