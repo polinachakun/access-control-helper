@@ -92,6 +92,21 @@ python3 evaluation/robustness/plot_funnel.py --out evaluation/robustness/results
 pip install matplotlib numpy
 ```
 
+### Real-world module complexity
+
+Per-module counts extracted from the Phase 2/3 result logs (`stderr_snippet` / `decisions` fields) show that real TerraDS modules are small:
+
+| Metric | Min | Median | Mean | Max |
+|--------|-----|--------|------|-----|
+| Buckets/module | 1 | 1 | 1.16 | 3 |
+| Principals/module | 1 | 1 | 1.3–1.4 | 5 |
+| Actions/module | 4 | 4 | 4.9 | 11 |
+| Alloy checks/module | 32 | 48 | 60.2 | 168 |
+
+(Buckets/principals from `phase2_results.json`, n=50; principals/actions/decisions from `phase3_clean.json`, n=27 modules with recorded decisions.)
+
+Median end-to-end analysis time was **6.7s** (random 100-module sample) and **23.9s** (recent-100 sample), max 85.8s — well under the 217s worst case from the scalability benchmark below. That worst case (6 principals × 5 buckets × 2 actions) is a synthetic stress configuration, not representative of real-world module size.
+
 ---
 
 ## Scalability (`scalability/`)
